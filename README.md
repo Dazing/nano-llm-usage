@@ -16,6 +16,7 @@ The user chose a DIY application after considering VictoriaMetrics/Grafana becau
 
 - **[Delivery map](docs/delivery-map.md)** — four cumulative deliveries, acceptance/scenario ownership, dependencies, evidence gates and the separate authorized Jarvis/Unraid gate.
 - **[Delivery 1 implementation plan](docs/delivery-1-implementation-plan.md)** — detailed durable collector/accounting contracts, implementation steps and local HTTP/process verification.
+- **[Delivery 1 status](docs/delivery-1-status.md)** — implemented collector: executed environment, install/run/test/smoke commands, configuration, storage/locking/migration/retention behavior and numeric smoke receipts.
 
 The specification and acceptance scenarios remain authoritative. These plans sequence the complete scope; they contain planned verification, not executed application or deployment results.
 
