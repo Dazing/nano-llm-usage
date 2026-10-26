@@ -1,0 +1,55 @@
+# Ops notes for the self-hosted deployment: docs/deployment.md
+#
+# Every host-facing value is explicit on purpose. Nothing here binds to
+# 0.0.0.0: the published port is restricted to a trusted LAN address, and the
+# bind address inside the container is the container's own interface.
+name: jarvis-dashboard
+
+services:
+  dashboard:
+    build:
+      context: .
+      args:
+        # Must own the appdata directory (chown -R UID:GID) — see docs.
+        APP_UID: "${JARVIS_UID:?set the numeric appdata owner UID}"
+        APP_GID: "${JARVIS_GID:?set the numeric appdata owner GID}"
+    image: jarvis-dashboard:0.1.0
+    restart: unless-stopped
+    # One writer owns the volume: never scale this service above one replica.
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    volumes:
+      # Local SSD/cache-pool path. Not SMB, not NFS, not a mover target.
+      - "${JARVIS_APPDATA_DIR:?set a local-storage appdata directory}:/data"
+    ports:
+      - "${DASHBOARD_BIND_ADDRESS:?set a trusted LAN address}:${DASHBOARD_HOST_PORT:-8080}:8080"
+    environment:
+      RADIANCE_BASE_URL: "${RADIANCE_BASE_URL:?set the Jarvis metrics origin}"
+      JARVIS_SOURCE_ID: "${JARVIS_SOURCE_ID:-jarvis}"
+      JARVIS_BIND_ADDRESS: "0.0.0.0" # container-internal only
+      DATABASE_PATH: "/data/dashboard.sqlite3"
+      PORT: "8080"
+      POLL_INTERVAL_SECONDS: "${POLL_INTERVAL_SECONDS:-15}"
+      HTTP_TIMEOUT_SECONDS: "${HTTP_TIMEOUT_SECONDS:-3}"
+      RAW_RETENTION_DAYS: "${RAW_RETENTION_DAYS:-30}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 128
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "container-healthcheck"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3

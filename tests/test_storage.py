@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from test_storage_helpers import downgrade_to_v1
+
 from jarvis_dashboard import storage
 from jarvis_dashboard.accounting import transition_series
 from jarvis_dashboard.domain import (
@@ -55,7 +57,7 @@ def apply(conn, poll_id, plans, at=T0):
 
 def test_fresh_database_gets_schema(tmp_path: Path):
     conn = storage.open_storage(tmp_path / "d.sqlite3")
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == storage.CURRENT_SCHEMA_VERSION
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"sources", "series", "series_state", "epochs", "samples", "hourly_totals",
             "gap_spans", "events", "collector_state", "maintenance_cursor"} <= tables
@@ -129,8 +131,9 @@ def test_corrupt_database_is_refused_not_replaced(tmp_path: Path):
     seed(conn)
     conn.close()
     data = bytearray(db.read_bytes())
-    data[len(data) // 2 :] = bytes((data[len(data) // 2] + 7) % 251 for _ in range(len(data) - len(data) // 2))
-    db.write_bytes(bytes(data))
+    # Truncation is unambiguous corruption: the declared page count no longer
+    # matches the file, so integrity_check must fail rather than be repaired.
+    db.write_bytes(bytes(data[: len(data) // 2]))
     with pytest.raises(storage.StorageError) as exc:
         storage.open_storage(db)
     assert exc.value.code in {"database_corrupt", "database_not_sqlite"}
@@ -144,28 +147,37 @@ def test_foreign_file_is_refused(tmp_path: Path):
     assert exc.value.code == "database_not_sqlite"
 
 
-def test_migration_snapshots_and_preserves_rows(tmp_path: Path, monkeypatch):
-    db = tmp_path / "d.sqlite3"
+def _v1_database(tmp_path: Path, monkeypatch, db: Path) -> None:
+    """Create a database exactly as Delivery 1 shipped it (schema version 1)."""
     conn = storage.open_storage(db)
     seed(conn)
+    downgrade_to_v1(conn)
     conn.close()
+
+
+def test_migration_snapshots_and_preserves_rows(tmp_path: Path, monkeypatch):
+    db = tmp_path / "d.sqlite3"
+    _v1_database(tmp_path, monkeypatch, db)
     original_sql = storage._migration_files()[0][1]
+    monkeypatch.setattr(storage, "CURRENT_SCHEMA_VERSION", 2)
     monkeypatch.setattr(
         storage, "_migration_files", lambda: [(1, original_sql), (2, "ALTER TABLE sources ADD COLUMN note TEXT")]
     )
     conn = storage.open_storage(db)
     assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
     assert conn.execute("SELECT count(*) FROM samples").fetchone()[0] == 1
-    assert Path(f"{db}.pre-migration-2.sqlite3").exists()
+    snapshot = Path(f"{db}.pre-migration-2.sqlite3")
+    assert snapshot.exists()
+    # The snapshot is a verified copy, not a file that merely exists.
+    assert storage.verify_database(snapshot) == 1
     conn.close()
 
 
 def test_failed_migration_leaves_database_intact(tmp_path: Path, monkeypatch):
     db = tmp_path / "d.sqlite3"
-    conn = storage.open_storage(db)
-    seed(conn)
-    conn.close()
+    _v1_database(tmp_path, monkeypatch, db)
     original_sql = storage._migration_files()[0][1]
+    monkeypatch.setattr(storage, "CURRENT_SCHEMA_VERSION", 2)
     monkeypatch.setattr(
         storage, "_migration_files", lambda: [(1, original_sql), (2, "CREATE TABLE broken(x CONSTRAINT y;")]
     )

@@ -7,6 +7,7 @@ any collection, storage access, or network request happens.
 
 from __future__ import annotations
 
+import ipaddress
 import math
 import os
 import re
@@ -20,6 +21,7 @@ DEFAULT_HTTP_TIMEOUT_SECONDS = 3.0
 DEFAULT_DATABASE_PATH = "/data/dashboard.sqlite3"
 DEFAULT_RAW_RETENTION_DAYS = 30
 DEFAULT_PORT = 8080
+DEFAULT_BIND_ADDRESS = "127.0.0.1"
 DEFAULT_LOG_LEVEL = "INFO"
 
 _ALLOWED_SCHEMES = ("http", "https")
@@ -41,6 +43,7 @@ class Config:
     raw_retention_days: int
     port: int
     log_level: str
+    bind_address: str = DEFAULT_BIND_ADDRESS
 
     @property
     def metrics_url(self) -> str:
@@ -53,6 +56,18 @@ class Config:
     @classmethod
     def from_env(cls, environ: dict[str, str] | None = None) -> "Config":
         return from_env(environ)
+
+
+def _parse_bind_address(raw: str) -> str:
+    """An explicit IP literal: never a hostname, never an implicit wildcard."""
+    value = raw.strip()
+    try:
+        ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise ConfigError(
+            f"JARVIS_BIND_ADDRESS must be an IP literal (e.g. {DEFAULT_BIND_ADDRESS}), got {raw!r}"
+        ) from exc
+    return value
 
 
 def _parse_base_url(raw: str) -> str:
@@ -142,6 +157,7 @@ def from_env(environ: dict[str, str] | None = None) -> Config:
     log_level = env.get("LOG_LEVEL", DEFAULT_LOG_LEVEL).strip().upper()
     if log_level not in _LOG_LEVELS:
         raise ConfigError(f"LOG_LEVEL must be one of {', '.join(_LOG_LEVELS)}, got {log_level!r}")
+    bind_address = _parse_bind_address(env.get("JARVIS_BIND_ADDRESS", DEFAULT_BIND_ADDRESS))
     return Config(
         radiance_base_url=base_url,
         source_id=source_id,
@@ -151,4 +167,5 @@ def from_env(environ: dict[str, str] | None = None) -> Config:
         raw_retention_days=retention,
         port=port,
         log_level=log_level,
+        bind_address=bind_address,
     )

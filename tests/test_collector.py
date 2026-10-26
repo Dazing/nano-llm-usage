@@ -18,7 +18,9 @@ from jarvis_dashboard.domain import (
     GENERATED_OUTPUT,
     PRIMARY_SCOPE,
     canonical_labels_json,
+    to_iso,
 )
+from jarvis_dashboard.lifecycle import RuntimeHealth
 
 from fixture_server import FixtureServer, install_fixture
 
@@ -213,11 +215,16 @@ def test_long_gap_materialization_is_bounded_and_resumable(tmp_path: Path):
         while remaining:
             remaining = storage.drain_gap_materialization(c.conn, batch=100)
         rows = c.conn.execute(
-            "SELECT hour FROM hourly_totals WHERE quality_json LIKE '%collection_gap%' ORDER BY hour"
+            "SELECT hour, counter_key FROM hourly_totals WHERE quality_json LIKE '%collection_gap%' "
+            "ORDER BY hour, counter_key"
         ).fetchall()
-        hours = [r[0] for r in rows]
-        assert len(hours) == len(set(hours))  # no duplicate overlap per hour
-        assert len(hours) == 30 * 24 + 1  # full coverage of the outage
+        # Every primary counter of the coupled primary scope is marked: the
+        # request counters are unaffected by a primary-scope outage.
+        assert {r[1] for r in rows} == {COMPUTED_INPUT, GENERATED_OUTPUT}
+        for counter in (COMPUTED_INPUT, GENERATED_OUTPUT):
+            hours = [r[0] for r in rows if r[1] == counter]
+            assert len(hours) == len(set(hours))  # no duplicate overlap per hour
+            assert len(hours) == 30 * 24 + 1  # full coverage of the outage
         c.conn.close()
 
 
@@ -373,4 +380,50 @@ def test_read_only_storage_fails_gracefully_without_state_advance(tmp_path: Path
             os.chmod(db, 0o644)
         after = storage.load_series(c.conn, "s1")[canonical_labels_json(L)].state
         assert (after.primary.computed_input, after.primary.generated_output) == (100, 10)
+        c.conn.close()
+
+
+def test_storage_failure_fails_readiness_even_when_saving_it_fails(tmp_path: Path, monkeypatch):
+    """D2-AC4: readiness must fail even when the durable error write cannot be saved."""
+    import sqlite3 as _sq
+
+    db = tmp_path / "d.sqlite3"
+    with FixtureServer() as server:
+        install_fixture(server.state, L, 100, 10)
+        clock = Clock()
+        health = RuntimeHealth(poll_interval_seconds=15)
+        conn = storage.open_storage(db)
+        c = Collector(
+            make_config(server.base_url, db),
+            conn,
+            wall_clock=clock.wall_now,
+            monotonic=clock.mono_now,
+            sleeper=lambda _delay: c.request_stop(),
+            health=health,
+        )
+        storage.set_runtime_state(conn, storage.LAST_RETENTION_KEY, to_iso(clock.wall))
+        real_set = storage.set_runtime_state
+        failing = {"on": False}
+
+        def full(*_args, **_kwargs):
+            failing["on"] = True
+            raise storage.StorageError("storage_full", "disk full")
+
+        def refusing(_conn, key, value):
+            if failing["on"]:
+                raise _sq.OperationalError("disk full")
+            return real_set(_conn, key, value)
+
+        monkeypatch.setattr(storage, "apply_poll", full)
+        monkeypatch.setattr(storage, "set_runtime_state", refusing)
+        c.run_forever()
+
+        snapshot = health.snapshot()
+        assert snapshot.ready is False
+        assert (snapshot.storage_status, snapshot.storage_code) == ("unavailable", "storage_full")
+        # The durable record never received the failure: readiness is the
+        # in-memory publish, which is why a dead volume still fails health checks.
+        assert storage.get_runtime_state(conn, storage.RUNTIME_STORAGE_STATUS) == "ok"
+        health.mark_writer_ready()
+        assert health.snapshot().ready is True
         c.conn.close()

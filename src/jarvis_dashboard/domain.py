@@ -34,6 +34,14 @@ SCOPE_FOR_COUNTER = {
     REQUEST_OUTPUT: REQUEST_OUTPUT,
 }
 
+# Reverse mapping: a gap in one scope degrades exactly the counters that share
+# it, never the whole series (the coupled primary pair shares one scope).
+COUNTERS_FOR_SCOPE: dict[str, tuple[str, ...]] = {
+    PRIMARY_SCOPE: PRIMARY_KEYS,
+    REQUEST_INPUT: (REQUEST_INPUT,),
+    REQUEST_OUTPUT: (REQUEST_OUTPUT,),
+}
+
 # Raw metric names as exposed upstream (family names are normalised by some
 # parsers, so the raw exposition text is scanned by these exact names).
 METRIC_FOR_COUNTER = {
@@ -65,6 +73,11 @@ class QualityFlag(StrEnum):
     TIME_ATTRIBUTION_APPROXIMATE = "time_attribution_approximate"
     CLOCK_DISCONTINUITY = "clock_discontinuity"
     COUNTER_UNAVAILABLE = "counter_unavailable"
+
+
+# The six independent coverage dimensions (specification D4). Metadata
+# completeness is reported separately and is deliberately NOT a quality flag.
+QUALITY_FLAGS: tuple[str, ...] = tuple(QualityFlag)
 
 
 class EpochReason(StrEnum):

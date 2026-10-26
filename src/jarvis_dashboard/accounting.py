@@ -43,6 +43,14 @@ class HourDelta:
     hour: str  # canonical hour label
     tokens: int
     observed_intervals: int
+    # Delivery 2 coverage metadata: the contribution's own ending observation,
+    # interval length, rate eligibility and quality flags. The hourly row keeps
+    # the union of contributing qualities plus first/last bounds so coverage
+    # survives raw-sample retention (Delivery 2 plan Step 2).
+    observed_at: datetime | None = None
+    interval_seconds: float | None = None
+    eligible: bool = False
+    quality: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -202,7 +210,25 @@ def _optional_transition(
         flags.add(QualityFlag.CONTINUITY_UNVERIFIED)
     if slot.observed_at is not None and hour_floor(slot.observed_at) != hour_floor(observed_at):
         flags.add(QualityFlag.TIME_ATTRIBUTION_APPROXIMATE)
-    hour_deltas.append(HourDelta(key, hour_label(observed_at), delta, 1))
+    eligible = bool(
+        not gap_closed
+        and elapsed is not None
+        and elapsed > timedelta(0)
+        and verified_now
+        and slot.baseline is not None
+    )
+    hour_deltas.append(
+        HourDelta(
+            key,
+            hour_label(observed_at),
+            delta,
+            1,
+            observed_at=observed_at,
+            interval_seconds=None if elapsed is None else elapsed.total_seconds(),
+            eligible=eligible,
+            quality=frozenset(flags),
+        )
+    )
     return OptionalSlot(value, observed_at, verified_now), flags
 
 
@@ -461,10 +487,34 @@ def transition_series(
     delta_ci = ci - prev_ci
     delta_go = go - prev_go
     hour = hour_label(observed_at)
-    hour_deltas.append(HourDelta(COMPUTED_INPUT, hour, delta_ci, 1))
-    hour_deltas.append(HourDelta(GENERATED_OUTPUT, hour, delta_go, 1))
     # Rates require continuity-verified intervals (specification D4).
     rate_eligible = not gap_closed and elapsed > timedelta(0) and verified_now
+    interval_quality = frozenset(flags)
+    interval_seconds = elapsed.total_seconds()
+    hour_deltas.append(
+        HourDelta(
+            COMPUTED_INPUT,
+            hour,
+            delta_ci,
+            1,
+            observed_at=observed_at,
+            interval_seconds=interval_seconds,
+            eligible=rate_eligible,
+            quality=interval_quality,
+        )
+    )
+    hour_deltas.append(
+        HourDelta(
+            GENERATED_OUTPUT,
+            hour,
+            delta_go,
+            1,
+            observed_at=observed_at,
+            interval_seconds=interval_seconds,
+            eligible=rate_eligible,
+            quality=interval_quality,
+        )
+    )
 
     optionals, optional_flags = _advance_optionals(state, counters, observed_at, gaps, closed, hour_gaps, events, hour_deltas, poll_interval_s, verified_now, source_restart=False)
     flags |= optional_flags

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""End-to-end smoke runner for Delivery 1 (plan §5 scenarios, numeric receipts).
+"""End-to-end smoke runner (plan §5 scenarios, numeric receipts).
+
+Deliveries 1-2: collector accounting, ownership, transport limits, then the
+real `serve` process, the bounded read API, online backup, and offline restore.
 
 Runs the controllable upstream fixture (tests/fixtures), the real collector CLI
 as subprocesses, and reads SQLite back read-only. Every check prints a numeric
@@ -9,6 +12,7 @@ Usage: .venv/bin/python scripts/smoke.py
 """
 from __future__ import annotations
 
+import datetime as _dt
 import os
 import shutil
 import signal
@@ -49,8 +53,29 @@ def check(name: str, actual: object, expected: object) -> None:
     print(f"[{'ok ' if ok else 'FAIL'}] {name}: {actual!r} (expected {expected!r})", flush=True)
     if not ok:
         raise AssertionError(f"{name}: {actual!r} != {expected!r}")
-    if time.monotonic() - BUDGET_START > 420:
+    if time.monotonic() - BUDGET_START > 900:  # delivery 2 adds serve/backup/restore
         raise AssertionError("smoke budget exceeded")
+
+
+def hour_window(db: Path) -> tuple[str, str]:
+    row = q(
+        db,
+        "SELECT MIN(hour) AS first_hour, MAX(hour) AS last_hour FROM hourly_totals "
+        "WHERE counter_key=?",
+        (COMPUTED_INPUT,),
+    )[0]
+    return row["first_hour"], row["last_hour"]
+
+
+def next_hour(label: str) -> str:
+    stamp = _dt.datetime.strptime(f"{label[:-1]}:00:00Z", "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=_dt.UTC
+    )
+    return (stamp + _dt.timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def epoch_reasons(db: Path) -> list[str]:
+    return [row["reason"] for row in q(db, "SELECT reason FROM epochs ORDER BY epoch_id DESC")]
 
 
 def ro(db: Path) -> sqlite3.Connection:
@@ -137,6 +162,20 @@ def set_counts(
     st.set_series(L, values)
 
 
+LAUNCHED: list["CollectorProc"] = []
+
+
+def stop_all() -> None:
+    """Terminate anything still running after a failed scenario."""
+    for proc in LAUNCHED:
+        if proc.proc is not None and proc.proc.poll() is None:
+            proc.proc.terminate()
+            try:
+                proc.proc.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                proc.proc.kill()
+
+
 class CollectorProc:
     def __init__(self, db: Path, base_url: str):
         self.db = db
@@ -160,6 +199,7 @@ class CollectorProc:
             stderr=subprocess.PIPE,
             text=True,
         )
+        LAUNCHED.append(self)
 
     def stop(self, sig=signal.SIGTERM, timeout: int = 30) -> tuple[int, float, str]:
         assert self.proc is not None
@@ -405,9 +445,302 @@ def scenario_transport(server: FixtureServer, tmp: Path) -> None:
     check("scenario 6 clean exit", rc, 0)
 
 
+class ServeProc(CollectorProc):
+    """Real `serve` subprocess: collector writer plus the read API."""
+
+    def __init__(self, db: Path, base_url: str, port: int):
+        super().__init__(db, base_url)
+        self.port = port
+        self.env["JARVIS_BIND_ADDRESS"] = "127.0.0.1"
+        self.env["PORT"] = str(port)
+
+    def start(self) -> None:
+        self.proc = subprocess.Popen(
+            [sys.executable, "-m", "jarvis_dashboard.cli", "serve"],
+            cwd=ROOT,
+            env=self.env,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        LAUNCHED.append(self)
+
+
+def free_port() -> int:
+    """A port nothing is listening on, so a stale process cannot fake receipts."""
+    import socket
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def api(port: int, path: str, query: str = "") -> tuple[int, dict, object]:
+    """Headers are returned as an HTTPMessage: wire header names are case-insensitive."""
+    import json
+    import urllib.error
+    import urllib.request
+
+    url = f"http://127.0.0.1:{port}/api/v1{path}"
+    if query:
+        url = f"{url}?{query}"
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            return response.status, json.loads(response.read()), response.headers
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read()), exc.headers
+
+
+def get_path(port: int, path: str) -> tuple[int, dict]:
+    """0 + code ``unreachable`` means the listener is not up yet."""
+    import json
+    import urllib.error
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=10) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read())
+    except urllib.error.URLError:
+        return 0, {"error": {"code": "unreachable"}}
+
+
+def scenario_serve_and_api(server: FixtureServer, tmp: Path) -> None:
+    print("--- scenario 7: real serve, bounded API, purge-stable history")
+    port = free_port()
+    db = tmp / "d7.sqlite3"
+    reset_state(server)
+    install_fixture(server.state, L, 1000, 100)
+    start = time.monotonic()
+    ticker = UptimeTicker(server)
+    serve = ServeProc(db, server.base_url, port)
+    serve.start()
+
+    ready_at = None
+    deadline = time.monotonic() + 30
+    first = None
+    while time.monotonic() < deadline:
+        status, body = get_path(port, "/health/ready")
+        if first is None:
+            first = (status, body.get("error", {}).get("code") or body.get("status"))
+        if status == 200:
+            ready_at = time.monotonic() - start
+            break
+        if serve.proc.poll() is not None:
+            err = serve.proc.stderr.read() if serve.proc.stderr else ""
+            raise AssertionError(f"serve exited early rc={serve.proc.returncode}: {err[-400:]}")
+        time.sleep(0.5)
+    check("readiness turned ready", ready_at is not None, True)
+    receipt("readiness first state", first)
+    receipt("seconds to ready", round(ready_at, 2) if ready_at else None)
+    receipt("live during startup (1 = served, 0 = not listening yet)",
+            get_path(port, "/health/live")[0])
+
+    set_counts(server, 1600, 140, 1000, 100, uptime_start=start)
+    time.sleep(TWO_POLLS)
+    set_counts(server, 1900, 160, 1000, 100, uptime_start=start)
+    assert wait_for(lambda: total(db, COMPUTED_INPUT) == 900, 40), "A2 chain not collected"
+
+    status, series, headers = api(port, "/series")
+    check("series page", status, 200)
+    check("no-store on API", headers.get("cache-control"), "no-store")
+    series_id = series["items"][0]["series_id"]
+    receipt("series items", len(series["items"]))
+
+    status, summary, _ = api(port, "/summary", f"series_id={series_id}")
+    check("summary status", status, 200)
+    life = summary["ranges"]["lifetime"]
+    check("lifetime computed_input over HTTP", life["counters"]["computed_input"]["tokens"], "900")
+    check("lifetime generated_output over HTTP", life["counters"]["generated_output"]["tokens"], "60")
+    check("lifetime processed_total over HTTP", life["processed_total"], "960")
+    receipt("summary schema_version", summary["schema_version"])
+    receipt("collection_status", summary["collection_status"])
+
+    first_hour, last_hour = hour_window(db)
+    iso = f"{first_hour[:-1]}:00:00Z"
+    end = next_hour(last_hour)
+    status, history, _ = api(
+        port, "/history", f"series_id={series_id}&from={iso}&to={end}&bucket=hour"
+    )
+    check("history status", status, 200)
+    expected_buckets = (
+        int((_dt.datetime.fromisoformat(end.replace("Z", "+00:00"))
+             - _dt.datetime.fromisoformat(iso)).total_seconds()) // 3600
+    )
+    check("history generates every bucket in range", history["bucket_count"], expected_buckets)
+    receipt("history buckets", history["bucket_count"])
+    check(
+        "history buckets sum to the lifetime total",
+        str(sum(int(b["counters"]["computed_input"]["tokens"] or 0)
+                for b in history["buckets"])),
+        "900",
+    )
+    receipt(
+        "history trailing bucket gap_seconds",
+        history["buckets"][-1]["counters"]["computed_input"]["gap_seconds"],
+    )
+
+    # A counter reset gives the events route real data and keeps the reset distinct
+    # from a plain increment (the reset poll itself credits nothing).
+    set_counts(server, 10, 5, 1000, 100, uptime_start=start)
+    assert wait_for(lambda: epoch_reasons(db) [:1] == ["counter_reset"], 25), "reset not recorded"
+    receipt("epoch reasons (newest first)", epoch_reasons(db))
+    status, events, _ = api(port, "/events", f"series_id={series_id}&limit=5")
+    check("events page", status, 200)
+    check(
+        "events describe the real reset",
+        [item["kind"] for item in events["items"]][:1],
+        ["counter_reset"],
+    )
+    receipt("events retention note", events["retention"]["note"])
+    receipt("openapi paths", len(get_path(port, "/api/v1/openapi.json")[1]["paths"]))
+    receipt("root 404 code", get_path(port, "/")[1].get("error", {}).get("code"))
+
+    # 32 concurrent reads against 4 admission slots: saturating requests are refused
+    # promptly with the documented code, nothing queues, and the server stays usable.
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=32) as pool:
+        outcomes = list(pool.map(lambda _: api(port, "/status"), range(32)))
+    codes = {status for status, _, _ in outcomes}
+    receipt("concurrent status codes", sorted(codes))
+    if not codes <= {200, 503}:
+        raise AssertionError(f"unexpected concurrent codes: {sorted(codes)}")
+    served = [body for status, body, _ in outcomes if status == 200]
+    refused = [body for status, body, _ in outcomes if status == 503]
+    if not served:
+        raise AssertionError("every concurrent read was refused")
+    bad = [body.get("error", {}).get("code") for body in refused
+           if body.get("error", {}).get("code") != "read_capacity_exceeded"]
+    if bad:
+        raise AssertionError(f"refusal without the documented code: {bad[:2]}")
+    receipt("concurrent served / refused", (len(served), len(refused)))
+    check("usable again after the burst", api(port, "/status")[0], 200)
+
+    # Purging raw samples must not change what the API reports.
+    serve.stop()
+    conn = storage.open_storage(db)
+    purged = storage.purge_expired(conn, "2099-01-01T00:00:00.000000Z")
+    conn.commit()
+    conn.close()
+    receipt("raw rows purged", purged)
+    serve.start()
+    assert wait_for(lambda: get_path(port, "/health/ready")[0] == 200, 30), "no readiness after purge"
+    status, summary, _ = api(port, "/summary", f"series_id={series_id}")
+    check(
+        "lifetime after raw purge",
+        summary["ranges"]["lifetime"]["counters"]["computed_input"]["tokens"],
+        "900",
+    )
+    status, history, _ = api(
+        port, "/history", f"series_id={series_id}&from={iso}&to={end}&bucket=hour"
+    )
+    check(
+        "history coverage metadata survives purge",
+        [b["counters"]["computed_input"]["metadata_complete"] for b in history["buckets"]],
+        [True] * history["bucket_count"],
+    )
+    check(
+        "history first/last observations survive purge",
+        history["buckets"][0]["counters"]["computed_input"]["first_observed_at"] is not None,
+        True,
+    )
+    rc, secs, _ = serve.stop()
+    check("serve SIGTERM exit", rc, 0)
+    check("serve shutdown under 15 s", secs < 15, True)
+    receipt("serve shutdown seconds", round(secs, 2))
+    ticker.stop()
+
+
+def scenario_backup_restore(server: FixtureServer, tmp: Path) -> None:
+    print("--- scenario 8: live snapshot, stopped restore, gap-free continuation")
+    db = tmp / "d8.sqlite3"
+    reset_state(server)
+    install_fixture(server.state, L, 1000, 100)
+    start = time.monotonic()
+    ticker = UptimeTicker(server)
+    col = CollectorProc(db, server.base_url)
+    col.start()
+    assert wait_for(lambda: has_series(db)), "baseline not collected"
+    set_counts(server, 1600, 140, 1000, 100, uptime_start=start)
+    time.sleep(TWO_POLLS)
+    set_counts(server, 1900, 160, 1000, 100, uptime_start=start)
+    assert wait_for(lambda: total(db, COMPUTED_INPUT) == 900, 40), "A2 chain not collected"
+
+    snapshot = tmp / "snap.sqlite3"
+    env = {**os.environ, "RADIANCE_BASE_URL": server.base_url, "SOURCE_ID": "s1",
+           "DATABASE_PATH": str(db), "LOG_LEVEL": "WARNING"}
+    result = subprocess.run(
+        [sys.executable, "-m", "jarvis_dashboard.cli", "backup", "--output", str(snapshot)],
+        cwd=ROOT, env=env, capture_output=True, text=True,
+    )
+    check("backup exit code", result.returncode, 0)
+    receipt("backup receipt", result.stdout.strip()[:78])
+    receipt("live volume has WAL while running", Path(f"{db}-wal").exists())
+    check("snapshot ships without WAL", Path(f"{snapshot}-wal").exists(), False)
+
+    refused = subprocess.run(
+        [sys.executable, "-m", "jarvis_dashboard.cli", "backup", "--output", str(snapshot)],
+        cwd=ROOT, env=env, capture_output=True, text=True,
+    )
+    check("backup refuses to overwrite", refused.returncode, 3)
+    receipt("overwrite refusal", refused.stderr.strip().splitlines()[-1][:70])
+
+    # Restore into a fresh, stopped volume, then continue collecting there.
+    target = tmp / "restored" / "dashboard.sqlite3"
+    target.parent.mkdir()
+    restore_env = {**env, "DATABASE_PATH": str(target)}
+    restore = subprocess.run(
+        [sys.executable, "-m", "jarvis_dashboard.cli", "restore", "--input", str(snapshot)],
+        cwd=ROOT, env=restore_env, capture_output=True, text=True,
+    )
+    check("restore exit code", restore.returncode, 0)
+    receipt("restore receipt", restore.stdout.strip()[:78])
+    check("restored lifetime matches snapshot", total(target, COMPUTED_INPUT), 900)
+    check("restored processed pair", total(target, GENERATED_OUTPUT), 60)
+    events = q(target, "SELECT identity, details_json FROM events WHERE kind='restore'")
+    check("restore event recorded once", len(events), 1)
+    check("restore event is source-wide", events[0]["identity"], None)
+    receipt("restore provenance keys", sorted(__import__("json").loads(events[0]["details_json"])))
+
+    rc, _, _ = col.stop()
+    check("collector stopped before running-target check", rc, 0)
+
+    # A running target refuses restore: lock is held by the live writer.
+    col2 = CollectorProc(target, server.base_url)
+    col2.start()
+    assert wait_for(lambda: has_series(target)), "restored volume did not open"
+    busy = subprocess.run(
+        [sys.executable, "-m", "jarvis_dashboard.cli", "restore", "--input", str(snapshot)],
+        cwd=ROOT, env=restore_env, capture_output=True, text=True,
+    )
+    check("restore refuses a running target", busy.returncode, 3)
+    receipt("running-target refusal", busy.stderr.strip().splitlines()[-1][:70])
+
+    # Continuation: one new interval only, no duplicated increments.
+    set_counts(server, 2000, 170, 1000, 100, uptime_start=start)
+    assert wait_for(lambda: total(target, COMPUTED_INPUT) == 1000, 40), "continuation not applied"
+    check("continuation adds one interval", total(target, COMPUTED_INPUT), 1000)
+    check("no duplicated generated output", total(target, GENERATED_OUTPUT), 70)
+    check("optional counters unchanged", total(target, REQUEST_INPUT), 0)
+    rc, _, _ = col2.stop()
+    check("restored volume collector exits", rc, 0)
+    ticker.stop()
+
+
 def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="jarvis-smoke-"))
     print(f"smoke workdir: {tmp}")
+    try:
+        run_scenarios(tmp)
+    finally:
+        stop_all()
+    shutil.rmtree(tmp, ignore_errors=True)
+    print("SMOKE PASS")
+    return 0
+
+
+def run_scenarios(tmp: Path) -> None:
     with FixtureServer() as server:
         install_fixture(server.state, L, 1000, 100)
         scenario_normal_and_restart(server, tmp / "d1.sqlite3")
@@ -416,9 +749,8 @@ def main() -> int:
         scenario_ownership(tmp, server, tmp / "d3.sqlite3")
         scenario_endpoint_and_history(server, tmp / "d2.sqlite3")
         scenario_transport(server, tmp)
-    shutil.rmtree(tmp, ignore_errors=True)
-    print("SMOKE PASS")
-    return 0
+        scenario_serve_and_api(server, tmp)
+        scenario_backup_restore(server, tmp)
 
 
 if __name__ == "__main__":

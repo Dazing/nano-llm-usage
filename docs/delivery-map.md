@@ -21,24 +21,24 @@ flowchart LR
 ```
 
 ### Affected code
-Only the planning documents exist or are being added now. Application paths below are the proposed new implementation footprint, not claims of existing code.
+Delivery 1's collector, storage, migrations, fixtures and smoke tools and Delivery 2's API/lifecycle/recovery/packaging now exist; see their [status receipts](delivery-1-status.md) and [Delivery 2 status](delivery-2-status.md). The tree below describes the cumulative target footprint; frontend and qualification additions remain planned.
 
 ```text
-/                                  — new Python manifests/lock, Dockerfile, Compose; update README
-├── src/jarvis_dashboard/           — new collector, accounting, storage, API, CLI
-│   ├── migrations/                — new numbered SQLite migrations
+/                                  — existing Python manifests/lock; new Dockerfile/Compose; update README
+├── src/jarvis_dashboard/           — existing collector/accounting/storage/CLI; add API/lifecycle
+│   ├── migrations/                — existing initial schema; add numbered migrations as needed
 │   └── static/                    — generated production frontend assets
 ├── frontend/                      — new npm lock/manifests and TypeScript/Vite configuration
 │   └── src/                       — new Vue dashboard, API types, components and styles
-├── tests/                         — new behavioral accounting, persistence and API coverage
-│   └── fixtures/                  — new controlled HTTP upstream and synthetic datasets
-├── scripts/                       — new process/container smoke and qualification tools
+├── tests/                         — existing core behavior; add API/recovery coverage
+│   └── fixtures/                  — existing controlled HTTP upstream; add synthetic datasets
+├── scripts/                       — existing collector smoke; add container/qualification tools
 └── docs/                          — plans, operations and measured verification receipts
 ```
 
 ### Assumptions
 - The user wants the complete specification, not a smaller MVP; delivery boundaries change sequencing, not acceptance criteria.
-- This packet currently contains documentation only. Implementation will use the selected Python 3.13/FastAPI/SQLite and Vue/Chart.js stack without an architecture-selection phase.
+- Delivery 1 is implemented; later deliveries must inspect and extend its actual contracts. Continue with the selected Python 3.13/FastAPI/SQLite and Vue/Chart.js stack without an architecture-selection phase.
 - Keep authoritative documents at their current paths here. If the packet is moved into another repository, move it as a unit and preserve relative links.
 
 ## 2. Scope and acceptance criteria
@@ -110,9 +110,10 @@ Scenario numbers refer to [acceptance-scenarios.md](acceptance-scenarios.md). La
 
 ### Step 2: Deliver bounded APIs and operational recovery
 - **Code area:** root Docker/Compose/Python files, `src/jarvis_dashboard/`, `tests/`, `tests/fixtures/`, `scripts/`, `docs/`, README.
-- **Change:** Write and execute the Delivery 2 plan against Delivery 1's actual contracts. Implement all D6 routes/models, strict ranges/cursors, decimal-string counts, null/zero/partial coverage, four-read concurrency cap and health semantics. Add production non-root runtime/Compose, graceful shutdown, online backup CLI and stopped-volume restore procedure. Reuse the pre-migration snapshot primitive from Delivery 1. At this delivery the image serves the backend; the frontend is explicitly not yet delivered, rather than represented by a placeholder.
+- **Change:** Execute the [detailed Delivery 2 plan](delivery-2-implementation-plan.md) against Delivery 1's actual contracts, repairing missing downstream metadata/readiness/snapshot guarantees first. Implement all D6 routes/models, strict ranges/cursors, decimal-string counts, null/zero/partial coverage, four-read concurrency cap and health semantics. Add production non-root runtime/Compose, graceful shutdown, online backup CLI and stopped-volume restore procedure. Reuse and harden Delivery 1's pre-migration snapshot implementation. At this delivery the image serves the backend; the frontend is explicitly not yet delivered, rather than represented by a placeholder.
 - **Depends on:** Step 1.
 - **Verification:** Real HTTP checks match database values and errors. A second process refuses the volume, storage failure makes readiness fail, Jarvis outage alone does not. Back up during collection, restore a fresh stopped volume and compare the committed snapshot. Recreate the limited container and preserve 960; prove shutdown within 15 seconds. Record remaining frontend/final qualification work (MAP1–MAP2).
+  Executed locally on 2026-10-25 — see [Delivery 2 status](delivery-2-status.md). The container build, constrained-container recreation and 256 MiB / 0.5 CPU enforcement were not executed in that environment (no container runtime) and stay open for Delivery 4/the operator gate.
 
 ### Step 3: Deliver the bundled production dashboard
 - **Code area:** `frontend/`, `frontend/src/`, generated `src/jarvis_dashboard/static/`, backend static serving, Dockerfile, `scripts/`, `docs/`, README.
@@ -139,7 +140,7 @@ Scenario numbers refer to [acceptance-scenarios.md](acceptance-scenarios.md). La
 - Back up while polling and restore to a fresh stopped volume; compare the backup snapshot, not a later live database. Continue without replaying committed increments.
 - Review the ownership tables against all eight ACs and scenarios 1–34; every row must have the appropriate receipt or a clearly pending gate. Delivery acceptance is not final-product acceptance (MAP1–MAP2).
 - Execute the final production-browser and resource workload before local release qualification. Keep the authorized live receipt separate; never infer compatibility, deployment or target NAS fit from synthetic/local success (MAP3).
-- All checks above are planned. This map records no application execution, screenshots, benchmarks or live observations.
+- Deliveries 1 and 2 record executed local receipts ([Delivery 1](delivery-1-status.md), [Delivery 2](delivery-2-status.md)); the browser, resource-workload and live checks below remain planned, and this map records no application execution of its own.
 
 ## 6. Risks and open decisions
 

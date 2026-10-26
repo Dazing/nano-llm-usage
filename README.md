@@ -1,6 +1,6 @@
 # Jarvis Token Dashboard — portable implementation packet
 
-This folder specifies a new application; it contains no implementation or verified deployment. Copy the whole folder into a new repository as `docs/spec/`. The implementing agent does not need the original HQ repository or its runbook.
+This repository contains the application specification and the implemented Delivery 1 durable collector plus the Delivery 2 bounded API, service lifecycle, backup/restore and backend-only packaging. The dashboard and release qualification are subsequent deliveries; no verified live deployment is claimed. Keep the specification packet together and preserve its relative links.
 
 ## Files and authority
 
@@ -17,6 +17,9 @@ The user chose a DIY application after considering VictoriaMetrics/Grafana becau
 - **[Delivery map](docs/delivery-map.md)** — four cumulative deliveries, acceptance/scenario ownership, dependencies, evidence gates and the separate authorized Jarvis/Unraid gate.
 - **[Delivery 1 implementation plan](docs/delivery-1-implementation-plan.md)** — detailed durable collector/accounting contracts, implementation steps and local HTTP/process verification.
 - **[Delivery 1 status](docs/delivery-1-status.md)** — implemented collector: executed environment, install/run/test/smoke commands, configuration, storage/locking/migration/retention behavior and numeric smoke receipts.
+- **[Delivery 2 implementation plan](docs/delivery-2-implementation-plan.md)** — bounded HTTP contracts, actual-core prerequisite repairs, non-root runtime, online backup/stopped restore and local verification gates.
+- **[Delivery 2 status](docs/delivery-2-status.md)** — implemented API/lifecycle/recovery/packaging: executed environment, commands, wire contract, bounded reads, schema version 2, smoke receipts and the explicitly unexecuted container gates.
+- **[Deployment](docs/deployment.md)** — build, run, backup, restore and upgrade operations for the backend-only image (operator-supplied paths, UID/GID and bind address).
 
 The specification and acceptance scenarios remain authoritative. These plans sequence the complete scope; they contain planned verification, not executed application or deployment results.
 

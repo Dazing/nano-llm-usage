@@ -13,7 +13,10 @@ from datetime import datetime, timedelta
 from . import storage
 from .accounting import SeriesPlan, transition_series
 from .config import Config
+from .lifecycle import RuntimeHealth
 from .domain import (
+    REQUEST_INPUT,
+    REQUEST_OUTPUT,
     EpochReason,
     ScrapeResult,
     StatsEvidence,
@@ -46,9 +49,11 @@ class Collector:
         wall_clock=utc_now,
         monotonic=time.monotonic,
         sleeper=None,
+        health: RuntimeHealth | None = None,
     ) -> None:
         self.config = config
         self.conn = conn
+        self._health = health
         self._wall_clock = wall_clock
         self._monotonic = monotonic
         self._fingerprint = endpoint_fingerprint(config.radiance_base_url)
@@ -65,21 +70,30 @@ class Collector:
         self._stop.set()
 
     def run_forever(self) -> None:
+        at = self._wall_clock()
+        if self._health is not None:
+            self._health.mark_started(at)
+            self._health.mark_storage_ok()
         storage.set_runtime_state(self.conn, storage.RUNTIME_STORAGE_STATUS, "ok")
         storage.set_runtime_state(self.conn, storage.RUNTIME_COLLECTOR_STATUS, "starting")
         next_slot = self._monotonic()
         while not self._stop.is_set():
             self._poll_seq += 1
             poll_id = f"{to_iso(self._wall_clock())}#{self._poll_seq}"
+            storage_failed = False
             try:
                 self.poll_once(poll_id)
             except storage.StorageError as exc:
                 self._mark_unhealthy(exc.code)
+                storage_failed = True
             except sqlite3.Error as exc:
                 self._mark_unhealthy("storage_error")
+                storage_failed = True
                 log.warning("storage failure", extra={"error_code": "storage_error", "err": str(exc)})
             self._maintenance()
-            storage.set_runtime_state(self.conn, storage.RUNTIME_COLLECTOR_STATUS, "running")
+            if not storage_failed:
+                # A failed cycle must not be papered over with a fresh "running".
+                storage.set_runtime_state(self.conn, storage.RUNTIME_COLLECTOR_STATUS, "running")
             # Monotonic schedule: catch up by skipping missed slots, never burst.
             next_slot += self.config.poll_interval_seconds
             now = self._monotonic()
@@ -91,6 +105,9 @@ class Collector:
             self._sleep(delay)
 
     def _mark_unhealthy(self, code: str) -> None:
+        # Publish readiness first: the durable write may be the thing that failed.
+        if self._health is not None:
+            self._health.mark_storage_failed(code)
         try:
             storage.set_runtime_state(self.conn, storage.RUNTIME_STORAGE_STATUS, "unhealthy")
             storage.set_runtime_state(self.conn, storage.RUNTIME_LAST_ERROR_CODE, code)
@@ -104,24 +121,32 @@ class Collector:
         stats: StatsEvidence | None = None
         try:
             stats = self._to_evidence(self._fetcher.fetch_stats())
+            if self._health is not None:
+                self._health.mark_uptime_available(True)
         except UpstreamError as exc:
             # D1-AC: engine continuity becomes unverified; deltas are still accepted.
+            if self._health is not None:
+                self._health.mark_uptime_available(False)
             log.info("stats fetch failed: %s", exc.code)
         try:
             body = self._fetcher.fetch_metrics_text()
         except UpstreamError as exc:
+            at = self._wall_clock()
             storage.record_source_attempt(
-                self.conn, self.config.source_id, self._fingerprint, self._wall_clock(), exc.code
+                self.conn, self.config.source_id, self._fingerprint, at, exc.code
             )
-            storage.set_runtime_state(self.conn, storage.RUNTIME_LAST_POLL_AT, to_iso(self._wall_clock()))
+            storage.set_runtime_state(self.conn, storage.RUNTIME_LAST_POLL_AT, to_iso(at))
             storage.set_runtime_state(self.conn, storage.RUNTIME_LAST_ERROR_CODE, exc.code)
+            self._publish_failure(at, exc.code)
             log.warning("metrics fetch failed", extra={"error_code": exc.code})
             return PollReport(ok=False, applied=0, error_code=exc.code)
         scrape: ScrapeResult = parse_scrape(body, observed_at)
         if scrape.scrape_error:
+            at = self._wall_clock()
             storage.record_source_attempt(
-                self.conn, self.config.source_id, self._fingerprint, self._wall_clock(), scrape.scrape_error
+                self.conn, self.config.source_id, self._fingerprint, at, scrape.scrape_error
             )
+            self._publish_failure(at, scrape.scrape_error)
             log.warning("metrics parse failed", extra={"error_code": scrape.scrape_error})
             return PollReport(ok=False, applied=0, error_code=scrape.scrape_error)
 
@@ -161,10 +186,40 @@ class Collector:
             observed_at=observed_at,
             plans=plans,
         )
+        primary_ok = any(counters.primary_usable() for counters in scrape.identities.values())
+        optional_ok = all(
+            counters.values.get(REQUEST_INPUT) is not None
+            and counters.values.get(REQUEST_OUTPUT) is not None
+            for counters in scrape.identities.values()
+        )
+        storage.record_source_attempt(
+            self.conn,
+            self.config.source_id,
+            self._fingerprint,
+            observed_at,
+            "",
+            primary_success=primary_ok,
+        )
         storage.set_runtime_state(self.conn, storage.RUNTIME_LAST_POLL_AT, to_iso(observed_at))
         storage.set_runtime_state(self.conn, storage.RUNTIME_LAST_ERROR_CODE, "")
         storage.set_runtime_state(self.conn, storage.RUNTIME_STORAGE_STATUS, "ok")
+        if self._health is not None:
+            # Readiness is (re)published only after successful storage work.
+            self._health.mark_writer_ready()
+            self._health.mark_attempt(observed_at, None)
+            self._health.mark_optional_available(optional_ok)
+            if primary_ok:
+                # Primary success is separate from transport success (spec D5).
+                self._health.mark_primary_success(observed_at)
+            else:
+                self._health.mark_primary_failure("primary_counters_unavailable")
         return PollReport(ok=True, applied=applied)
+
+    def _publish_failure(self, at: datetime, code: str) -> None:
+        if self._health is None:
+            return
+        self._health.mark_attempt(at, code)
+        self._health.mark_primary_failure(code)
 
     @staticmethod
     def _to_evidence(fetched) -> StatsEvidence:
