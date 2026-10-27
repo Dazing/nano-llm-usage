@@ -7,6 +7,9 @@ answers never need a database connection. Shutdown order is fixed (plan Step 3):
 disable readiness → stop scheduling → request collector stop → let the HTTP
 layer drain → close the connection → join the thread, all inside the 15-second
 budget.
+
+The live poller (plan D1) is the service's second thread: it owns no SQLite
+connection and never gates readiness.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from .app import AppState, create_asgi_app
 from .collector import Collector
 from .config import Config
 from .domain import utc_now
+from .live import LIVE_JOIN_BUDGET_SECONDS, LiveMonitor
 from .lifecycle import RuntimeHealth
 from .storage import StorageError, acquire_volume_lock, open_storage
 
@@ -212,12 +216,19 @@ def _bind_host(config: Config) -> str:
 class _ServingServer(uvicorn.Server):
     """Uvicorn server whose shutdown stops the service, without signal re-raise."""
 
-    def __init__(self, config: uvicorn.Config, service: Service) -> None:
+    def __init__(
+        self, config: uvicorn.Config, service: Service, live: LiveMonitor | None = None
+    ) -> None:
         super().__init__(config)
         self._service = service
+        self._live = live
 
     def handle_exit(self, sig: int, frame: object) -> None:
+        # Both loops are told to stop here: the live poller must not outlive the
+        # signal path, and it never gates the HTTP drain (plan D1).
         self._service.request_stop()
+        if self._live is not None:
+            self._live.request_stop()
         super().handle_exit(sig, frame)
 
     @contextlib.contextmanager
@@ -241,12 +252,15 @@ except AttributeError:  # pragma: no cover - Windows has no SIGTERM
     _HANDLED_SIGNALS = (signal.SIGINT,)
 
 
-def build_server(config: Config, service: Service) -> _ServingServer:
+def build_server(
+    config: Config, service: Service, live: LiveMonitor | None = None
+) -> _ServingServer:
     state = AppState(
         config=config,
         health=service.health,
         db_path=Path(config.database_path),
         service=service,
+        live=live,
     )
     uvicorn_config = uvicorn.Config(
         create_asgi_app(state),
@@ -258,7 +272,7 @@ def build_server(config: Config, service: Service) -> _ServingServer:
         timeout_graceful_shutdown=GRACEFUL_HTTP_TIMEOUT_SECONDS,
         lifespan="on",
     )
-    server = _ServingServer(uvicorn_config, service)
+    server = _ServingServer(uvicorn_config, service, live)
     state.server = server
     return server
 
@@ -279,19 +293,30 @@ def run_collect(config: Config, *, service: Service | None = None) -> int:
     return service.join(SHUTDOWN_BUDGET_SECONDS)
 
 
-def run_serve(config: Config, *, service: Service | None = None) -> int:
+def run_serve(
+    config: Config, *, service: Service | None = None, live: LiveMonitor | None = None
+) -> int:
     """Serve the API and collect in one process (spec D6)."""
     service = service or Service(config)
-    server = build_server(config, service)
+    live = live if live is not None else LiveMonitor(config)
+    server = build_server(config, service, live)
     service.start()
     service.wait_started()
     if service.startup_error is not None:
         log.error("startup failed; refusing to serve: %s", _code_of(service.startup_error))
         service.request_stop()
         return service.join(SHUTDOWN_BUDGET_SECONDS) or EXIT_STORAGE
-    server.run()
+    # Storage proved writable: only now may the live poller run (plan D1). It is
+    # never started by run_collect and it never touches readiness.
+    live.start()
+    try:
+        server.run()
+    finally:
+        live.request_stop()
     service.request_stop()
-    return service.join(SHUTDOWN_BUDGET_SECONDS)
+    code = service.join(SHUTDOWN_BUDGET_SECONDS)
+    live.join(LIVE_JOIN_BUDGET_SECONDS)
+    return code
 
 
 def run_restore(config: Config, input_path: object) -> int:

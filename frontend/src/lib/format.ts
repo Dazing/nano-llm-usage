@@ -24,6 +24,36 @@ export function formatRate(rate: Rate | undefined): string {
   return `${Math.round(rate.tokens_per_second).toLocaleString("en-US")} tok/s`;
 }
 
+/**
+ * The live row renders a dash for a value the poller has not produced (plan D7).
+ * It is deliberately not `N/A`: that is the wording of a rate the 15 s API
+ * computed and found ineligible, which is a different fact.
+ */
+export const LIVE_PLACEHOLDER = "-";
+
+/** `N tok/s` rounded to whole tokens; the live row has no sub-token precision. */
+export function formatTps(value: number | null | undefined): string {
+  if (value === null || value === undefined) return LIVE_PLACEHOLDER;
+  return `${Math.round(value).toLocaleString("en-US")} tok/s`;
+}
+
+/** `N/req` — decode throughput attributed to one running request. */
+export function formatPerRequest(value: number | null | undefined): string {
+  if (value === null || value === undefined) return LIVE_PLACEHOLDER;
+  return `${Math.round(value).toLocaleString("en-US")}/req`;
+}
+
+/** `70%` from a 0..1 ratio; never a delta, never a percentage of a delta. */
+export function formatRatio(value: number | null | undefined): string {
+  if (value === null || value === undefined) return LIVE_PLACEHOLDER;
+  return `${Math.round(value * 100)}%`;
+}
+
+/** One text node per tile so a tile never reflows as its slots fill in. */
+export function joinSlots(slots: string[]): string {
+  return slots.join(" / ");
+}
+
 /** "2026-10-25 17:36 UTC" — never converted to the browser's local time. */
 export function formatUtc(value: string | null | undefined): string {
   if (!value) return NO_DATA;

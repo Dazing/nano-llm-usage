@@ -24,6 +24,7 @@ from .schemas import (
     ErrorResponse,
     EventsResponse,
     HistoryResponse,
+    LiveResponse,
     SeriesListResponse,
     StatusResponse,
     SummaryResponse,
@@ -43,6 +44,27 @@ ERROR_RESPONSES = {
 }
 MAX_EVENTS_PAGE = 100
 MAX_SERIES_PAGE = 100
+
+# Served when the app has no live monitor (in-process test app, `collect`), so
+# the panel renders its placeholders instead of failing (plan D5).
+UNAVAILABLE_LIVE: dict[str, Any] = {
+    "state": "unavailable",
+    "observed_at": None,
+    "requests": {"active": None, "queued": None},
+    "prefill_tokens_per_second": None,
+    "decode_tokens_per_second": None,
+    "decode_tokens_per_second_per_request": None,
+    "mtp_acceptance": {
+        "window_5s": None,
+        "window_1m": None,
+        "window_30m": None,
+        "lifetime": None,
+    },
+    "moe_gpu_hit": {"window_5s": None, "window_1m": None, "window_30m": None},
+}
+LIVE_ERROR_RESPONSES = {
+    500: {"model": ErrorResponse, "description": "Unexpected failure; no upstream detail."},
+}
 
 log = logging.getLogger("jarvis_dashboard.api")
 
@@ -108,6 +130,17 @@ def _now() -> datetime:
 
 def build_router() -> APIRouter:
     router = APIRouter(prefix="/api/v1", tags=["dashboard"])
+
+    @router.get("/live", response_model=LiveResponse, responses=LIVE_ERROR_RESPONSES, tags=["live"])
+    async def live(request: Request) -> dict[str, Any]:
+        """Latest 1 Hz snapshot, read straight from memory (plan D5).
+
+        No SQLite read and no admission gate: a saturated read capacity cannot
+        make the live row fail, and the live row cannot consume read capacity.
+        """
+        monitor = _state(request.app.state).live
+        payload = UNAVAILABLE_LIVE if monitor is None else monitor.snapshot()
+        return _envelope(payload, _now())
 
     @router.get("/status", response_model=StatusResponse, responses=ERROR_RESPONSES, tags=["dashboard"])
     async def status(request: Request) -> dict[str, Any]:

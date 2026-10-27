@@ -521,6 +521,7 @@ def test_openapi_documents_every_bound_route_with_the_frozen_envelope(db):
     assert sorted(spec["paths"]) == [
         "/api/v1/events",
         "/api/v1/history",
+        "/api/v1/live",
         "/api/v1/series",
         "/api/v1/status",
         "/api/v1/summary",
@@ -537,6 +538,7 @@ def test_openapi_documents_every_bound_route_with_the_frozen_envelope(db):
         "LivenessResponse",
         "ReadinessResponse",
         "ErrorResponse",
+        "LiveResponse",
     }
     assert named <= set(schemas)
     for name in named:
@@ -572,6 +574,87 @@ def test_no_wildcard_cors_is_configured(db):
     assert "access-control-allow-origin" not in response.headers
     middleware = [layer.cls.__name__ for layer in app.user_middleware]
     assert "CORSMiddleware" not in middleware
+
+
+# --------------------------------------------------------------------------- #
+# live snapshot (live-panel plan Step 3)
+# --------------------------------------------------------------------------- #
+LIVE_SNAPSHOT = {
+    "state": "live",
+    "observed_at": "2026-10-27T11:59:59.812Z",
+    "requests": {"active": 3, "queued": 1},
+    "prefill_tokens_per_second": 1240.4,
+    "decode_tokens_per_second": None,
+    "decode_tokens_per_second_per_request": None,
+    "mtp_acceptance": {
+        "window_5s": 0.7,
+        "window_1m": None,
+        "window_30m": None,
+        "lifetime": 0.66,
+    },
+    "moe_gpu_hit": {"window_5s": 0.93, "window_1m": 0.91, "window_30m": None},
+}
+
+
+class StubMonitor:
+    """Stands in for the live poller: publishes one snapshot, no threads."""
+
+    def __init__(self, snapshot: dict) -> None:
+        self._snapshot = snapshot
+
+    def snapshot(self) -> dict:
+        return self._snapshot
+
+
+def live_app(db: Path, monitor=None):
+    config = make_config(db)
+    return create_app(AppState(config, make_health(), db, live=monitor))
+
+
+def test_live_reports_unavailable_when_no_monitor_is_wired(db):
+    body = envelope_ok(get(live_app(db), "/api/v1/live"))
+    assert body["state"] == "unavailable"
+    assert body["observed_at"] is None
+    assert body["requests"] == {"active": None, "queued": None}
+    assert body["mtp_acceptance"] == {
+        "window_5s": None,
+        "window_1m": None,
+        "window_30m": None,
+        "lifetime": None,
+    }
+    assert body["moe_gpu_hit"] == {"window_5s": None, "window_1m": None, "window_30m": None}
+
+
+def test_live_passes_the_snapshot_through_and_keeps_every_null(db):
+    body = envelope_ok(get(live_app(db, StubMonitor(LIVE_SNAPSHOT)), "/api/v1/live"))
+    assert body["state"] == "live"
+    assert body["observed_at"] == "2026-10-27T11:59:59.812Z"
+    assert body["requests"] == {"active": 3, "queued": 1}
+    assert body["prefill_tokens_per_second"] == 1240.4
+    # A missing rate stays null: 0 would read as "idle" in the browser.
+    assert body["decode_tokens_per_second"] is None
+    assert body["decode_tokens_per_second_per_request"] is None
+    assert body["mtp_acceptance"]["window_1m"] is None
+    assert body["mtp_acceptance"]["lifetime"] == 0.66
+    assert body["moe_gpu_hit"]["window_30m"] is None
+
+
+def test_live_answers_while_the_read_admission_gate_is_saturated(db):
+    app = live_app(db, StubMonitor(LIVE_SNAPSHOT))
+    gate = app.state.dashboard.admission
+    assert gate.try_acquire() and gate.try_acquire()
+    assert gate.try_acquire() and gate.try_acquire()  # capacity = 4, all held
+    refused = get(app, "/api/v1/status")
+    assert refused.status_code == 503
+    assert refused.json()["error"]["code"] == "read_capacity_exceeded"
+    assert get(app, "/api/v1/live").status_code == 200
+
+
+def test_live_opens_documented_responses_without_the_read_codes(db):
+    spec = live_app(db).openapi()
+    responses = spec["paths"]["/api/v1/live"]["get"]["responses"]
+    assert {"200", "500"} <= set(responses)
+    assert "503" not in responses
 
 
 def test_root_is_a_plain_404_until_the_delivery_3_ui(db):

@@ -305,6 +305,37 @@
   font-size: 0.875rem;
 }
 
+/* Live --------------------------------------------------------------- */
+
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.live-cell {
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+}
+
+.live-cell .lv-value {
+  font-size: 1.0625rem;
+}
+
+.live-slots {
+  margin: var(--sp-1) 0 0;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+}
+
+.live-observed {
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 /* Diagnostics -------------------------------------------------------- */
 
 .diagnostics {
@@ -398,6 +429,10 @@
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .live-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 480px) {
@@ -415,6 +450,11 @@
 
   .chart-shell {
     height: 280px;
+  }
+
+  /* Five one-second tiles stay readable at 390 px: two per row, never scrolled. */
+  .live-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .app-header {

@@ -55,10 +55,10 @@ POLL_SECONDS = 15                  # plan Step 7.1: the workload runs the produc
 WARMUP_SECONDS = 300               # plan Step 7.6: five warm-up minutes before measuring
 HISTORY_EVERY = 30                 # plan D6: one 366-day query every 30 s
 TAB_EVERY = 60                     # plan D6: per-tab probe every 60 s
-MEMORY_MAX_BYTES = 268435456       # the limit the measurement is defined against
+MEMORY_MAX_BYTES = 536870912       # the limit the measurement is defined against (512 MiB, D8)
 CPU_MAX_EXPECTED = "50000 100000"  # == qc.CPU_MAX, read from the container's cgroup
 MIB = 1024 * 1024
-NON_RECLAIMABLE_BAR = 192 * MIB    # D7 hard: 75 % of the 256 MiB limit
+NON_RECLAIMABLE_BAR = 384 * MIB    # D7 hard: 75 % of the 512 MiB limit (plan D8)
 RSS_TARGET = 100 * MIB             # D7 target: median steady VmRSS
 LATENCY_TARGET = 1.0               # D7 target: p95 summary and 366-day history, seconds
 BACKUP_AT = 15 * 60                # plan D6: the online backup at measured minute 15
@@ -101,10 +101,16 @@ class GrowingFixture:
     def start(self, interval: float) -> None:
         self._interval = interval
         self._thread.start()
+        # D9: the live poller is part of the measured load, so the fixture
+        # serves the representative payload shape (tens-of-KB /stats) and
+        # advances the live counters at the live cadence.
+        self.control.state.use_representative_size()
+        self.control.state.start_live_advancer(labels=self.control.labels())
 
     def stop(self) -> None:
         self._stop.set()
         self._thread.join(timeout=30)
+        self.control.state.stop_live_advancer()
 
     def _run(self) -> None:
         rng = 12345
@@ -359,7 +365,8 @@ def verdicts(log: RunLog, samples: list[dict], tabs: list[dict], latencies: list
         "warm_threads_max": maximum(warm, "Threads"),
         "warm_fds_max": maximum(warm, "fds"),
         "warm_sockets_max": maximum(warm, "tcp_established"),
-        "timers_per_tab": sorted({len(tab["timers"]) for tab in tabs}),
+        "timers_per_tab": [list(row) for row in
+                            sorted({tuple(sorted(tab["timers"])) for tab in tabs})],
         "canvases_per_tab": sorted({tab["canvases"] for tab in tabs}),
         "chromium_rss_bytes": chromium.get("rss"),
         "chromium_heap_bytes": chromium.get("heap"),
@@ -383,13 +390,14 @@ def verdicts(log: RunLog, samples: list[dict], tabs: list[dict], latencies: list
     log.check("container never OOMKilled", committed.get("oom_killed"), False)
     log.check("no container restart", committed.get("restart_count"), 0)
     log.check("health never left healthy", committed.get("unhealthy_samples"), 0)
-    log.check("non-reclaimable memory under the 192 MiB bar",
+    log.check("non-reclaimable memory under the 384 MiB bar",
               (verdict["non_reclaimable_max_bytes"] or 0) <= NON_RECLAIMABLE_BAR, True)
     log.check("memory.peak reported exactly", isinstance(memory_peak, int) and memory_peak > 0, True)
     for key, label in (("Threads", "threads"), ("fds", "fds"), ("tcp_established", "sockets")):
         log.check(f"no {label} accumulation in the last 10 minutes",
                   (maximum(tail, key) or 0) <= (maximum(warm, key) or 0), True)
-    log.check("one live poll timer per tab", max(verdict["timers_per_tab"] or [0]), 1)
+    log.check("one history timer and one live timer per tab",
+              verdict["timers_per_tab"] or [], [[1000, 15000]])
     log.check("one canvas per tab", max(verdict["canvases_per_tab"] or [0]), 1)
     log.check("no committed-sample gap over 2 poll intervals",
               (committed.get("max_gap_seconds") or 0) <= 2 * poll, True)
@@ -595,6 +603,7 @@ def run_workload(log: RunLog, browser: Browser | None, minutes: int, seed_days: 
             series_id = first_series(port, manifest["models"][0]["model_name"])
             log.require(bool(series_id), "the seeded series is served")
             growing.start(POLL_SECONDS)
+            log.receipt("fixture_payload_sizes", fixture.state.size_receipt)
 
             pid = container_pid(stack)
             log.receipt("container_pid", pid)

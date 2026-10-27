@@ -48,7 +48,7 @@ from fixture_server import FixtureServer, install_fixture  # noqa: E402
 from jarvis_dashboard.domain import COUNTER_KEYS, hour_label, to_iso  # noqa: E402
 
 # --- D1 runtime contract ---------------------------------------------------
-MEMORY_MAX = "268435456"  # 256 MiB, spec D8
+MEMORY_MAX = "536870912"  # 512 MiB, spec D8 as raised by the live panel plan (D8)
 CPU_MAX = "50000 100000"  # 0.5 CPU
 PIDS_MAX = "128"
 CONTAINER = "dashboard"
@@ -514,7 +514,7 @@ def inspect_expectations(inspect: dict) -> list[tuple[str, object, object]]:
     log_config = host.get("LogConfig") or {}
     health = inspect.get("Config", {}).get("Healthcheck") or {}
     return [
-        ("HostConfig.Memory", host.get("Memory"), 268435456),
+        ("HostConfig.Memory", host.get("Memory"), 536_870_912),
         ("HostConfig.NanoCpus", host.get("NanoCpus"), 500_000_000),
         ("HostConfig.PidsLimit", host.get("PidsLimit"), 128),
         ("HostConfig.ReadonlyRootfs", host.get("ReadonlyRootfs"), True),
@@ -977,7 +977,7 @@ def compose_document_rows() -> list[tuple[str, object, object]]:
          "${JARVIS_SOURCE_ID:-jarvis}"),
         ("runtime user comes from JARVIS_UID/GID", (doc["user"] or "").startswith("${JARVIS_UID:?"), True),
         ("no build args (the image is built once)", doc["build_args_present"], False),
-        ("mem_limit", doc["mem_limit"], "256m"),
+        ("mem_limit", doc["mem_limit"], "512m"),
         ("cpus", doc["cpus"], "0.5"),
         ("pids_limit", doc["pids_limit"], "128"),
         ("stop_grace_period", doc["stop_grace_period"], "15s"),

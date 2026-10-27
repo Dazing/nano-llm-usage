@@ -222,3 +222,131 @@ def test_validate_writable_reports_read_only_databases(tmp_path):
         service_mod.validate_writable(ro)
     assert raised.value.code == "storage_read_only"
     ro.close()
+
+
+# --------------------------------------------------------------------------- #
+# Live poller wiring (live-panel plan Step 2)
+# --------------------------------------------------------------------------- #
+class StubLive:
+    """Stands in for the live poller: records the lifecycle calls serve makes."""
+
+    def __init__(self) -> None:
+        self.started = False
+        self.stopped = threading.Event()
+        self.join_timeouts: list[object] = []
+
+    def start(self) -> None:
+        self.started = True
+
+    def request_stop(self) -> None:
+        self.stopped.set()
+
+    def join(self, timeout=None):  # noqa: ANN001, ANN201 - mirrors LiveMonitor.join
+        self.join_timeouts.append(timeout)
+        return True
+
+
+class TinyFetcher:
+    """Minimal live fetcher for the real LiveMonitor: valid /stats, no sockets."""
+
+    def fetch(self, path: str) -> bytes:
+        return b'{"model":"m","uptime_s":1}' if path == "/stats" else b""
+
+
+def test_serve_starts_the_live_poller_and_stops_it_on_exit(tmp_path, monkeypatch):
+    monkeypatch.setattr(service_mod._ServingServer, "run", lambda self: None)
+    live = StubLive()
+    service = make_service(tmp_path)
+    assert service_mod.run_serve(make_config(tmp_path), service=service, live=live) == 0
+    assert live.started is True
+    assert live.stopped.is_set()
+    assert live.join_timeouts == [service_mod.LIVE_JOIN_BUDGET_SECONDS]
+    assert service.join(12) == 0
+
+
+def test_the_signal_path_stops_the_live_poller(tmp_path, monkeypatch):
+    """SIGTERM reaches the live thread through the same exit hook as the writer."""
+    import signal
+
+    def run(self) -> None:  # noqa: ANN001 - replaces uvicorn's loop
+        self.handle_exit(signal.SIGTERM, None)
+
+    monkeypatch.setattr(service_mod._ServingServer, "run", run)
+    live = StubLive()
+    service = make_service(tmp_path)
+    assert service_mod.run_serve(make_config(tmp_path), service=service, live=live) == 0
+    assert live.stopped.is_set()
+    service.join(12)
+
+
+def test_the_api_state_sees_the_live_monitor(tmp_path):
+    live = StubLive()
+    server = service_mod.build_server(make_config(tmp_path), make_service(tmp_path), live=live)
+    # create_asgi_app layering: NoStoreMiddleware -> _PageLayer -> API app
+    api_app = server.config.app.app.api
+    assert api_app.state.dashboard.live is live
+
+
+def test_the_collect_command_never_builds_a_live_poller(tmp_path, monkeypatch):
+    def explode(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise AssertionError("collect must not build a live poller")
+
+    monkeypatch.setattr(service_mod, "LiveMonitor", explode)
+    monkeypatch.setattr(service_mod, "_install_plain_signal_handlers", lambda svc: None)
+    service = make_service(tmp_path)
+    monkeypatch.setattr(
+        service_mod.Service,
+        "wait_finished",
+        lambda self, timeout=None: (StubCollector.instances[0].request_stop(), True)[1],
+    )
+    assert service_mod.run_collect(make_config(tmp_path), service=service) == 0
+
+
+def test_the_live_thread_is_alive_while_serving_and_gone_after(tmp_path, monkeypatch):
+    seen: list[bool] = []
+
+    def run(self) -> None:  # noqa: ANN001 - replaces uvicorn's loop
+        seen.append(any(t.name == "jarvis-live" for t in threading.enumerate()))
+
+    monkeypatch.setattr(service_mod._ServingServer, "run", run)
+    live = service_mod.LiveMonitor(make_config(tmp_path), fetcher=TinyFetcher())
+    service = make_service(tmp_path)
+    assert service_mod.run_serve(make_config(tmp_path), service=service, live=live) == 0
+    assert seen == [True]
+    assert live.join(2) is True
+    assert not any(t.name == "jarvis-live" for t in threading.enumerate())
+
+
+def test_live_failures_never_gate_readiness(tmp_path):
+    """AC6: /health/ready stays 200 while the fixture /stats answers 500."""
+    from fixture_server import FixtureServer
+
+    from jarvis_dashboard.app import AppState, create_app
+    from jarvis_dashboard.live import LiveMonitor
+    from asgi_client import request
+
+    fixture = FixtureServer().start()
+    fixture.state.stats_fail = True
+    config = make_config(tmp_path, radiance_base_url=fixture.base_url)
+    service = make_service(tmp_path, radiance_base_url=fixture.base_url)
+    service.start()
+    assert service.wait_started(10)
+    live = LiveMonitor(config)
+    live.start()
+    try:
+        deadline = time.monotonic() + 8
+        while fixture.state.requests.get("/stats", 0) < 2 and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert fixture.state.requests["/stats"] >= 2
+        assert fixture.state.requests["/metrics"] >= 2
+        assert live.snapshot()["requests"]["active"] is None
+        app = create_app(AppState(config, service.health, Path(config.database_path), live=live))
+        response = request(app, "GET", "/health/ready")
+        assert response.status_code == 200
+        assert response.json()["status"] == "ready"
+    finally:
+        live.request_stop()
+        assert live.join(2) is True
+        service.request_stop()
+        service.join(12)
+        fixture.stop()

@@ -104,10 +104,17 @@ docker compose ps            # health: starting -> healthy once the writer is re
 ```
 
 The container is read-only at `/`, non-root, `cap_drop: ALL`,
-`no-new-privileges`, `mem_limit: 268435456` (256 MiB), `cpus: 0.5`,
+`no-new-privileges`, `mem_limit: 536870912` (512 MiB), `cpus: 0.5`,
 `pids_limit: 128`, `stop_grace_period: 15s`, a 32 MiB `/tmp` tmpfs, and
 `json-file` logs capped at 3 × 5 MiB. The image ships no Node, no build tools,
 no dev/reload server, no docker socket, and no GPU access.
+
+While `serve` runs, the dashboard adds a fixed 1 Hz pair of requests
+(`/stats` then `/metrics`) to `RADIANCE_BASE_URL` for the live row, on top of
+the collector's one request per `POLL_INTERVAL_SECONDS`. That traffic is
+read-only and consumes no inference capacity, but it is continuous: budget two
+requests per second against the engine, and expect roughly 86 400 pairs per
+day. There is no switch to disable it; stopping `serve` stops it.
 
 Health uses `container-healthcheck` (Python standard library, no `curl`):
 exit `0` only when `/health/ready` returns `200` with `status: "ready"`. A

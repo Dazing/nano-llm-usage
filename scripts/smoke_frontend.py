@@ -45,6 +45,7 @@ from smoke import (  # noqa: E402
 
 STATIC = ROOT / "src" / "jarvis_dashboard" / "static"
 SHOTS = ROOT / "docs" / "receipts" / "delivery-3"
+LIVE_SHOTS = ROOT / "docs" / "receipts" / "live-panel"
 SECOND = {"model_name": "second-model", "engine": "0"}
 FOCUS_EXPECTED = ["theme-toggle", "range-24h", "range-7d", "range-30d", "range-custom",
                   "chart-disclosure"]
@@ -151,6 +152,11 @@ def open_details(page, testid: str) -> None:
 
 def shot(page, name: str) -> None:
     path = page.screenshot(SHOTS / name)
+    receipt(f"screenshot {name}", f"{path} ({path.stat().st_size} bytes)")
+
+
+def live_shot(page, name: str) -> None:
+    path = page.screenshot(LIVE_SHOTS / name)
     receipt(f"screenshot {name}", f"{path} ({path.stat().st_size} bytes)")
 
 
@@ -439,15 +445,122 @@ def optional_unavailable(page, server: FixtureServer) -> None:
           re.search(rf"(?<![\d.,]){re.escape(total)}(?![\d.,])", summary_text) is not None, False)
 
 
+def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicker:
+    """The live row, plan AC1-AC6, against a fixture that advances once a second.
+
+    The advancer adds 100 draft tokens per second at a 0.7 accept ratio and 100
+    routed experts per second at a 0.93 resident ratio, so every ratio the panel
+    prints is a number this file chose. Windows fill on the wall clock: the 5 s
+    slot after ~6 s, the 1 m slot after ~62 s; the 30 m slot is proven by the
+    injected-clock tests, not by a 30-minute browser wait.
+    """
+    print("--- phase 7f: the live row follows the fixture at 1 Hz")
+    started = time.monotonic()
+    check("live_panel_visible", visible(page, "live-panel"), True)
+    check("live_tiles", count_of(page, '[data-testid="live-panel"] .live-cell'), 5)
+    # No draft counters, no experts block and no running requests yet: five placeholders.
+    check("live_mtp_placeholder_before_counters", text_of(page, "live-mtp"), "- / - / - / -")
+    check("live_moe_placeholder_before_experts", text_of(page, "live-moe"), "- / - / -")
+
+    server.state.start_live_advancer(labels=L)
+    expect(page, lambda: text_of(page, "live-requests") == "3 / 1", "live AC1 requests")
+    check("live_state_ac1", text_of(page, "live-state"), "Live")
+    check("live_prefill_ac1", text_of(page, "live-prefill"), "1,240 tok/s")
+    check("live_decode_ac1", text_of(page, "live-decode"), "180 tok/s · 60/req")
+    # Lifetime needs a second /metrics sample, so it lands about a second after the
+    # instantaneous stats tiles - a dash here is the engine refusing a one-point ratio.
+    expect(page, lambda: (text_of(page, "live-mtp") or "").endswith("70%"), "live AC1 MTP lifetime", 20)
+    mtp_slots = (text_of(page, "live-mtp") or "").split(" / ")
+    check("live_mtp_lifetime_ac1", mtp_slots[3], "70%")
+    check("live_mtp_windows_unfilled_ac1", mtp_slots[2], "-")
+    live_shot(page, "live-1440-ac1.png")
+
+    # Zero running requests: the per-request slot is undefined, so it is a dash -
+    # and the instantaneous throughput beside it stays real (plan AC1).
+    server.state.set_live(running=0, waiting=1, prefill_tps=1240.4, decode_tps=180.2)
+    expect(page, lambda: (text_of(page, "live-decode") or "").endswith("· -"),
+           "live per-request placeholder")
+    check("live_requests_zero_running", text_of(page, "live-requests"), "0 / 1")
+    check("live_decode_value_kept", (text_of(page, "live-decode") or "").startswith("180 tok/s"), True)
+    server.state.set_live(running=3, waiting=1, prefill_tps=1240.4, decode_tps=180.2)
+
+    expect(page, lambda: (text_of(page, "live-mtp") or "").startswith("70% / - / - /"),
+           "live MTP 5 s window", 30)
+    # MoE lags MTP by a poll here: the two `running` edits above clear the experts block
+    # for a second each, so its baseline point is slightly younger.
+    expect(page, lambda: (text_of(page, "live-moe") or "").startswith("93% / - / -"),
+           "live MoE 5 s window", 30)
+    receipt("live_5s_window_seconds", round(time.monotonic() - started, 1))
+    live_shot(page, "live-1440-window-5s.png")
+
+    expect(page, lambda: (text_of(page, "live-mtp") or "").startswith("70% / 70% / - /"),
+           "live MTP 1 m window", 100)
+    expect(page, lambda: (text_of(page, "live-moe") or "").startswith("93% / 93% / -"),
+           "live MoE 1 m window", 100)
+    receipt("live_1m_window_seconds", round(time.monotonic() - started, 1))
+    live_shot(page, "live-1440-window-1m.png")
+
+    # A Radiance restart is an uptime decrease. The stats run resets, so the MoE
+    # windows - whose baseline lives in /stats - go blank and refill, while MTP,
+    # measured from /metrics, keeps its windows (plan AC3).
+    ticker.stop()
+    server.state.uptime_s = 5.0
+    expect(page, lambda: text_of(page, "live-moe") == "- / - / -", "live MoE windows reset", 20)
+    check("live_mtp_keeps_windows_across_stats_reset",
+          (text_of(page, "live-mtp") or "").startswith("70% / 70%"), True)
+    check("live_instant_tile_survives_stats_reset", text_of(page, "live-prefill"), "1,240 tok/s")
+    live_shot(page, "live-1440-run-reset.png")
+    expect(page, lambda: (text_of(page, "live-moe") or "").startswith("93%"),
+           "live MoE windows refilled", 30)
+    ticker = UptimeTicker(server, base=200.0)  # resumes the chainable clock above the drop
+
+    # Both endpoints failing: every tile a dash, the chip stale, no 15 s panel damage.
+    server.state.stats_fail = True
+    server.state.metrics_status = 500
+    expect(page, lambda: text_of(page, "live-state") == "Stale", "live outage stale chip", 20)
+    check("live_outage_requests", text_of(page, "live-requests"), "- / -")
+    check("live_outage_prefill", text_of(page, "live-prefill"), "-")
+    check("live_outage_decode", text_of(page, "live-decode"), "- · -")
+    check("live_outage_mtp", text_of(page, "live-mtp"), "- / - / - / -")
+    check("live_outage_moe", text_of(page, "live-moe"), "- / - / -")
+    receipt("live_outage_seconds", round(time.monotonic() - started, 1))
+    live_shot(page, "live-1440-stale.png")
+
+    server.state.stats_fail = False
+    server.state.metrics_status = None
+    expect(page, lambda: text_of(page, "live-state") == "Live", "live outage recovers", 20)
+    check("live_requests_after_outage", text_of(page, "live-requests"), "3 / 1")
+
+    # No experts block at all (a non-MoE model): MoE reads as absent, MTP is untouched.
+    server.state.suppress_experts = True
+    expect(page, lambda: text_of(page, "live-moe") == "- / - / -", "live MoE absent", 20)
+    check("live_mtp_unaffected_by_absent_moe", (text_of(page, "live-mtp") or "").endswith("70%"), True)
+    check("live_state_with_moe_absent", text_of(page, "live-state"), "Live")
+    server.state.suppress_experts = False
+
+    page.set_viewport(*MOBILE)
+    expect(page, lambda: page.evaluate(
+        "(() => { const el = document.querySelector('[data-testid=\"live-panel\"]');"
+        " return el.getBoundingClientRect().right <= window.innerWidth + 1; })()"),
+        "live row fits 390 px", 10)
+    receipt("live_390_body_scroll_width", page.evaluate("document.documentElement.scrollWidth"))
+    live_shot(page, "live-390-mobile.png")
+    page.set_viewport(*DESKTOP)
+    server.state.stop_live_advancer()
+    receipt("live_phase_seconds", round(time.monotonic() - started, 1))
+    return ticker
+
+
 def poll_lifecycle(page) -> None:
-    print("--- phase 8: one 15 s poll timer, paused when hidden, resumes on focus")
+    print("--- phase 8: one 15 s poll timer and one 1 s live timer, both paused when hidden")
     intervals = probe(page, "p.timers.filter((t) => !p.cleared.includes(t.id)).map((t) => t.ms)")
-    check("poll_timers", len(intervals), 1)
-    check("poll_interval_ms", intervals[0] if intervals else None, 15000)
+    check("poll_timers", sorted(intervals), [1000, 15000])
     base = probe(page, "p.fetches.length")
     page.set_visibility(True)
     time.sleep(8)
     check("polls_paused_when_hidden", probe(page, "p.fetches.length"), base)
+    check("poll_timers_cleared_when_hidden",
+          probe(page, "p.timers.filter((t) => !p.cleared.includes(t.id)).length"), 0)
     page.set_visibility(False)
     page.tab(1)
     ok = wait_for(lambda: probe(page, "p.fetches.length") > base, 30)
@@ -556,18 +669,28 @@ def network(page, server: FixtureServer, port: int) -> None:
 
     paths = dict(server.state.requests)
     baseline = paths.get("/metrics", 0)
+    stats_baseline = paths.get("/stats", 0)
     receipt("fixture_paths", sorted(paths))
-    time.sleep(2 * POLL + 2)
-    delta = dict(server.state.requests).get("/metrics", 0) - baseline
+    window = 2 * POLL + 2
+    time.sleep(window)
+    after = dict(server.state.requests)
+    delta = after.get("/metrics", 0) - baseline
+    stats_delta = after.get("/stats", 0) - stats_baseline
     receipt("fixture_requests_delta", delta)
-    check("fixture_delta_is_collector_polls", abs(delta - 2) <= 1, True)
+    receipt("fixture_stats_delta", stats_delta)
+    # Every path is now polled by the collector (every POLL s) *and* the live poller
+    # (every second, plan D2); the browser adds nothing to the fixture (plan AC6).
+    expected = window + window / POLL
+    check("fixture_delta_is_collector_plus_live", abs(delta - expected) <= 3, True)
+    check("fixture_stats_delta_is_collector_plus_live", abs(stats_delta - expected) <= 3, True)
     check("fixture_sees_no_browser_traffic",
-          sorted(set(dict(server.state.requests)) - {"/metrics", "/stats"}), [])
+          sorted(set(after) - {"/metrics", "/stats"}), [])
 
 
 # -- runner ---------------------------------------------------------------- #
 def main() -> int:
     SHOTS.mkdir(parents=True, exist_ok=True)
+    LIVE_SHOTS.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="jarvis-frontend-smoke-"))
     receipt("workdir", tmp)
     server = FixtureServer()
@@ -600,6 +723,7 @@ def main() -> int:
         offline(page, server)
         api_failure(page, serve)
         optional_unavailable(page, server)
+        ticker = live_phase(page, server, ticker)
         poll_lifecycle(page)
         theme_and_a11y(page, serve.port)
         selection_race(page, server, serve.port)

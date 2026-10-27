@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted } from "vue";
 import { dashboard } from "./lib/dashboard";
+import { live as liveStore } from "./lib/live";
 import { collectionLabel, formatUtc } from "./lib/format";
 import ApiErrorBanner from "./components/ApiErrorBanner.vue";
 import AppHeader from "./components/AppHeader.vue";
 import DiagnosticsDisclosure from "./components/DiagnosticsDisclosure.vue";
 import EmptyState from "./components/EmptyState.vue";
+import LivePanel from "./components/LivePanel.vue";
 import OfflineBanner from "./components/OfflineBanner.vue";
 import RatesPanel from "./components/RatesPanel.vue";
 import SkeletonBlock from "./components/SkeletonBlock.vue";
@@ -14,8 +16,14 @@ import TrendPanel from "./components/TrendPanel.vue";
 
 const state = dashboard.state;
 
-onMounted(() => dashboard.mount());
-onBeforeUnmount(() => dashboard.unmount());
+onMounted(() => {
+  dashboard.mount();
+  liveStore.mount();
+});
+onBeforeUnmount(() => {
+  dashboard.unmount();
+  liveStore.unmount();
+});
 
 const collectionStatus = computed(
   () => state.summary?.collection_status ?? state.seriesCollectionStatus ?? "starting",
@@ -38,6 +46,8 @@ const live = computed(
       <p class="visually-hidden" role="status" aria-live="polite">{{ live }}</p>
       <OfflineBanner v-if="offline" />
       <ApiErrorBanner v-if="state.apiError" />
+      <!-- The live row renders its five placeholders before any 15 s data exists. -->
+      <LivePanel />
       <SkeletonBlock v-if="state.firstLoad" />
       <EmptyState v-else-if="isEmpty" />
       <template v-else>

@@ -6,6 +6,10 @@ export type SeriesItem = components["schemas"]["SeriesItem"];
 export type SummaryResponse = components["schemas"]["SummaryResponse"];
 export type HistoryResponse = components["schemas"]["HistoryResponse"];
 export type EventsResponse = components["schemas"]["EventsResponse"];
+export type LiveResponse = components["schemas"]["LiveResponse"];
+export type LiveRequests = components["schemas"]["LiveRequests"];
+export type LiveMtp = components["schemas"]["LiveMtp"];
+export type LiveMoe = components["schemas"]["LiveMoe"];
 export type Range = components["schemas"]["Range"];
 export type Bucket = components["schemas"]["Bucket"];
 export type Rate = components["schemas"]["Rate"];
@@ -101,4 +105,9 @@ export function fetchEvents(
   cursor?: string,
 ): Promise<EventsResponse> {
   return getJson<EventsResponse>("/events", { series_id: seriesId, limit, cursor }, signal);
+}
+
+/** The one-second live snapshot; it takes no series id and is never cached. */
+export function fetchLive(signal: AbortSignal): Promise<LiveResponse> {
+  return getJson<LiveResponse>("/live", {}, signal);
 }

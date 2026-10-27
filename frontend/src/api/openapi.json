@@ -460,6 +460,213 @@
         "title": "HistoryResponse",
         "type": "object"
       },
+      "LiveMoe": {
+        "description": "MoE expert GPU-hit ratio (0..1) per window; null = render `-`.",
+        "properties": {
+          "window_1m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window 1M"
+          },
+          "window_30m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window 30M"
+          },
+          "window_5s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window 5S"
+          }
+        },
+        "title": "LiveMoe",
+        "type": "object"
+      },
+      "LiveMtp": {
+        "description": "MTP acceptance ratios (0..1) per window; null = render `-` (plan D5).",
+        "properties": {
+          "lifetime": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lifetime"
+          },
+          "window_1m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window 1M"
+          },
+          "window_30m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window 30M"
+          },
+          "window_5s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window 5S"
+          }
+        },
+        "title": "LiveMtp",
+        "type": "object"
+      },
+      "LiveRequests": {
+        "description": "In-flight requests; both slots null when ``/stats`` produced nothing.",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "queued": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queued"
+          }
+        },
+        "title": "LiveRequests",
+        "type": "object"
+      },
+      "LiveResponse": {
+        "additionalProperties": false,
+        "description": "Latest in-memory live snapshot (plan D5): rates in tokens/second.\n\nServed straight from the poller's published snapshot, so a null is the\npoller's own \"unknown\" and is never coerced to a number here.",
+        "properties": {
+          "decode_tokens_per_second": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decode Tokens Per Second"
+          },
+          "decode_tokens_per_second_per_request": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decode Tokens Per Second Per Request"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "moe_gpu_hit": {
+            "$ref": "#/components/schemas/LiveMoe"
+          },
+          "mtp_acceptance": {
+            "$ref": "#/components/schemas/LiveMtp"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "prefill_tokens_per_second": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefill Tokens Per Second"
+          },
+          "requests": {
+            "$ref": "#/components/schemas/LiveRequests"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "starting",
+              "live",
+              "stale",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "state",
+          "requests",
+          "mtp_acceptance",
+          "moe_gpu_hit"
+        ],
+        "title": "LiveResponse",
+        "type": "object"
+      },
       "LivenessResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1412,6 +1619,39 @@
         "tags": [
           "dashboard",
           "dashboard"
+        ]
+      }
+    },
+    "/api/v1/live": {
+      "get": {
+        "description": "Latest 1 Hz snapshot, read straight from memory (plan D5).\n\nNo SQLite read and no admission gate: a saturated read capacity cannot\nmake the live row fail, and the live row cannot consume read capacity.",
+        "operationId": "live_api_v1_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; no upstream detail."
+          }
+        },
+        "summary": "Live",
+        "tags": [
+          "dashboard",
+          "live"
         ]
       }
     },

@@ -15,7 +15,7 @@ specification packet together and preserve its relative links.
 2. **[acceptance-scenarios.md](docs/acceptance-scenarios.md)** — normative numeric and failure examples to turn into regression tests and production smoke scenarios.
 3. **This README** — context, kickoff prompt and delivery expectations. It does not override the specification.
 
-Selected stack: Python 3.13 + FastAPI/Uvicorn + SQLite; Vue 3 + TypeScript + Vite + Chart.js compiled into static assets. One runtime container, one Python worker, no Node.js runtime. The dashboard is that build-time bundle: `frontend/` is compiled during the image build into `src/jarvis_dashboard/static/` (baked to `/opt/static`), and the running container ships no Node.js, no build tools and no CDN reference. RAM target: 256 MiB hard limit, preferred steady-state process RSS below 100 MiB; both require measurement.
+Selected stack: Python 3.13 + FastAPI/Uvicorn + SQLite; Vue 3 + TypeScript + Vite + Chart.js compiled into static assets. One runtime container, one Python worker, no Node.js runtime. The dashboard is that build-time bundle: `frontend/` is compiled during the image build into `src/jarvis_dashboard/static/` (baked to `/opt/static`), and the running container ships no Node.js, no build tools and no CDN reference. The `serve` process also runs a 1 Hz live poller that feeds the live row (`GET /api/v1/live`) from memory only; no live value is persisted. RAM target: 512 MiB hard limit, preferred steady-state process RSS below 100 MiB; both require measurement.
 
 The user chose a DIY application after considering VictoriaMetrics/Grafana because their Unraid NAS is short on RAM. The goal is durable aggregate token history with an attractive simple dashboard, not per-request logs or a general monitoring platform. Earlier RAM estimates were unmeasured and must not become advertised benchmark results.
 
@@ -30,6 +30,8 @@ The user chose a DIY application after considering VictoriaMetrics/Grafana becau
 - **[Delivery 3 status](docs/delivery-3-status.md)** — implemented dashboard: executed environment, 65 browser smoke checks, receipts and screenshots, the cache/snapshot contract table, and the explicitly unexecuted image and resource gates.
 - **[Delivery 4 implementation plan](docs/delivery-4-implementation-plan.md)** — release qualification of the production image: container harness, one-year history seeder, image end-to-end cases, the specification D9 resource workload and pass/target criteria, packaging/documentation fixes and evidence publication.
 - **[Delivery 4 status](docs/delivery-4-status.md)** — qualification results: executed host gates (durable-recovery smoke, Compose/configuration contract, the seeded 367-day year verified through the real API, documentation consistency, AC7 growth math), the image and resource gates recorded NOT EXECUTED with their exact missing prerequisites, the `READ_CAPACITY` documentation correction, and the open items.
+- **[Live panel implementation plan](docs/live-panel-implementation-plan.md)** — the 1 Hz live usage row (requests, prefill/decode TPS, MTP acceptance, MoE GPU hit), its in-memory window contracts, and the 256 MiB → 512 MiB memory-limit change.
+- **[Live panel status](docs/live-panel-status.md)** — executed evidence for that plan: commands with exit codes, the live browser smoke transcript and screenshots, fixture payload sizes, and the gates this host could not execute.
 - **[Deployment](docs/deployment.md)** — build, run, serve, backup, restore and upgrade operations for the self-contained image (collector, API and bundled dashboard; operator-supplied paths, UID/GID and bind address).
 
 The specification and acceptance scenarios remain authoritative. The plans sequence the complete
@@ -41,7 +43,7 @@ live checks that remain an operator gate.
 
 > Implement the Jarvis Token Dashboard described in `docs/spec/specification.md` and `docs/spec/acceptance-scenarios.md`.
 >
-> Read both documents fully before designing or coding. Treat the selected stack, single-container deployment, 256 MiB memory budget, counter semantics and privacy boundaries as requirements. Use the ordered implementation steps; do not substitute Grafana, VictoriaMetrics, PostgreSQL, a gateway, a Node.js runtime or a multi-service architecture.
+> Read both documents fully before designing or coding. Treat the selected stack, single-container deployment, 512 MiB memory budget, counter semantics and privacy boundaries as requirements. Use the ordered implementation steps; do not substitute Grafana, VictoriaMetrics, PostgreSQL, a gateway, a Node.js runtime or a multi-service architecture.
 >
 > Build the complete application: durable collector and SQLite accounting, bounded read-only API, production Vue/Chart.js dashboard, non-root Docker image, Compose example, backup/restore CLI and operations instructions. There is no existing application code to preserve unless this repository already contains user-owned work; inspect first and adapt without deleting it.
 >

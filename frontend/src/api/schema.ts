@@ -44,6 +44,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live
+         * @description Latest 1 Hz snapshot, read straight from memory (plan D5).
+         *
+         *     No SQLite read and no admission gate: a saturated read capacity cannot
+         *     make the live row fail, and the live row cannot consume read capacity.
+         */
+        get: operations["live_api_v1_live_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/series": {
         parameters: {
             query?: never;
@@ -313,6 +336,74 @@ export interface components {
             storage_status: string;
             /** To */
             to: string;
+        };
+        /**
+         * LiveMoe
+         * @description MoE expert GPU-hit ratio (0..1) per window; null = render `-`.
+         */
+        LiveMoe: {
+            /** Window 1M */
+            window_1m?: number | null;
+            /** Window 30M */
+            window_30m?: number | null;
+            /** Window 5S */
+            window_5s?: number | null;
+        };
+        /**
+         * LiveMtp
+         * @description MTP acceptance ratios (0..1) per window; null = render `-` (plan D5).
+         */
+        LiveMtp: {
+            /** Lifetime */
+            lifetime?: number | null;
+            /** Window 1M */
+            window_1m?: number | null;
+            /** Window 30M */
+            window_30m?: number | null;
+            /** Window 5S */
+            window_5s?: number | null;
+        };
+        /**
+         * LiveRequests
+         * @description In-flight requests; both slots null when ``/stats`` produced nothing.
+         */
+        LiveRequests: {
+            /** Active */
+            active?: number | null;
+            /** Queued */
+            queued?: number | null;
+        };
+        /**
+         * LiveResponse
+         * @description Latest in-memory live snapshot (plan D5): rates in tokens/second.
+         *
+         *     Served straight from the poller's published snapshot, so a null is the
+         *     poller's own "unknown" and is never coerced to a number here.
+         */
+        LiveResponse: {
+            /** Decode Tokens Per Second */
+            decode_tokens_per_second?: number | null;
+            /** Decode Tokens Per Second Per Request */
+            decode_tokens_per_second_per_request?: number | null;
+            /** Generated At */
+            generated_at: string;
+            moe_gpu_hit: components["schemas"]["LiveMoe"];
+            mtp_acceptance: components["schemas"]["LiveMtp"];
+            /** Observed At */
+            observed_at?: string | null;
+            /** Prefill Tokens Per Second */
+            prefill_tokens_per_second?: number | null;
+            requests: components["schemas"]["LiveRequests"];
+            /**
+             * Schema Version
+             * @default 1
+             */
+            schema_version: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "starting" | "live" | "stale" | "unavailable";
         };
         /** LivenessResponse */
         LivenessResponse: {
@@ -668,6 +759,35 @@ export interface operations {
             };
             /** @description Storage unavailable, not migrated, or read capacity exhausted. */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    live_api_v1_live_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveResponse"];
+                };
+            };
+            /** @description Unexpected failure; no upstream detail. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,0 +1,169 @@
+[receipt] workdir = /tmp/jarvis-frontend-smoke-uibpmpry
+--- phase 1: preflight
+[ok ] openapi snapshot current: 0 (expected 0)
+[ok ] frontend build present: True (expected True)
+[ok ] chromium present: True (expected True)
+--- phase 2: fixture collector and real serve process
+[ok ] serve ready on port 37909: True (expected True)
+--- phase 3: A2 accounting through the API
+[ok ] api_processed_total: '960' (expected '960')
+[ok ] api_lifetime_input: '900' (expected '900')
+[ok ] api_lifetime_output: '60' (expected '60')
+[receipt] api_series_id = v1.WyJzbW9rZ…
+[receipt] chromium_pid = 3220
+[receipt] root_response = 200 text/html
+--- phase 4: built bundle renders the API values
+[receipt] dom_first_paint_seconds = 1.0
+[ok ] dom_renders_lifetime_total: True (expected True)
+[ok ] product name: 'Jarvis Token Dashboard' (expected 'Jarvis Token Dashboard')
+[ok ] dom_lifetime_total: '960' (expected '960')
+[ok ] dom_lifetime_input: '900' (expected '900')
+[ok ] dom_lifetime_output: '60' (expected '60')
+[receipt] dom_lifetime_start = Collecting since 2026-10-27
+[ok ] dom_lifetime_start_rendered: True (expected True)
+[ok ] dom_utc_labelled: True (expected True)
+[receipt] dom_series_name = fixture-model · engine 0
+[receipt] dom_status_badge = Healthy
+[receipt] dom_last_update = Last successful update 2026-10-27 09:06 UTC
+[receipt] screenshot desktop-1440-normal.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/desktop-1440-normal.png (72942 bytes)
+--- phase 5: range presets and the exclusive custom end
+[receipt] wait[history-after-24h] = ok in 0.0s
+[ok ] range_24h_bucket: 'hour' (expected 'hour')
+[receipt] wait[day-bucket-7d] = ok in 1.0s
+[receipt] wait[midnight-aligned-30d] = ok in 0.0s
+[ok ] range_30d_bucket: 'day' (expected 'day')
+[ok ] custom_end_label: True (expected True)
+[receipt] wait[custom-range-fetch] = ok in 1.0s
+[ok ] custom_bucket: 'day' (expected 'day')
+[ok ] custom_from_midnight: True (expected True)
+[ok ] custom_end_exclusive: '2026-10-28T00:00:00.000Z' (expected '2026-10-28T00:00:00.000Z')
+[receipt] screenshot desktop-1440-custom-range.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/desktop-1440-custom-range.png (79990 bytes)
+[ok ] custom_over_limit_blocked: 5 (expected 5)
+[ok ] range_error_names_the_limit: True (expected True)
+[receipt] wait[back-to-hour-buckets] = ok in 1.0s
+--- phase 6: null buckets, one canvas, incomplete bucket note
+[ok ] chart_table_rows_rendered: True (expected True)
+[ok ] null_bucket_label: True (expected True)
+[ok ] null_bucket_never_zero: False (expected False)
+[receipt] null_bucket_row = no data | no data | no data | complete
+[ok ] canvas_count: 1 (expected 1)
+[ok ] incomplete_note: True (expected True)
+[receipt] screenshot desktop-1440-chart-table.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/desktop-1440-chart-table.png (99842 bytes)
+[ok ] diagnostics_populated: True (expected True)
+[receipt] screenshot desktop-1440-diagnostics.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/desktop-1440-diagnostics.png (99822 bytes)
+--- phase 7a/7b: empty database and baseline-only series
+[ok ] serve ready on port 53283: True (expected True)
+[ok ] state_empty: True (expected True)
+[receipt] screenshot mobile-390-empty.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/mobile-390-empty.png (38446 bytes)
+[ok ] baseline_series_collected: True (expected True)
+[receipt] wait[baseline-note] = ok in 10.0s
+[ok ] state_baseline: True (expected True)
+[ok ] baseline_total_is_not_zero: 'no data' (expected 'no data')
+[receipt] wait[two unavailable notes] = ok in 0.0s
+[ok ] state_optional_unavailable: 2 (expected 2)
+--- phase 7c: fixture disconnect keeps history, restores cleanly
+[receipt] offline_seconds = 15.0
+[ok ] offline_banner: True (expected True)
+[ok ] state_offline_history_kept: '974' (expected '974')
+[receipt] screenshot desktop-1440-offline.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/desktop-1440-offline.png (106448 bytes)
+[receipt] recovered_badge = Healthy
+[ok ] offline_recovers: True (expected True)
+--- phase 7d: API failure shows the stale notice, restart recovers
+[ok ] state_api_failure_stale: True (expected True)
+[ok ] api_failure_history_kept: '974' (expected '974')
+[receipt] screenshot mobile-390-stale.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/mobile-390-stale.png (53213 bytes)
+[ok ] api_failure_recovers: True (expected True)
+--- phase 7e: request-accounted counters absent -> unavailable
+[ok ] requests_history_kept_when_absent: 0 (expected 0)
+[ok ] requests_panel_has_no_engine_total: False (expected False)
+--- phase 7f: the live row follows the fixture at 1 Hz
+[ok ] live_panel_visible: True (expected True)
+[ok ] live_tiles: 5 (expected 5)
+[ok ] live_mtp_placeholder_before_counters: '- / - / - / -' (expected '- / - / - / -')
+[ok ] live_moe_placeholder_before_experts: '- / - / -' (expected '- / - / -')
+[receipt] wait[live AC1 requests] = ok in 1.0s
+[ok ] live_state_ac1: 'Live' (expected 'Live')
+[ok ] live_prefill_ac1: '1,240 tok/s' (expected '1,240 tok/s')
+[ok ] live_decode_ac1: '180 tok/s · 60/req' (expected '180 tok/s · 60/req')
+[receipt] wait[live AC1 MTP lifetime] = ok in 1.0s
+[ok ] live_mtp_lifetime_ac1: '70%' (expected '70%')
+[ok ] live_mtp_windows_unfilled_ac1: '-' (expected '-')
+[receipt] screenshot live-1440-ac1.png = /workspace/repo/private/nano-llm-usage/docs/receipts/live-panel/live-1440-ac1.png (104937 bytes)
+[receipt] wait[live per-request placeholder] = ok in 1.0s
+[ok ] live_requests_zero_running: '0 / 1' (expected '0 / 1')
+[ok ] live_decode_value_kept: True (expected True)
+[receipt] wait[live MTP 5 s window] = ok in 3.0s
+[receipt] wait[live MoE 5 s window] = ok in 0.0s
+[receipt] live_5s_window_seconds = 6.1
+[receipt] screenshot live-1440-window-5s.png = /workspace/repo/private/nano-llm-usage/docs/receipts/live-panel/live-1440-window-5s.png (106231 bytes)
+[receipt] wait[live MTP 1 m window] = ok in 55.1s
+[receipt] wait[live MoE 1 m window] = ok in 0.0s
+[receipt] live_1m_window_seconds = 61.2
+[receipt] screenshot live-1440-window-1m.png = /workspace/repo/private/nano-llm-usage/docs/receipts/live-panel/live-1440-window-1m.png (108518 bytes)
+[receipt] wait[live MoE windows reset] = ok in 2.0s
+[ok ] live_mtp_keeps_windows_across_stats_reset: True (expected True)
+[ok ] live_instant_tile_survives_stats_reset: '1,240 tok/s' (expected '1,240 tok/s')
+[receipt] screenshot live-1440-run-reset.png = /workspace/repo/private/nano-llm-usage/docs/receipts/live-panel/live-1440-run-reset.png (107459 bytes)
+[receipt] wait[live MoE windows refilled] = ok in 6.0s
+[receipt] wait[live outage stale chip] = ok in 4.0s
+[ok ] live_outage_requests: '- / -' (expected '- / -')
+[ok ] live_outage_prefill: '-' (expected '-')
+[ok ] live_outage_decode: '- · -' (expected '- · -')
+[ok ] live_outage_mtp: '- / - / - / -' (expected '- / - / - / -')
+[ok ] live_outage_moe: '- / - / -' (expected '- / - / -')
+[receipt] live_outage_seconds = 73.6
+[receipt] screenshot live-1440-stale.png = /workspace/repo/private/nano-llm-usage/docs/receipts/live-panel/live-1440-stale.png (99272 bytes)
+[receipt] wait[live outage recovers] = ok in 2.0s
+[ok ] live_requests_after_outage: '3 / 1' (expected '3 / 1')
+[receipt] wait[live MoE absent] = ok in 0.0s
+[ok ] live_mtp_unaffected_by_absent_moe: True (expected True)
+[ok ] live_state_with_moe_absent: 'Live' (expected 'Live')
+[receipt] wait[live row fits 390 px] = ok in 0.0s
+[receipt] live_390_body_scroll_width = 375
+[receipt] screenshot live-390-mobile.png = /workspace/repo/private/nano-llm-usage/docs/receipts/live-panel/live-390-mobile.png (59156 bytes)
+[receipt] live_phase_seconds = 75.7
+--- phase 8: one 15 s poll timer and one 1 s live timer, both paused when hidden
+[ok ] poll_timers: [1000, 15000] (expected [1000, 15000])
+[ok ] polls_paused_when_hidden: 253 (expected 253)
+[ok ] poll_timers_cleared_when_hidden: 0 (expected 0)
+[ok ] poll_resumes: True (expected True)
+--- phase 10: theme persistence, reduced motion, visible keyboard focus
+[ok ] theme_applied: 'light' (expected 'light')
+[ok ] theme_persisted: 'light' (expected 'light')
+[ok ] theme_after_reload: 'light' (expected 'light')
+[ok ] theme_cycles_to_dark: 'dark' (expected 'dark')
+[receipt] screenshot desktop-1440-dark.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/desktop-1440-dark.png (43788 bytes)
+[ok ] reduced_motion: '0s' (expected '0s')
+[receipt] keyboard_focus_sequence = ['theme-toggle', 'range-24h', 'range-7d', 'range-30d', 'range-custom', 'chart-disclosure']
+[ok ] keyboard_focus_order: ['theme-toggle', 'range-24h', 'range-7d', 'range-30d', 'range-custom', 'chart-disclosure'] (expected ['theme-toggle', 'range-24h', 'range-7d', 'range-30d', 'range-custom', 'chart-disclosure'])
+[ok ] keyboard_focus_visible: ['2px', '2px', '2px', '2px', '2px', '2px'] (expected ['2px', '2px', '2px', '2px', '2px', '2px'])
+--- phase 9: a delayed response for the old series cannot overwrite
+[ok ] second_series_collected: True (expected True)
+[receipt] series_fetches_on_load = 2
+[receipt] wait[series picker] = ok in 0.0s
+[receipt] second_series_lifetime_total = None
+[ok ] picker_lists_second_series: True (expected True)
+[receipt] wait[range chips] = ok in 7.0s
+[ok ] race_series_name: True (expected True)
+[ok ] race_no_stale_overwrite: True (expected True)
+[ok ] race_lifetime_matches_selection: '0' (expected '0')
+--- phase 11: same-origin traffic only, clean console, fixture untouched
+[receipt] inline_data_urls = 2
+[ok ] browser_requests_local_only: [] (expected [])
+[ok ] probe_fetches_local_only: [] (expected [])
+[ok ] no_fixture_traffic: [] (expected [])
+[receipt] console_errors = 0
+[ok ] console_clean: [] (expected [])
+[ok ] no_page_exceptions: [] (expected [])
+[receipt] browser_log_entries = [('log', 'error', 'Failed to load resource: net::ERR_CONNECTION_REFUSED'), ('log', 'error', 'Failed to load resource: net::ERR_CONNECTION_REFUSED'), ('log', 'error', 'Failed to load resource: net::ERR_CONNECTION_REFUSED')]
+[receipt] fixture_paths = ['/metrics', '/stats']
+[receipt] fixture_requests_delta = 14
+[receipt] fixture_stats_delta = 14
+[ok ] fixture_delta_is_collector_plus_live: True (expected True)
+[ok ] fixture_stats_delta_is_collector_plus_live: True (expected True)
+[ok ] fixture_sees_no_browser_traffic: [] (expected [])
+[receipt] screenshot mobile-390-normal.png = /workspace/repo/private/nano-llm-usage/docs/receipts/delivery-3/mobile-390-normal.png (57182 bytes)
+[receipt] screenshots_written = 9
+[receipt] browser_requests = 317
+FRONTEND SMOKE PASSED
+EXIT=0

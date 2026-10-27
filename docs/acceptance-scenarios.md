@@ -48,8 +48,17 @@ Normative companion to `specification.md`. These are requirements and synthetic 
 
 31. **Real production surface:** run the built container against an HTTP fixture and open the served UI in a real browser. Confirm scenario A2 totals appear, select UTC ranges, switch theme, use keyboard controls, inspect diagnostics, disconnect the fixture and restore it. Capture 390px and 1440px views, including stale and empty states. No console errors or direct browser requests to Radiance/CDNs.
 32. **Frontend lifetime:** repeatedly change range/series and hide/show the tab. No multiplying polling timers, overlapping stale responses overwriting a new selection, or accumulating Chart.js instances. History remains visible during network/API failures with a stale timestamp.
-33. **Resource qualification:** execute specification D9 for at least 30 minutes using the production image, synthetic year of summaries, two tabs, a long query and backup. Record measurements; no fabricated success or use of a dev server instead. No OOM under 256 MiB; distinguish preferred RSS target from measured total cgroup usage.
+33. **Resource qualification:** execute specification D9 for at least 30 minutes using the production image, synthetic year of summaries, two tabs (one history timer and one live timer each), a long query and backup, with the live poller running against representative-size `/stats` and `/metrics` payloads. Record measurements; no fabricated success or use of a dev server instead. No OOM under 512 MiB; distinguish preferred RSS target from measured total cgroup usage.
 34. **Unraid operator gate:** verify volume survives container recreation, logs rotate, the process is non-root, and private LAN binding works. Observe actual Radiance counter changes after a controlled request. Synthetic fixture results do not prove the live gate. Lack of NAS access must be listed explicitly, not bypassed with invented observations.
+
+## F. Live usage panel (specification D10)
+
+35. **Live current values:** with the fixture reporting `running=3`, `waiting=1`, `prefill_tps=1240.4`, `decode_tps=180.2`, the row shows `3 / 1`, `1,240 tok/s` and `180 tok/s · 60/req` within 2 s. With `running=0` the per-request slot shows `-` while the total rate stays.
+36. **Live windows:** draft counters advancing 7 accepted per 10 drafted each second show `70%` in the 5s slot after ≥5 s; the 1m slot stays `-` until ≥60 s of continuous samples and the 30m slot until ≥1800 s (proven with an injected clock). Lifetime is total accepted ÷ total drafted from the first sample. MoE GPU hit behaves the same over `experts.routed_res` / `experts.routed` with no lifetime, and a missing `experts` block makes every MoE slot `-`.
+37. **Idle windows:** a window whose denominator did not advance shows `-`, never `0%` and never a carried-over value.
+38. **Live run reset:** a `uptime_s` decrease, any live counter decrease, or a gap over 3 s between a source's successful samples clears that source's windows; they refill from `-` and MTP lifetime restarts. The other source's tiles are untouched.
+39. **Live staleness:** a source with no successful sample for over 3 s renders `-`; with both sources stale the row is marked stale. Durable collection, `/health/ready` and `/api/v1/status` are unaffected by live failures, and `/api/v1/live` keeps answering while the read-admission cap is saturated.
+40. **Live persistence and timers:** no live value reaches SQLite and the durable collector's request volume is unchanged. The browser keeps exactly one 1 s live timer and one 15 s history timer per tab; both pause while hidden and resume when visible; the browser never contacts Radiance directly.
 
 ## Suggested raw exposition fixture
 

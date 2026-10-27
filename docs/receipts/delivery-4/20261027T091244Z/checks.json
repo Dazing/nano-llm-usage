@@ -1,0 +1,302 @@
+[
+  {
+    "actual": true,
+    "expected": true,
+    "name": "documented command in deployment.md: backup",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "documented command in deployment.md: restore 1",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "documented command in deployment.md: restore 2",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "documented command in deployment.md: restore 3",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "documented command in deployment.md: upgrade 1",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "documented command in deployment.md: upgrade 2",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "stale text removed: backend-only delivery",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "stale text removed: delivery 9",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "stale text removed: /srv/appdata",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "stale text removed: 24 h soak",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: .env file beside compose.yaml",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: runtime user section",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: uid/gid ownership preparation",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: unraid section",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: primary pool, no mover",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: no smb/nfs",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: private bind address, no login",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: compose v2 prerequisite",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: image moved by id",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: image loaded on the nas",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: log rotation inspection",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: ac8 live check section",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: four metric names",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: uptime_s checked",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: one known request",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: prefill caching caveat",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: collector-only restart",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: radiance restart excluded",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: non-root check",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: reader budget correction",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: restore user flag",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "deployment.md documents: source id env name",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: SOURCE_ID is the app's own setting name",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: JARVIS_SOURCE_ID is not passed as an env name",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: SOURCE_ID default is the source identity",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: runtime user comes from JARVIS_UID/GID",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: no build args (the image is built once)",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: mem_limit",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: cpus",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: pids_limit",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "compose.yaml: stop_grace_period",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: every FROM is digest-pinned",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: base image pinned node:24.22.1",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: base image pinned ghcr.io/astral-sh/uv:0.13.5",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: base image pinned python:3.13.17-slim",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: runtime USER is numeric",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: image entrypoint is the CLI",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: default command is serve",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: healthcheck uses the stdlib probe",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "Dockerfile: no RUN in a stage FROM a shell-less base image",
+    "ok": true
+  }
+]

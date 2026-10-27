@@ -37,7 +37,7 @@ services:
       HTTP_TIMEOUT_SECONDS: "${HTTP_TIMEOUT_SECONDS:-3}"
       RAW_RETENTION_DAYS: "${RAW_RETENTION_DAYS:-30}"
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
-    mem_limit: 256m
+    mem_limit: 512m
     cpus: 0.5
     pids_limit: 128
     cap_drop:

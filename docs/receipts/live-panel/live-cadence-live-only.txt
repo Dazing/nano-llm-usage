@@ -1,0 +1,5 @@
+live_only_window_seconds=20.00
+live_stats_hits=21 (1.05/s)
+live_metrics_hits=21 (1.05/s)
+joined_cleanly=True state=live requests={'active': 3, 'queued': 1}
+mtp={'window_5s': 0.702, 'window_1m': None, 'window_30m': None, 'lifetime': 0.7} moe={'window_5s': 0.93, 'window_1m': None, 'window_30m': None}

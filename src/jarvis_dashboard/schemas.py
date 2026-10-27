@@ -9,6 +9,8 @@ schema and the served payload cannot drift.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 SCHEMA_VERSION = 1
@@ -224,3 +226,44 @@ class EventsResponse(Envelope):
     next_cursor: str | None = None
     page_size: int
     retention: Retention
+
+
+class LiveRequests(BaseModel):
+    """In-flight requests; both slots null when ``/stats`` produced nothing."""
+
+    active: int | None = None
+    queued: int | None = None
+
+
+class LiveMtp(BaseModel):
+    """MTP acceptance ratios (0..1) per window; null = render `-` (plan D5)."""
+
+    window_5s: float | None = None
+    window_1m: float | None = None
+    window_30m: float | None = None
+    lifetime: float | None = None
+
+
+class LiveMoe(BaseModel):
+    """MoE expert GPU-hit ratio (0..1) per window; null = render `-`."""
+
+    window_5s: float | None = None
+    window_1m: float | None = None
+    window_30m: float | None = None
+
+
+class LiveResponse(Envelope):
+    """Latest in-memory live snapshot (plan D5): rates in tokens/second.
+
+    Served straight from the poller's published snapshot, so a null is the
+    poller's own "unknown" and is never coerced to a number here.
+    """
+
+    state: Literal["starting", "live", "stale", "unavailable"]
+    observed_at: str | None = None
+    requests: LiveRequests
+    prefill_tokens_per_second: float | None = None
+    decode_tokens_per_second: float | None = None
+    decode_tokens_per_second_per_request: float | None = None
+    mtp_acceptance: LiveMtp
+    moe_gpu_hit: LiveMoe

@@ -6,7 +6,7 @@
 - Outcome: a small, attractive dashboard retaining Radiance token-processing history across collector and inference-server restarts, hosted entirely in one Docker container on Unraid.
 - Scope: Python collector and read-only web API, SQLite, and a compiled Vue dashboard. No inference proxy, PostgreSQL, Grafana, Node.js runtime, or changes to inference clients.
 - Readiness: execution-ready for implementation and synthetic verification in a new repository. Live Jarvis compatibility and Unraid resource qualification require operator access; neither has been tested by this specification.
-- Resource target: operate under a **256 MiB container memory limit**, with a preferred steady-state process RSS below **100 MiB**. These are acceptance targets, not measured promises.
+- Resource target: operate under a **512 MiB container memory limit**, with a preferred steady-state process RSS below **100 MiB**. These are acceptance targets, not measured promises.
 
 ### Explain like I'm five
 The NAS periodically asks Jarvis for its cumulative token counters. It saves the readings and the increases between them in a local database. Opening the dashboard reads that database, not Jarvis directly. Stopping the dashboard or losing the network does not interrupt inference. Gaps and uncertain restart boundaries remain visible rather than silently turning into zero usage or invented history.
@@ -52,6 +52,7 @@ This is a proposed greenfield footprint, not existing files. Copy this specifica
 - Fifteen-second polling, persistent restart-safe counter accounting, bounded raw retention and durable historical summaries.
 - Observed computed-prefill and generated-output totals, separate optional request-usage accounting, history charts and collection status.
 - A responsive dashboard with dark/light themes, explicit unavailable/stale/partial states and accessible controls.
+- A one-second live row of current engine activity — requests, prefill/decode TPS, MTP draft acceptance and MoE GPU hit — computed in memory and never persisted ([D10](#d10-live-usage-panel)).
 - One non-root runtime container, durable appdata, backup/restore, upgrade migrations and measurable resource qualification.
 
 **Out of scope**
@@ -65,7 +66,7 @@ This is a proposed greenfield footprint, not existing files. Copy this specifica
 - AC3: a collector crash/restart or image recreation cannot duplicate committed increments; database migrations and retention preserve historical totals.
 - AC4: dashboard cards, charts and API agree on UTC ranges, selected series, missingness and approximate time attribution; all core UI states work at 390px and 1440px widths.
 - AC5: production image serves its own frontend and API without a Node.js process, CDN assets or external database. No inference request is routed through it.
-- AC6: container survives the specified resource workload under 256 MiB, with measured process RSS, container memory, latency and database growth reported honestly.
+- AC6: container survives the specified resource workload under 512 MiB, with measured process RSS, container memory, latency and database growth reported honestly.
 - AC7: an online backup restores to a fresh volume with identical committed totals; disk/write failures never advance the persisted baseline or claim successful collection.
 - AC8: live deployment instructions verify the real metric names/labels and compare a known generation against the collected changes without changing Jarvis's inference configuration.
 
@@ -78,6 +79,7 @@ This is a proposed greenfield footprint, not existing files. Copy this specifica
 - **Vue 3 + TypeScript + Vite** for the frontend, **Chart.js 4** with only required bar/line components registered. Use native accessible controls, shared Vue card/control primitives and a small CSS token system. No router or global state library needed for this single-page app.
 - Vue is selected for maintainable components without a full application framework; Chart.js supplies polished interactive charts. Bundle all assets at build time. Node.js exists only in the Docker build stage; Python serves the resulting files.
 - Lock resolved Python and npm dependencies, pin build/runtime images to reviewed versions/digests at implementation time, and document upgrades. Do not invent future patch versions in this specification.
+- The serving process may run a second, HTTP-only thread (the live poller, D10). It owns no SQLite connection, must never block or be blocked by the writer, and is never part of readiness.
 
 ### D2. Deployment context and configuration
 Known target context, not live verification:
@@ -102,6 +104,8 @@ Required environment contract:
 
 Validate configuration on startup; fail with actionable errors. No UI endpoint accepts arbitrary upstream URLs. Disallow URL credentials/fragments; do not follow redirects to another origin. Bound upstream responses to 2 MiB and 256 selected series; reject oversize input without touching baselines. One in-flight poll only; missed schedules are skipped, never queued. Failures wait until the next scheduled poll, with no retry storm.
 
+The live panel (D10) adds a fixed 1 Hz pair of requests (`/stats` then `/metrics`) to the same origin while `serve` runs. It introduces no new environment variable and no new configuration surface.
+
 Changing URL with the same SOURCE_ID requires a new accounting epoch and a recorded endpoint-change boundary. Preserve old history. Changing SOURCE_ID creates a separate identity. Take a process-level exclusive lock beside the database for the collector lifetime; a second process pointing at the volume must refuse startup. Do not mount the Docker socket or host GPU devices.
 
 ### D3. Counter and numeric contracts
@@ -113,7 +117,7 @@ Changing URL with the same SOURCE_ID requires a new accounting epoch and a recor
 | `request_input` | `vllm:prompt_tokens_total` | Request-level prompt accounting |
 | `request_output` | `vllm:generation_tokens_total` | Request-level generation accounting, updated when requests finish |
 
-The first two are required for a valid primary reading of a series. The other two are optional, independent counters and may be unavailable. No speculative-draft counter is included. `processed_total = computed_input + generated_output`; it is an accounting convention, not a count of all GPU operations. Request input can include cache-served tokens; never equate it with computed input or add it to engine totals.
+The first two are required for a valid primary reading of a series. The other two are optional, independent counters and may be unavailable. No speculative-draft counter is included in durable accounting; the MTP draft counters introduced by D10 are display-only, never accumulated, and never enter a total. `processed_total = computed_input + generated_output`; it is an accounting convention, not a count of all GPU operations. Request input can include cache-served tokens; never equate it with computed input or add it to engine totals.
 
 A series identity is SOURCE_ID plus the complete sorted decoded label set. Preserve `model_name`, `engine` and any other labels. Reordering labels does not create a new series. Never sum alternative engines or duplicate series implicitly: dashboard defaults to the sole active series, otherwise requires a series selection. No aggregate-all-series option in scope.
 
@@ -162,6 +166,7 @@ All routes same-origin under `/api/v1`, except health routes. No CORS wildcard, 
 - `GET /api/v1/summary?series_id=...`: today UTC, current calendar month UTC, observed lifetime, and last contiguous interval rates for that series. Each range has start/end, four counter values, processed_total, first/last observation, and quality metadata. No-data values are null. A known observed zero is `"0"`. A primary total requires observations of both primary counters. Optional sums may be partial and must identify missing intervals.
 - `GET /api/v1/history?series_id=...&from=...&to=...&bucket=hour|day`: RFC3339 UTC half-open range `[from,to)`. Hour requests require hour-aligned bounds, max 31 days; day requests require UTC-midnight bounds, max 366 days. Return 400 for invalid ranges/alignment, 404 for unknown series; never silently clamp. Return each requested bucket with bounds, nullable counters, processed_total, observation counts, gap seconds and quality flags. Empty buckets remain null. At most 744 hourly or 366 daily points.
 - `GET /api/v1/events?series_id=...&limit=...&cursor=...`: newest first, default 20/max 100, retention-limited diagnostics; opening balances/epoch details available with the selected series summary diagnostics.
+- `GET /api/v1/live`: the current live snapshot defined by D10 (`state`, `observed_at`, requests, prefill/decode TPS, decode TPS per request, `mtp_acceptance`, `moe_gpu_hit`). In-memory only: no SQLite read, so it is exempt from the four-reader admission cap and never returns the read-capacity 503. Rates are tokens/second, ratios 0..1, unknown values null.
 
 Use a consistent top-level `schema_version: 1` and UTC `generated_at` in application JSON. Keep frontend types synchronized with the FastAPI schema. Define exact response models and include examples in the implemented API documentation. API responses are not cached by intermediaries; hashed static assets can be immutable, while index.html must revalidate.
 
@@ -172,6 +177,7 @@ Foundation: system font stack; 4/8/12/16/24/32px spacing; 12px card radius; subt
 
 Layout:
 - Compact header: product name, selected series/model, collection-status badge, last successful update and theme toggle. Series picker appears only when needed.
+- Live row (D10): five tiles — requests `active / queued`, prefill TPS, decode TPS `total · per request`, MTP acceptance `5s · 1m · 30m · life`, MoE GPU hit `5s · 1m · 30m` — rendered above the primary row, independent of series selection, first load and empty state, with a Live/Stale/Starting chip. Every unknown value is `-`.
 - Primary row: **Observed today**, **Observed this month**, **Observed since collection began**. Each card shows processed total with smaller computed-input/output breakdowns and a partial/approximate indicator when applicable. Always show UTC and the lifetime start date.
 - Main panel: stacked bars for computed input/generated output with 24h, 7d, 30d and custom UTC date-range controls. 24h uses hourly buckets; longer presets use daily buckets. Today includes current incomplete bucket visibly. Align requests to D6; custom date end is exclusive and labeled. No pie chart or redundant chart of the same data.
 - Secondary panel: recent contiguous input/output rates; display N/A while stale, after a baseline or across a gap. A disclosure labeled “Request-accounted usage” shows the optional request totals with their different semantics.
@@ -179,10 +185,10 @@ Layout:
 
 States: loading skeletons on first load; real zero values distinct from no data; baseline-only guidance; offline banner retaining historical cards; unavailable optional counters; schema/parse errors with concise action; partial buckets with accessible descriptions; empty selection; API failure retaining last successful render with stale timestamp. Chart tooltips show exact values, UTC bucket bounds and quality. Supply an accessible table alternative inside the chart disclosure. Never draw a missing bucket as a zero bar or connect a line across missing data.
 
-Poll dashboard APIs every 15 seconds while visible, pause when hidden, refresh on focus, and prevent overlapping/out-of-order fetches. Use one consistent selected series across all panels. Charts are destroyed on unmount and reused on refresh; do not accumulate canvas instances or poll timers. Browser RAM and NAS RAM must be reported separately.
+Poll dashboard APIs every 15 seconds while visible, pause when hidden, refresh on focus, and prevent overlapping/out-of-order fetches. The live row polls `/api/v1/live` every second under the same visibility rules with at most one request in flight, and carries no `aria-live` on per-second values (the chip carries the state text). Use one consistent selected series across all panels. Charts are destroyed on unmount and reused on refresh; do not accumulate canvas instances or poll timers. Browser RAM and NAS RAM must be reported separately.
 
 ### D8. Packaging, safety and operations
-Multi-stage Docker build: locked frontend build, locked Python install, slim runtime with static assets. One Uvicorn worker, no development reload. Bind internal port 8080. Supply Compose with restart `unless-stopped`, `mem_limit: 256m`, 0.5 CPU limit, rotated logs, read-only root filesystem and a small `/tmp` tmpfs counted against the memory budget. Run as an explicit non-root numeric UID/GID; document preparing appdata ownership rather than recursive chmod 777. No privileged mode.
+Multi-stage Docker build: locked frontend build, locked Python install, slim runtime with static assets. One Uvicorn worker, no development reload. Bind internal port 8080. Supply Compose with restart `unless-stopped`, `mem_limit: 512m`, 0.5 CPU limit, rotated logs, read-only root filesystem and a small `/tmp` tmpfs counted against the memory budget. Run as an explicit non-root numeric UID/GID; document preparing appdata ownership rather than recursive chmod 777. No privileged mode.
 
 On Unraid, recommend a dedicated local SSD/cache-pool directory such as `/mnt/<pool>/appdata/jarvis-token-dashboard`, bind-mounted to `/data`; operator substitutes the real pool name. Do not put the live SQLite database on SMB/NFS or allow mover to relocate its files while running. Publish a user-selected host port only on a trusted LAN address. The Compose example must use clearly documented environment substitution for that address, not silently bind all interfaces. Restrict via LAN/VLAN ACLs or existing private access controls; this app has no built-in login. Do not make a public exposure claim based on a Docker port binding alone.
 
@@ -193,9 +199,19 @@ Provide a CLI command using SQLite's online backup API to a separate output file
 ### D9. Resource and performance budget
 The earlier conversational estimate of 30–100 MiB is unmeasured. Do not put it in a README as achieved performance.
 
-Qualify the actual production container with one selected series, four counters, 15-second collection, a synthetic year of hourly history, and two dashboard tabs refreshing summary plus 30-day history. Run at least 30 minutes under the 256 MiB memory and 0.5 CPU limits. Include a 366-day history query and backup while collection continues. Record architecture/host, image/dependency versions, RSS, cgroup memory.current/memory.peak when available, Docker memory readings, OOM events, CPU usage, database/WAL sizes and API latencies. Filesystem cache and tmpfs count toward the hard limit; process RSS alone is insufficient.
+Qualify the actual production container with one selected series, four counters, 15-second collection, a synthetic year of hourly history, and two dashboard tabs refreshing summary plus 30-day history. Run at least 30 minutes under the 512 MiB memory and 0.5 CPU limits. The workload includes the live poller (D10) running at 1 Hz against a fixture whose `/stats` and `/metrics` payloads are representative in size (tens of kilobytes), and each tab carrying one history timer plus one live timer. Include a 366-day history query and backup while collection continues. Record architecture/host, image/dependency versions, RSS, cgroup memory.current/memory.peak when available, Docker memory readings, OOM events, CPU usage, database/WAL sizes and API latencies. Filesystem cache and tmpfs count toward the hard limit; process RSS alone is insufficient.
 
-Acceptance: no OOM, crashes, accumulating threads/connections/timers or missed commits; preferred steady RSS <100 MiB; summary and 366-day history p95 <1 second on the recorded test machine. If preferred RSS or latency fails, optimize bounded queries/connections/caches and disclose the measured tradeoff. Do not silently raise 256 MiB. Peak memory must remain below the limit with useful margin; report exact peak instead of calling it negligible. Disk growth must be measured from selected samples/hourly summaries and extrapolated with assumptions, not guessed from image size.
+Acceptance: no OOM, crashes, accumulating threads/connections/timers or missed commits; preferred steady RSS <100 MiB; summary and 366-day history p95 <1 second on the recorded test machine. If preferred RSS or latency fails, optimize bounded queries/connections/caches and disclose the measured tradeoff. Do not silently raise 512 MiB. Peak memory must remain below the limit with useful margin; report exact peak instead of calling it negligible. Disk growth must be measured from selected samples/hourly summaries and extrapolated with assumptions, not guessed from image size.
+
+### D10. Live usage panel
+The dashboard shows current engine activity in one row refreshed every second, matching the tiles Radiance's own status page shows. It is an ambient view: nothing it displays is persisted, and it is never part of durable accounting.
+
+- **Ownership:** a dedicated poller thread inside the serving process, started by `serve` after storage startup and stopped on every exit path with a join budget of ≤1 second. It owns no SQLite connection, is a daemon, uses its own upstream fetcher (same origin rules, same 2 MiB cap), and is not started by `collect`. `run_collect` deployments show the row as unavailable.
+- **Cadence:** a fixed 1 second schedule (no configuration), one fetch in flight, `/stats` then `/metrics` sequentially, missed slots skipped and never queued, per-request timeout `min(HTTP_TIMEOUT_SECONDS, 0.9)`. A failure waits for the next slot with no retry. Logs are emitted only on per-source transitions (fresh↔stale, field present↔absent, run reset, schedule slip) so a 1 Hz failure cannot flood the capped log.
+- **Sources:** `/stats` supplies `running`, `waiting`, `prefill_tps`, `decode_tps`, `uptime_s` and the optional `experts.routed`/`experts.routed_res`; `/metrics` supplies `radiance:draft_tokens_total`/`radiance:draft_accepted_total`, read with the existing line scanner (no full family parse at 1 Hz). A missing, malformed, non-finite or negative field nulls only its own tile. Draft counters with zero or more than one label set make the MTP group unavailable; series are never summed (D3).
+- **Windows:** per source, a run is consecutive successful samples; it ends on `uptime_s` decrease, any live counter decrease, or a gap over 3 seconds. For W ∈ {5 s, 60 s, 1800 s} the value is Δnumerator ÷ Δdenominator against the newest sample at least W old, requiring the baseline to be no older than W + 2 s and a positive denominator; otherwise null. MTP lifetime is total accepted ÷ total drafted from the current process's first sample; MoE has no lifetime. A source with no success in the last 3 seconds renders null tiles; both stale marks the row stale. Retention is ≤ 1830 seconds per source.
+- **Contract:** the snapshot is computed once per poll into an immutable object the API returns as-is; rates are tokens/second, ratios 0..1, and every unknown is null, which the UI renders `-`. No live value is written to SQLite, and the durable collector's request volume is unchanged.
+- **UI:** one row of five tiles above the primary row, always rendered, independent of series selection and empty state, wrapped to two columns at 390 px. Values change every second, so they carry no `aria-live`; the Live/Stale/Starting chip carries the state text. The browser keeps exactly one 1 s live timer and one 15 s history timer per tab, both paused while hidden.
 
 ## 4. Implementation steps
 

@@ -1,0 +1,11 @@
+window_seconds=10.00
+fixture_stats_hits=12 (1.20/s)
+fixture_metrics_hits=12 (1.20/s)
+GET /api/v1/live -> 200 {'schema_version': 1, 'generated_at': '2026-10-27T09:19:38.313467Z', 'state': 'live', 'observed_at': '2026-10-27T09:19:37.813913Z', 'requests': {'active': 3, 'queued': 1}, 'prefill_tokens_per_second': 1240.4, 'decode_tokens_per_second': 180.2, 'decode_tokens_per_second_per_request': 60.06666666666666, 'mtp_acceptance': {'window_5s': 0.7, 'window_1m': None, 'window_30m': None, 'lifetime': 0.7}, 'moe_gpu_hit': {'window_5s': 0.93, 'window_1m': None, 'window_30m': None}}
+GET /health/ready -> 200 application/json
+sigterm_exit_code=0 shutdown_seconds=0.26
+
+Interpretation: the `serve` process runs BOTH the durable collector (POLL_INTERVAL_SECONDS=5,
+which polls /stats for uptime and /metrics for counters) and the live poller (1 Hz).
+12 hits / 10.00 s = 10 live + 2 collector for each path. The live-poller-only measurement is
+in live-cadence-live-only.txt (21 hits / 20.00 s = 1.05/s, the extra hit is the poll at t=0).

@@ -1,0 +1,34 @@
+Fixture payload sizes for the live panel (plan Step 4, specification D9 workload)
+==============================================================
+
+Produced by `tests/fixtures/fixture_server.py`:
+`FixtureState.use_representative_size()` (mode string below) and the size renderers
+`stats_body()` / `metrics_body()` in the same module. Verified by rendering the bodies
+and by reading the bytes served by a live `FixtureServer` on 127.0.0.1 — both matched.
+
+mode                     48x128 experts + histogram families
+stats_bytes              55583
+metrics_bytes            3872
+served stats bytes       55583   (GET /stats, representative-size mode)
+served metrics bytes     3872    (GET /metrics, representative-size mode)
+experts arrays           layer_units 48 layers x 128 entries
+                         layer_resident 48 layers x 128 entries
+histogram families       radiance:prompt_eval_duration_seconds
+                         radiance:generation_duration_seconds
+                         radiance:time_to_first_token_seconds
+histogram lines          33 = 3 families x (11 `le` buckets + _sum + _count)
+
+Unset defaults stay byte-identical to the pre-feature fixture:
+
+default /stats           {"model": "fixture-model", "uptime_s": 100.0}
+default /metrics         unchanged (the four durable radiance:* families only)
+
+Per-second advancer (`start_live_advancer`, 1 tick/s daemon timer):
+
+after 1 s                draft_tokens_total 100   draft_accepted_total 70   experts 100 / 93
+after 6 s                draft_tokens_total 600   draft_accepted_total 420  experts 600 / 558
+                         ratios: 70 % accepted, 93 % resident; `stop_live_advancer()` freezes them
+
+The resource qualification (`scripts/qualify_resources.py`) starts the fixture in this
+mode with the advancer running, so its `fixture_payload_sizes` receipt is the same pair
+of numbers measured inside the container workload.

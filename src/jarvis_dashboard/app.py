@@ -158,6 +158,7 @@ class AppState:
     admission: ReadAdmission = field(default_factory=ReadAdmission)
     service: Any = None  # service.Service when serving; None in tests
     server: Any = None  # uvicorn server, set by service.build_server
+    live: Any = None  # live.LiveMonitor when serving; None means state=unavailable
 
 
 async def _watch_writer(service: Any, server: Any) -> None:
