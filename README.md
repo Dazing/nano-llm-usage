@@ -36,6 +36,8 @@ The user chose a DIY application after considering VictoriaMetrics/Grafana becau
 - **[Live panel status](docs/live-panel-status.md)** — executed evidence for that plan: commands with exit codes, the live browser smoke transcript and screenshots, fixture payload sizes, and the gates this host could not execute.
 - **[Cost estimate implementation plan](docs/cost-estimate-implementation-plan.md)** — the cache-aware API-equivalent estimate: the optional `cached_input` counter, schema version 3, the three rate variables, the priced-hour and coverage rules, and the UI lines they drive.
 - **[Cost estimate status](docs/cost-estimate-status.md)** — executed evidence for that plan: commands with exit codes, numeric cost receipts and screenshots.
+- **[HUD dashboard implementation plan](docs/hud-dashboard-implementation-plan.md)** — the dark single-palette redesign of the served UI: seven stacked panels, one status strip, the API cost well in the live panel, and the mockup→production mapping with its browser gates.
+- **[HUD dashboard status](docs/hud-dashboard-status.md)** — executed evidence for that plan: commands with exit codes, layout and cost-well receipts, the migrated browser smoke transcript and screenshots, and what the mockup alone could not prove.
 - **[Deployment](docs/deployment.md)** — build, run, serve, backup, restore and upgrade operations for the self-contained image (collector, API and bundled dashboard; operator-supplied paths, UID/GID and bind address).
 
 The specification and acceptance scenarios remain authoritative. The plans sequence the complete

@@ -138,6 +138,9 @@ The dashboard is a build-time bundle, not a runtime dependency:
   With no built assets present the app is API-only and `GET /` is a JSON `404`.
 - Open `http://<DASHBOARD_BIND_ADDRESS>:<DASHBOARD_HOST_PORT>/` (default port
   `8080`) in a browser; the JSON API is at the same origin under `/api/v1`.
+  `docs/open-dashboard-app.sh [URL]` opens it in a Chromium app window (no tabs or
+  address bar), reading the address from the repository `.env`; set `CHROMIUM`
+  to use another Chromium-based binary.
 - Browser traffic is same-origin only. The bundle contains no CDN host, no web
   font and no analytics, and the browser never contacts Radiance: it talks only
   to this container, which is the sole Radiance client.

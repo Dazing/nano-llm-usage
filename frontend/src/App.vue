@@ -3,14 +3,13 @@ import { computed, onBeforeUnmount, onMounted } from "vue";
 import { dashboard } from "./lib/dashboard";
 import { live as liveStore } from "./lib/live";
 import { collectionLabel, formatUtc } from "./lib/format";
-import ApiErrorBanner from "./components/ApiErrorBanner.vue";
 import AppHeader from "./components/AppHeader.vue";
 import DiagnosticsDisclosure from "./components/DiagnosticsDisclosure.vue";
 import EmptyState from "./components/EmptyState.vue";
 import LivePanel from "./components/LivePanel.vue";
-import OfflineBanner from "./components/OfflineBanner.vue";
 import RatesPanel from "./components/RatesPanel.vue";
 import SkeletonBlock from "./components/SkeletonBlock.vue";
+import StatusStrip from "./components/StatusStrip.vue";
 import SummaryCards from "./components/SummaryCards.vue";
 import TrendPanel from "./components/TrendPanel.vue";
 
@@ -28,9 +27,8 @@ onBeforeUnmount(() => {
 const collectionStatus = computed(
   () => state.summary?.collection_status ?? state.seriesCollectionStatus ?? "starting",
 );
-const offline = computed(() => collectionStatus.value === "offline");
 const isEmpty = computed(() => !state.firstLoad && state.series.length === 0);
-const live = computed(
+const liveLine = computed(
   () =>
     `${collectionLabel(collectionStatus.value)}. ` +
     (state.status?.last_success_at
@@ -40,22 +38,23 @@ const live = computed(
 </script>
 
 <template>
-  <div class="shell">
+  <div class="hud">
     <AppHeader />
-    <main class="main">
-      <p class="visually-hidden" role="status" aria-live="polite">{{ live }}</p>
-      <OfflineBanner v-if="offline" />
-      <ApiErrorBanner v-if="state.apiError" />
-      <!-- The live row renders its five placeholders before any 15 s data exists. -->
-      <LivePanel />
-      <SkeletonBlock v-if="state.firstLoad" />
-      <EmptyState v-else-if="isEmpty" />
-      <template v-else>
-        <SummaryCards />
-        <TrendPanel />
-        <RatesPanel />
-        <DiagnosticsDisclosure />
-      </template>
-    </main>
+    <StatusStrip
+      :first-load="state.firstLoad"
+      :empty="isEmpty"
+      :status="collectionStatus"
+      :live-line="liveLine"
+    />
+    <!-- The live panel renders its five placeholders before any 15 s data exists. -->
+    <LivePanel />
+    <SkeletonBlock v-if="state.firstLoad" />
+    <EmptyState v-else-if="isEmpty" />
+    <template v-else>
+      <TrendPanel />
+      <SummaryCards />
+      <RatesPanel />
+      <DiagnosticsDisclosure />
+    </template>
   </div>
 </template>

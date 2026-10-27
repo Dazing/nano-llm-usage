@@ -1,11 +1,13 @@
 <template>
-  <div class="skeleton" data-testid="skeleton">
-    <span class="visually-hidden" role="status">Loading dashboard</span>
-    <div class="skeleton-row" aria-hidden="true">
-      <span class="skeleton-block"></span>
-      <span class="skeleton-block"></span>
-      <span class="skeleton-block"></span>
+  <section class="pnl skeleton" data-testid="skeleton" aria-label="Loading dashboard">
+    <div class="in">
+      <span class="visually-hidden" role="status">Loading dashboard</span>
+      <span class="sk" aria-hidden="true"></span>
+      <span class="sk" aria-hidden="true"></span>
+      <span class="sk" aria-hidden="true"></span>
+      <span class="sk sk-chart" aria-hidden="true"></span>
+      <span class="sk" aria-hidden="true"></span>
+      <span class="sk" aria-hidden="true"></span>
     </div>
-    <div class="skeleton-chart" aria-hidden="true"></div>
-  </div>
+  </section>
 </template>

@@ -1,24 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { dashboard } from "../lib/dashboard";
 import { collectionLabel, formatUtc } from "../lib/format";
 
 const state = dashboard.state;
-
-type ThemeMode = "system" | "light" | "dark";
-const stored = localStorage.getItem("jarvis-theme");
-const theme = ref<ThemeMode>(stored === "light" || stored === "dark" ? stored : "system");
-
-function cycleTheme(): void {
-  theme.value = theme.value === "system" ? "light" : theme.value === "light" ? "dark" : "system";
-  if (theme.value === "system") {
-    localStorage.removeItem("jarvis-theme");
-    delete document.documentElement.dataset.theme;
-    return;
-  }
-  localStorage.setItem("jarvis-theme", theme.value);
-  document.documentElement.dataset.theme = theme.value;
-}
 
 const collectionStatus = computed(
   () => state.summary?.collection_status ?? state.seriesCollectionStatus ?? "starting",
@@ -39,12 +24,6 @@ const seriesName = computed(() => {
   return `${selected.model_name} · engine ${selected.engine}`;
 });
 
-const lastUpdate = computed(() =>
-  state.status?.last_success_at
-    ? `Last successful update ${formatUtc(state.status.last_success_at)}`
-    : "Last successful update no data",
-);
-
 function onPick(event: Event): void {
   const value = (event.target as HTMLSelectElement).value;
   if (value) dashboard.selectSeries(value);
@@ -52,35 +31,44 @@ function onPick(event: Event): void {
 </script>
 
 <template>
-  <header class="app-header" data-testid="app-header">
-    <div class="header-main">
-      <h1 data-testid="product-name">Jarvis Token Dashboard</h1>
-      <p class="series-name" data-testid="series-name">{{ seriesName }}</p>
-    </div>
-    <div class="header-side">
-      <span class="badge" :class="badgeTone" data-testid="status-badge">{{ badgeText }}</span>
-      <p class="last-update" data-testid="last-update">{{ lastUpdate }}</p>
-      <button type="button" class="theme-toggle" data-testid="theme-toggle" @click="cycleTheme">
-        Theme: {{ theme }}
-      </button>
-      <label v-if="state.series.length > 1" class="series-picker-label" for="series-picker">Series</label>
-      <select
-        v-if="state.series.length > 1"
-        id="series-picker"
-        class="series-picker"
-        data-testid="series-picker"
-        :value="state.selectedSeriesId ?? ''"
-        @change="onPick"
-      >
-        <option
-          v-for="item in state.series"
-          :key="item.series_id"
-          :value="item.series_id"
-          data-testid="series-option"
+  <!-- The brand mark is decoration; the product name stays the accessible h1 text (D4). -->
+  <section class="pnl pnl-head" data-testid="app-header" aria-label="Dashboard header">
+    <div class="in">
+      <div class="brand">
+        <h1 class="t">
+          <span class="visually-hidden" data-testid="product-name">Jarvis Token Dashboard</span>
+          <span class="mark" aria-hidden="true">JARVIS<i>·</i>TOKEN<i>//</i>HUD</span>
+        </h1>
+        <p class="s series-name" data-testid="series-name">{{ seriesName }}</p>
+      </div>
+      <div v-if="state.series.length > 1" class="sel">
+        <label class="lab" for="series-picker">Series</label>
+        <select
+          id="series-picker"
+          class="series-picker"
+          data-testid="series-picker"
+          :value="state.selectedSeriesId ?? ''"
+          @change="onPick"
         >
-          {{ item.model_name }} · engine {{ item.engine }}
-        </option>
-      </select>
+          <option
+            v-for="item in state.series"
+            :key="item.series_id"
+            :value="item.series_id"
+            data-testid="series-option"
+          >
+            {{ item.model_name }} · engine {{ item.engine }}
+          </option>
+        </select>
+      </div>
+      <div class="hstat">
+        <div class="hbox">
+          <span class="lab">Last successful update · UTC</span>
+          <span class="v" data-testid="last-update">{{ formatUtc(state.status?.last_success_at) }}</span>
+        </div>
+        <span class="badge" :class="badgeTone" data-testid="status-badge">
+          <span class="dot" aria-hidden="true"></span>{{ badgeText }}
+        </span>
+      </div>
     </div>
-  </header>
+  </section>
 </template>

@@ -1,9 +1,14 @@
 #!/usr/bin/env python
-"""Delivery 3 frontend smoke: built bundle, real ``serve`` process, real Chromium.
+"""HUD frontend smoke: built bundle, real ``serve`` process, real Chromium.
 
 Follows ``scripts/smoke.py`` conventions: one printed receipt per observation,
 non-zero exit on the first failed check. The browser is driven through
 ``scripts/browser_driver.py`` (stdlib CDP) against the fixture collector.
+
+The checks cover the dark HUD dashboard (``docs/hud-dashboard-implementation-plan.md``)
+and the contracts inherited from deliveries 1-4: testids, placeholders, token strings,
+timer counts, the fetched API paths, diagnostics, the API cost well and the
+1080x1920 portrait fit.
 """
 from __future__ import annotations
 
@@ -49,11 +54,16 @@ STATIC = ROOT / "src" / "jarvis_dashboard" / "static"
 SHOTS = ROOT / "docs" / "receipts" / "delivery-3"
 LIVE_SHOTS = ROOT / "docs" / "receipts" / "live-panel"
 COST_SHOTS = ROOT / "docs" / "receipts" / "cost-estimate"
+HUD_SHOTS = ROOT / "docs" / "receipts" / "hud-dashboard"
 SECOND = {"model_name": "second-model", "engine": "0"}
-FOCUS_EXPECTED = ["theme-toggle", "range-24h", "range-7d", "range-30d", "range-custom",
-                  "chart-disclosure"]
+FOCUS_EXPECTED = ["range-24h", "range-7d", "range-30d", "range-custom",
+                  "chart-disclosure", "requests-disclosure"]
 DESKTOP = (1440, 900)
 MOBILE = (390, 844)
+PORTRAIT = (1080, 1920)
+
+# Strings that belong to the design mockup, never to the dashboard it models.
+MOCKUP_ONLY = ("SIMULATED", "Signal history", "design mockup")
 
 # Installed before every document: counts poll timers, records fetch URLs, and
 # can delay a response for URLs containing ``delayMatch`` (selection race).
@@ -168,6 +178,24 @@ def cost_shot(page, name: str) -> None:
     receipt(f"screenshot {name}", f"{path} ({path.stat().st_size} bytes)")
 
 
+def hud_shot(page, name: str) -> None:
+    path = page.screenshot(HUD_SHOTS / name)
+    receipt(f"screenshot {name}", f"{path} ({path.stat().st_size} bytes)")
+
+
+def live_slots(page, kind: str) -> str:
+    """Join one live ratio group's per-window values in DOM (window) order.
+
+    The HUD gives every window its own testid (``live-mtp-5s`` …), so the joined
+    reading is what the old single ``live-mtp`` element used to carry: the joined
+    slots string, e.g. ``"70% / - / - / 70%"``.
+    """
+    return page.evaluate(
+        f"(() => [...document.querySelectorAll('[data-testid^=\"live-{kind}-\"]')]"
+        ".map((el) => el.textContent.trim()).join(' / '))()"
+    )
+
+
 def day(offset: int) -> str:
     return (dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=offset)).strftime("%Y-%m-%d")
 
@@ -200,6 +228,24 @@ def preflight() -> None:
     check("openapi snapshot current", proc.returncode, 0)
     check("frontend build present", (STATIC / "index.html").is_file(), True)
     check("chromium present", shutil.which("chromium") is not None, True)
+    # AC4: no cost line and no second axis on the trend chart. Datasets and axes are
+    # painted on the canvas, so the chart module's source is the checkable surface.
+    chart = (ROOT / "frontend" / "src" / "lib" / "chart.ts").read_text()
+    check("chart_source_is_bar_only", 'type: "line"' in chart, False)
+    check("chart_source_single_y_axis", re.search(r"\by1\s*:", chart) is not None, False)
+    check("chart_source_two_datasets", chart.count('label: "'), 2)
+    # AC4: the mockup's review machinery (the `s` hotkey, the #debug/#test overlays,
+    # seeded fixtures, the STATE menu) must not have been ported into the app source.
+    forbidden = ("keydown", "data-audit", "data-state", "__reviewHooks", "#debug",
+                 "#test", "SIMULATED", "mulberry", "seedHist", "design mockup")
+    offenders: list[str] = []
+    for path in sorted((ROOT / "frontend" / "src").rglob("*")):
+        if path.suffix not in {".ts", ".vue", ".css"}:
+            continue
+        text = path.read_text()
+        offenders += [f"{path.name}:{token}" for token in forbidden if token in text]
+    receipt("mockup_machinery_offenders", offenders)
+    check("no_mockup_machinery_in_source", offenders, [])
 
 
 def start_stack(server: FixtureServer, db: Path, source: str = "smoke",
@@ -270,7 +316,7 @@ def accounting(server: FixtureServer, port: int) -> str:
     return series_id
 
 
-def dom_basics(page) -> None:
+def dom_basics(page, port: int) -> None:
     print("--- phase 4: built bundle renders the API values")
     started = time.monotonic()
     ok = wait_for(lambda: text_of(page, "lifetime-total") == "960", 40)
@@ -291,11 +337,91 @@ def dom_basics(page) -> None:
     receipt("dom_series_name", text_of(page, "series-name"))
     receipt("dom_status_badge", text_of(page, "status-badge"))
     receipt("dom_last_update", text_of(page, "last-update"))
+    # AC4/AC5: nothing from the mockup's simulation layer, and one dark palette only.
+    body = page.evaluate("document.body.innerText") or ""
+    for token in MOCKUP_ONLY:
+        check(f"no_mockup_text[{token}]", token.lower() in body.lower(), False)
+    check("no_state_menu", "STATE" in body, False)
+    check("no_theme_toggle", count_of(page, '[data-testid="theme-toggle"]'), 0)
+    check("no_theme_attribute", page.evaluate(
+        "document.documentElement.hasAttribute('data-theme')"), False)
+    check("palette_is_dark", page.evaluate(
+        "getComputedStyle(document.documentElement).colorScheme"), "dark")
+    check("panel_order", page.evaluate(
+        "(() => [...document.querySelectorAll('.hud > .pnl')]"
+        ".map((el) => el.getAttribute('data-testid')))()"),
+        ["app-header", "status-strip", "live-panel", "trend-panel", "summary-panel",
+         "rates-panel", "diagnostics-panel"])
+    # D5: the healthy strip says so and quotes the collector's own settings, which the
+    # harness reads from the API rather than from the page.
+    status = api(port, "/status")[1]
+    receipt("strip_nominal_code", page.evaluate(
+        "document.querySelector('[data-testid=\"status-strip\"] .strip-msg .code')?.textContent") or "")
+    check("strip_nominal_line_ac6", page.evaluate(
+        "document.querySelector('[data-testid=\"status-strip\"] .strip-msg .txt')?.textContent?.trim()"),
+        f"Collection healthy \u00b7 live 1 Hz \u00b7 collector polls every "
+        f"{status['poll_interval_seconds']}s \u00b7 raw retention {status['raw_retention_days']} days")
+    # The polite status line App computes, in a polite region the strip owns.
+    check("polite_line_is_status_region", page.evaluate(
+        "(() => { const el = document.querySelector('[data-testid=\"status-strip\"] .strip-live');"
+        " return [el.getAttribute('role'), el.getAttribute('aria-live')].join(' '); })()"),
+        "status polite")
+    polite = page.evaluate(
+        "document.querySelector('[data-testid=\"status-strip\"] .strip-live')?.textContent?.trim()") or ""
+    receipt("polite_line", polite)
+    check("polite_line_names_the_update_ac6", bool(re.fullmatch(
+        r"Healthy\. Last successful update \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC\.", polite)), True)
     shot(page, "desktop-1440-normal.png")
 
 
+def layout(page) -> None:
+    """AC1: the seven panels fill 1080x1920 without scrolling, scroll vertically elsewhere."""
+    print("--- phase 4b: 1080x1920 fit, vertical-only scrolling on the smaller viewports")
+    page.set_viewport(*PORTRAIT)
+    metrics = page.evaluate(
+        "({h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,"
+        " vh: window.innerHeight, vw: window.innerWidth})"
+    )
+    receipt("portrait_metrics", json.dumps(metrics))
+    # The panels clip by design (plan D2), so "it fits" is not the whole story: record
+    # what is being clipped. Non-empty lists mean content the 1080x1920 frame hides.
+    receipt("portrait_clipped_panel_bodies", page.evaluate(
+        "JSON.stringify([...document.querySelectorAll('.hud > .pnl > .in')]"
+        ".filter((e) => e.scrollHeight > e.clientHeight + 1)"
+        ".map((e) => ({head: (e.querySelector('h2') || {textContent: '?'}).textContent.trim(),"
+        " client: e.clientHeight, content: e.scrollHeight})))"))
+    receipt("portrait_clipped_wells", page.evaluate(
+        "JSON.stringify([...document.querySelectorAll('.well')]"
+        ".filter((e) => e.scrollHeight > e.clientHeight + 1)"
+        ".map((e) => ({label: (e.querySelector('.lab') || {textContent: '?'}).textContent.trim(),"
+        " client: e.clientHeight, content: e.scrollHeight})))"))
+    check("portrait_no_vertical_scroll", metrics["h"] <= 1920, True)
+    check("portrait_no_horizontal_scroll", metrics["w"] <= 1080, True)
+    check("portrait_seven_panels", count_of(page, ".hud > .pnl"), 7)
+    hud_shot(page, "hud-1080x1920-normal.png")
+
+    for width, height in (DESKTOP, (1000, 900), MOBILE):
+        page.set_viewport(width, height)
+        small = page.evaluate(
+            "({h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth,"
+            " vh: window.innerHeight, vw: window.innerWidth})"
+        )
+        receipt(f"metrics_{width}x{height}", json.dumps(small))
+        check(f"no_horizontal_scroll[{width}]", small["w"] <= small["vw"] + 1, True)
+        check(f"vertical_scroll_allowed[{width}]", small["h"] >= small["vh"] - 1, True)
+    page.set_viewport(*MOBILE)
+    check("live_panel_inside_390", page.evaluate(
+        "(() => document.querySelector('[data-testid=\"live-panel\"]')"
+        ".getBoundingClientRect().right <= window.innerWidth + 1)()"), True)
+    hud_shot(page, "hud-390-normal.png")
+    page.set_viewport(1000, 900)
+    hud_shot(page, "hud-1000-normal.png")
+    page.set_viewport(*DESKTOP)
+    hud_shot(page, "hud-1440-normal.png")
+
+
 def ranges(page) -> None:
-    print("--- phase 5: range presets and the exclusive custom end")
+    print("--- phase 5: range presets and the inclusive custom end")
     page.click('[data-testid="range-24h"]')
     expect(page, lambda: last_fetch(page, "/api/v1/history") is not None, "history-after-24h")
     check("range_24h_bucket", parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)["bucket"][0],
@@ -309,8 +435,13 @@ def ranges(page) -> None:
           "day")
 
     open_details(page, "range-custom")
-    check("custom_end_label", page.evaluate(
-        "document.body.innerText.includes('UTC end (exclusive)')"), True)
+    # The HUD styles micro-labels in caps, so the check reads the rendered text as-is.
+    check("custom_end_label", "utc end (inclusive)" in (page.evaluate("document.body.innerText") or "").lower(), True)
+    check("custom_end_label_is_the_end_input", page.evaluate(
+        "(() => { const to = document.querySelector('[data-testid=\"custom-to\"]');"
+        " const label = to && document.querySelector(`label[for=\"${to.id}\"]`);"
+        " return label ? label.textContent.trim().toLowerCase() : null; })()"),
+        "utc end (inclusive)")
     set_date(page, "custom-from", day(-40))
     set_date(page, "custom-to", day(0))
     before = len(fetches(page, "/api/v1/history"))
@@ -356,6 +487,9 @@ def chart_integrity(page, server: FixtureServer) -> None:
     check("null_bucket_never_zero", any(c == "0" for c in row), False)
     receipt("null_bucket_row", " | ".join(row))
     check("canvas_count", count_of(page, '[data-testid="chart-canvas"]'), 1)
+    # AC4: the chart is input/output bars only. Chart.js paints datasets and axes onto
+    # the canvas, so the HTML legend is the observable surface for "no cost series".
+    check("legend_series_swatches_ac4", count_of(page, '[data-testid="trend-panel"] .legend i'), 2)
     check("incomplete_note", visible(page, "incomplete-note"), True)
     shot(page, "desktop-1440-chart-table.png")
     open_details(page, "diagnostics-disclosure")
@@ -419,6 +553,17 @@ def offline(page, server: FixtureServer) -> None:
     check("offline_banner", ok, True)
     check("state_offline_history_kept", text_of(page, "lifetime-total"), kept)
     shot(page, "desktop-1440-offline.png")
+    page.set_viewport(*PORTRAIT)
+    offline_metrics = page.evaluate(
+        "({h: document.documentElement.scrollHeight, w: document.documentElement.scrollWidth})"
+    )
+    receipt("offline_portrait_metrics", offline_metrics)
+    check("offline_portrait_no_vertical_scroll", page.evaluate(
+        "document.documentElement.scrollHeight") <= 1920, True)
+    check("offline_portrait_no_horizontal_scroll", page.evaluate(
+        "document.documentElement.scrollWidth") <= 1080, True)
+    hud_shot(page, "hud-1080x1920-offline.png")
+    page.set_viewport(*DESKTOP)
     server.state.metrics_status = None
     ok = wait_for(lambda: (text_of(page, "status-badge") or "") in ("Healthy", "Degraded")
                   and (text_of(page, "last-update") or "") != before, 45)
@@ -470,9 +615,10 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     started = time.monotonic()
     check("live_panel_visible", visible(page, "live-panel"), True)
     check("live_tiles", count_of(page, '[data-testid="live-panel"] .live-cell'), 5)
+    check("no_signal_history", count_of(page, '[data-testid="signal-history"]'), 0)
     # No draft counters, no experts block and no running requests yet: five placeholders.
-    check("live_mtp_placeholder_before_counters", text_of(page, "live-mtp"), "- / - / - / -")
-    check("live_moe_placeholder_before_experts", text_of(page, "live-moe"), "- / - / -")
+    check("live_mtp_placeholder_before_counters", live_slots(page, "mtp"), "- / - / - / -")
+    check("live_moe_placeholder_before_experts", live_slots(page, "moe"), "- / - / -")
 
     server.state.start_live_advancer(labels=L)
     expect(page, lambda: text_of(page, "live-requests") == "3 / 1", "live AC1 requests")
@@ -481,10 +627,36 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     check("live_decode_ac1", text_of(page, "live-decode"), "180 tok/s · 60/req")
     # Lifetime needs a second /metrics sample, so it lands about a second after the
     # instantaneous stats tiles - a dash here is the engine refusing a one-point ratio.
-    expect(page, lambda: (text_of(page, "live-mtp") or "").endswith("70%"), "live AC1 MTP lifetime", 20)
-    mtp_slots = (text_of(page, "live-mtp") or "").split(" / ")
-    check("live_mtp_lifetime_ac1", mtp_slots[3], "70%")
+    expect(page, lambda: (live_slots(page, "mtp") or "").endswith("70%"), "live AC1 MTP lifetime", 20)
+    mtp_slots = (live_slots(page, "mtp") or "").split(" / ")
+    check("live_mtp_windows_order", [s.strip() for s in mtp_slots][3], "70%")
     check("live_mtp_windows_unfilled_ac1", mtp_slots[2], "-")
+    # AC7: the visuals draw only received values. Both gauges have a value arc, the
+    # gauge scale is the nice ceiling of the received peak printed compact
+    # (1,240 -> 2,000 -> "2K"; 180 -> 200), and the MTP rings draw one arc for the
+    # one window that has a value. An arc per empty window would fail this.
+    check("gauge_value_arcs_ac7", page.evaluate(
+        "document.querySelectorAll('[data-testid=\"live-panel\"] .gauge .dial .value').length"), 2)
+    receipt("gauge_end_labels", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .gauge .dial .end-label')]"
+        ".map((t) => t.textContent))()"))
+    check("gauge_scale_is_nice_ceiling_ac7", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .gauge .dial .end-label')]"
+        ".map((t) => t.textContent))()"), ["0", "2K", "0", "200"])
+    # AC7: the rings draw one arc per received window and none for a window the API
+    # left empty, so the arc count must equal the rows that show a reading.
+    receipt("live_mtp_rings", page.evaluate(
+        "(() => { const well = [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".find((w) => w.textContent.includes('MTP acceptance'));"
+        " const rows = [...well.querySelectorAll('.rrow')].slice(0, 3);"
+        " return [well.querySelectorAll('.rings-svg .value').length,"
+        " rows.filter((r) => r.querySelector('b').textContent.trim() !== '-').length]; })()"))
+    check("rings_arc_per_received_window_ac7", page.evaluate(
+        "(() => { const well = [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".find((w) => w.textContent.includes('MTP acceptance'));"
+        " const rows = [...well.querySelectorAll('.rrow')].slice(0, 3);"
+        " return well.querySelectorAll('.rings-svg .value').length"
+        " === rows.filter((r) => r.querySelector('b').textContent.trim() !== '-').length; })()"), True)
     live_shot(page, "live-1440-ac1.png")
 
     # Zero running requests: the per-request slot is undefined, so it is a dash -
@@ -496,18 +668,31 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     check("live_decode_value_kept", (text_of(page, "live-decode") or "").startswith("180 tok/s"), True)
     server.state.set_live(running=3, waiting=1, prefill_tps=1240.4, decode_tps=180.2)
 
-    expect(page, lambda: (text_of(page, "live-mtp") or "").startswith("70% / - / - /"),
+    expect(page, lambda: (live_slots(page, "mtp") or "").startswith("70% / - / - /"),
            "live MTP 5 s window", 30)
     # MoE lags MTP by a poll here: the two `running` edits above clear the experts block
     # for a second each, so its baseline point is slightly younger.
-    expect(page, lambda: (text_of(page, "live-moe") or "").startswith("93% / - / -"),
+    expect(page, lambda: (live_slots(page, "moe") or "").startswith("93% / - / -"),
            "live MoE 5 s window", 30)
     receipt("live_5s_window_seconds", round(time.monotonic() - started, 1))
+    # The MoE rows show the readings the API sent; the rings draw exactly that many arcs.
+    receipt("live_moe_rings", page.evaluate(
+        "(() => { const well = [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".find((w) => w.textContent.includes('MoE'));"
+        " const rows = [...well.querySelectorAll('.rrow')].slice(0, 3);"
+        " return [well.querySelectorAll('.rings-svg .value').length,"
+        " rows.filter((r) => r.querySelector('b').textContent.trim() !== '-').length]; })()"))
+    check("rings_arc_per_received_window_moe_ac7", page.evaluate(
+        "(() => { const well = [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".find((w) => w.textContent.includes('MoE'));"
+        " const rows = [...well.querySelectorAll('.rrow')].slice(0, 3);"
+        " return well.querySelectorAll('.rings-svg .value').length"
+        " === rows.filter((r) => r.querySelector('b').textContent.trim() !== '-').length; })()"), True)
     live_shot(page, "live-1440-window-5s.png")
 
-    expect(page, lambda: (text_of(page, "live-mtp") or "").startswith("70% / 70% / - /"),
+    expect(page, lambda: (live_slots(page, "mtp") or "").startswith("70% / 70% / - /"),
            "live MTP 1 m window", 100)
-    expect(page, lambda: (text_of(page, "live-moe") or "").startswith("93% / 93% / -"),
+    expect(page, lambda: (live_slots(page, "moe") or "").startswith("93% / 93% / -"),
            "live MoE 1 m window", 100)
     receipt("live_1m_window_seconds", round(time.monotonic() - started, 1))
     live_shot(page, "live-1440-window-1m.png")
@@ -517,14 +702,14 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     # measured from /metrics, keeps its windows (plan AC3).
     ticker.stop()
     server.state.uptime_s = 5.0
-    expect(page, lambda: text_of(page, "live-moe") == "- / - / -", "live MoE windows reset", 20)
+    expect(page, lambda: live_slots(page, "moe") == "- / - / -", "live MoE windows reset", 20)
     check("live_mtp_keeps_windows_across_stats_reset",
-          (text_of(page, "live-mtp") or "").startswith("70% / 70%"), True)
+          (live_slots(page, "mtp") or "").startswith("70% / 70%"), True)
     check("live_instant_tile_survives_stats_reset", text_of(page, "live-prefill"), "1,240 tok/s")
     live_shot(page, "live-1440-run-reset.png")
-    expect(page, lambda: (text_of(page, "live-moe") or "").startswith("93%"),
-           "live MoE windows refilled", 30)
     ticker = UptimeTicker(server, base=200.0)  # resumes the chainable clock above the drop
+    expect(page, lambda: (live_slots(page, "moe") or "").startswith("93%"),
+           "live MoE windows refilled", 30)
 
     # Both endpoints failing: every tile a dash, the chip stale, no 15 s panel damage.
     server.state.stats_fail = True
@@ -533,8 +718,14 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     check("live_outage_requests", text_of(page, "live-requests"), "- / -")
     check("live_outage_prefill", text_of(page, "live-prefill"), "-")
     check("live_outage_decode", text_of(page, "live-decode"), "- · -")
-    check("live_outage_mtp", text_of(page, "live-mtp"), "- / - / - / -")
-    check("live_outage_moe", text_of(page, "live-moe"), "- / - / -")
+    check("live_outage_mtp", live_slots(page, "mtp"), "- / - / - / -")
+    check("live_outage_moe", live_slots(page, "moe"), "- / - / -")
+    # AC7: with nothing received, the dials draw tracks only - no needle at zero,
+    # no arc, no value. A component that reads a missing ratio as 0.0 fails here.
+    check("gauges_draw_nothing_when_no_value_ac7", page.evaluate(
+        "document.querySelectorAll('[data-testid=\"live-panel\"] .gauge .dial .value').length"), 0)
+    check("rings_draw_nothing_when_no_value_ac7", page.evaluate(
+        "document.querySelectorAll('[data-testid=\"live-panel\"] .rings-svg .value').length"), 0)
     receipt("live_outage_seconds", round(time.monotonic() - started, 1))
     live_shot(page, "live-1440-stale.png")
 
@@ -543,10 +734,26 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     expect(page, lambda: text_of(page, "live-state") == "Live", "live outage recovers", 20)
     check("live_requests_after_outage", text_of(page, "live-requests"), "3 / 1")
 
+    # Sparkline truthfulness (plan AC7): the outage and the hidden tab each left a null
+    # in the ring buffer, so the polyline must be broken into more than one run.
+    receipt("live_spark_runs", page.evaluate(
+        "document.querySelectorAll('[data-testid=\"live-panel\"] .spark-svg polyline').length"))
+    check("live_spark_breaks_on_gaps", page.evaluate(
+        "document.querySelectorAll('[data-testid=\"live-panel\"] .spark-svg polyline').length") > 1,
+        True)
+
+    # The portrait sheet, with the panel fed by the live fixture.
+    page.set_viewport(*PORTRAIT)
+    expect(page, lambda: page.evaluate(
+        "document.documentElement.scrollHeight <= 1920 && document.documentElement.scrollWidth <= 1080"),
+        "1080x1920 fit with live data", 10)
+    hud_shot(page, "hud-1080x1920-live.png")
+    page.set_viewport(*DESKTOP)
+
     # No experts block at all (a non-MoE model): MoE reads as absent, MTP is untouched.
     server.state.suppress_experts = True
-    expect(page, lambda: text_of(page, "live-moe") == "- / - / -", "live MoE absent", 20)
-    check("live_mtp_unaffected_by_absent_moe", (text_of(page, "live-mtp") or "").endswith("70%"), True)
+    expect(page, lambda: live_slots(page, "moe") == "- / - / -", "live MoE absent", 20)
+    check("live_mtp_unaffected_by_absent_moe", (live_slots(page, "mtp") or "").endswith("70%"), True)
     check("live_state_with_moe_absent", text_of(page, "live-state"), "Live")
     server.state.suppress_experts = False
 
@@ -563,11 +770,17 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     return ticker
 
 
+def spark_runs(page) -> int:
+    """Polylines drawn by the live sparklines: one per uninterrupted sample run."""
+    return count_of(page, '[data-testid="live-panel"] .spark-svg polyline')
+
+
 def poll_lifecycle(page) -> None:
     print("--- phase 8: one 15 s poll timer and one 1 s live timer, both paused when hidden")
     intervals = probe(page, "p.timers.filter((t) => !p.cleared.includes(t.id)).map((t) => t.ms)")
     check("poll_timers", sorted(intervals), [1000, 15000])
     base = probe(page, "p.fetches.length")
+    runs_before = spark_runs(page)
     page.set_visibility(True)
     time.sleep(8)
     check("polls_paused_when_hidden", probe(page, "p.fetches.length"), base)
@@ -577,24 +790,40 @@ def poll_lifecycle(page) -> None:
     page.tab(1)
     ok = wait_for(lambda: probe(page, "p.fetches.length") > base, 30)
     check("poll_resumes", ok, True)
+    # AC7: resuming from a hidden tab must break the sparkline, not connect the
+    # pre-hide samples to the resumed ones. The 40-sample cap trims the front, so the
+    # run count is reported and the assertion is that an uninterrupted line is not the
+    # only thing left on screen after a period with no observations.
+    receipt("spark_runs_before_hidden", runs_before)
+    receipt("spark_runs_after_resume", spark_runs(page))
+    check("spark_break_after_hidden_tab", spark_runs(page) >= 2, True)
 
 
-def theme_and_a11y(page, port: int) -> None:
-    print("--- phase 10: theme persistence, reduced motion, visible keyboard focus")
-    page.evaluate("localStorage.removeItem('jarvis-theme')")
+def a11y(page, port: int) -> None:
+    print("--- phase 10: one dark palette, reduced motion, visible keyboard focus")
     page.navigate(f"http://127.0.0.1:{port}/")
-    page.click('[data-testid="theme-toggle"]')
-    check("theme_applied", page.evaluate("document.documentElement.dataset.theme"), "light")
-    check("theme_persisted", page.evaluate("localStorage.getItem('jarvis-theme')"), "light")
-    page.navigate(f"http://127.0.0.1:{port}/")
-    check("theme_after_reload", page.evaluate("document.documentElement.dataset.theme"), "light")
-    page.click('[data-testid="theme-toggle"]')
-    check("theme_cycles_to_dark", page.evaluate("document.documentElement.dataset.theme"), "dark")
-    shot(page, "desktop-1440-dark.png")
+    check("no_theme_toggle", count_of(page, '[data-testid="theme-toggle"]'), 0)
+    check("no_stored_theme", page.evaluate("localStorage.getItem('jarvis-theme')"), None)
+    check("no_theme_attribute", page.evaluate(
+        "document.documentElement.hasAttribute('data-theme')"), False)
+    check("root_color_scheme_dark", page.evaluate(
+        "getComputedStyle(document.documentElement).colorScheme"), "dark")
     page.set_media("prefers-reduced-motion", "reduce")
+    # The chips come with the first dashboard refresh; a fresh mount shows the skeleton.
+    expect(page, lambda: count_of(page, '[data-testid="range-24h"]') == 1, "range chips", 60)
     check("reduced_motion", page.evaluate(
-        "getComputedStyle(document.querySelector('[data-testid=\"theme-toggle\"]')).transitionDuration"
+        "getComputedStyle(document.querySelector('[data-testid=\"range-24h\"]')).transitionDuration"
     ), "0s")
+    check("reduced_motion_sweep_stopped", page.evaluate(
+        "(() => { const el = document.querySelector('.live-sweep');"
+        " return el ? getComputedStyle(el).animationName : 'none'; })()"), "none")
+    # D9 names the sweep, the chip pulse and the offline badge blink; all must stop.
+    check("reduced_motion_chip_dot_stopped", page.evaluate(
+        "(() => { const el = document.querySelector('[data-testid=\"live-state\"] .dot');"
+        " return el ? getComputedStyle(el).animationName : 'none'; })()"), "none")
+    check("reduced_motion_badge_stopped", page.evaluate(
+        "(() => { const el = document.querySelector('[data-testid=\"status-badge\"]');"
+        " return el ? getComputedStyle(el).animationName : 'none'; })()"), "none")
     page.set_media("prefers-reduced-motion", "no-preference")
 
     page.evaluate("document.activeElement && document.activeElement.blur()")
@@ -723,9 +952,18 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     # One priced interval: +1,000,000 request input, +100,000 request output,
     # +600,000 cached input.
     publish(server, 2000, 170, 1_000_100, 100_100, 1_200_000)
+    # AC3: before the summary and history land, the well must read "no data" — no
+    # zero, no money. The page probe delays the summary response (the collector
+    # fetches summary before history) so the live panel is up with its data absent.
+    probe(page, "p.delayMs = 3500; p.delayMatch = '/api/v1/summary';")
+    page.navigate(f"http://127.0.0.1:{serve.port}/")
+    expect(page, lambda: text_of(page, "cost-today") == "no data", "cost well before its data", 20)
+    check("cost_well_no_data_before_summary_ac3", text_of(page, "cost-today"), "no data")
+    check("cost_well_no_data_before_history_ac3", text_of(page, "cost-period"), "no data")
+    check("cost_well_no_money_before_data_ac3", "$" in (text_of(page, "cost-panel") or ""), False)
+    probe(page, "p.delayMs = 0; p.delayMatch = '';")
     # Earlier phases leave the page on the second series, so point the page at the
     # priced one before reading any money.
-    page.navigate(f"http://127.0.0.1:{serve.port}/")
     priced = select_series(page, serve.port, L)
     # Deltas land on the collector's next poll, which is after the publish returns.
     time.sleep(TWO_POLLS)
@@ -760,6 +998,14 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     share = text_of(page, "lifetime-cache") or ""
     receipt("cost_share_line", share)
     check("cost_share_line_ac1", share, expected_share)
+    # The cache donut is decoration for the same received ratio, never its own number.
+    donut = page.evaluate(
+        "(() => { const card = document.querySelector('[data-testid=\"card-lifetime\"]');"
+        " const t = card && card.querySelector('.donut .pct');"
+        " return t ? t.textContent : null; })()"
+    )
+    receipt("cost_donut_label", donut)
+    check("cost_donut_matches_received_share_ac1", donut, expected_share.split(" of input")[0])
     footnote = text_of(page, "cost-rates-footnote") or ""
     check("cost_footnote_ac4", footnote.startswith(
         "Approximate API-equivalent at $3.00 input / $0.30 cached / $15.00 output per M tokens (USD)."),
@@ -784,31 +1030,113 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     receipt("cost_trend_line", trend)
     check("cost_trend_line_ac1", trend.startswith(trend_prefix), True)
     cost_shot(page, "cost-1440-estimate.png")
+
+    # AC2: the live panel's API cost well agrees with the panels that own the numbers.
+    expect(page, lambda: text_of(page, "cost-today") == text_of(page, "today-cost"),
+           f"cost well today matches the today card ({text_of(page, 'today-cost')})", 90)
+    receipt("cost_well_today", text_of(page, "cost-today"))
+    period = text_of(page, "cost-period") or ""
+    check("cost_well_period_matches_trend_ac2", period in trend, True)
+    receipt("cost_well_period", f"{period} | {text_of(page, 'cost-period-span')}")
+    check("cost_well_span_is_hourly_ac2", bool(re.fullmatch(
+        r"24 h \u00b7 \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC \u2192 \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC",
+        text_of(page, "cost-period-span") or "")), True)
+    hud_shot(page, "hud-1440-cost-well.png")
+    # AC2: a preset change moves the well's period to the new history response.
+    page.click('[data-testid="range-7d"]')
+    expect(page, lambda: (text_of(page, "cost-period-span") or "").startswith("7 days \u00b7 "),
+           "cost well period follows the 7d history", 90)
+    check("cost_well_span_is_daily_ac2", (text_of(page, "cost-period-span") or "").endswith(" UTC"),
+          True)
+    check("cost_well_period_still_tracks_trend_ac2",
+          (text_of(page, "cost-period") or "") in (text_of(page, "trend-cost") or ""), True)
+    page.click('[data-testid="range-24h"]')
+    expect(page, lambda: (text_of(page, "cost-period-span") or "").startswith("24 h \u00b7 "),
+           "cost well period follows the 24h history", 90)
+
     page.set_viewport(*MOBILE)
     expect(page, lambda: visible(page, "lifetime-cost"), "mobile money line", 30)
     receipt("cost_mobile_money_line", text_of(page, "lifetime-cost"))
     cost_shot(page, "cost-390-estimate.png")
     page.set_viewport(*DESKTOP)
 
+    # AC3: a series switch clears the well. The summary probe delays the incoming
+    # response, so the window between the picker change and the new data landing is
+    # observable: the old series' money must not stay on screen.
+    second_id = next(i["series_id"] for i in series_items(serve.port)
+                     if i["model_name"] == SECOND["model_name"])
+    probe(page, "p.delayMs = 2500; p.delayMatch = '/api/v1/summary';")
+    page.evaluate(
+        f"(() => {{ const el = document.querySelector('[data-testid=\"series-picker\"]');"
+        f" el.value = {json.dumps(second_id)};"
+        " el.dispatchEvent(new Event('change', {bubbles: true})); })()"
+    )
+    expect(page, lambda: text_of(page, "cost-today") == "no data",
+           "cost well cleared by the series switch", 20)
+    check("cost_well_switch_today_ac3", text_of(page, "cost-today"), "no data")
+    check("cost_well_switch_period_ac3", text_of(page, "cost-period"), "no data")
+    check("cost_well_switch_no_stale_money_ac3",
+          "$" in (text_of(page, "cost-panel") or ""), False)
+    probe(page, "p.delayMs = 0; p.delayMatch = '';")
+    expect(page, lambda: (text_of(page, "series-name") or "").startswith(SECOND["model_name"]),
+           "switch to the second series lands", 60)
+
+    # AC3 on a fresh load: the page probe runs as a document-init script, so a second
+    # script delays the summary on the next navigation and a third undoes it. The live
+    # panel is painted while its summary and history are still in flight.
+    page.add_script_on_new_document(
+        "window.__probe && (window.__probe.delayMs = 1500, "
+        "window.__probe.delayMatch = '/api/v1/summary');"
+    )
+    page.navigate(f"http://127.0.0.1:{serve.port}/")
+    expect(page, lambda: text_of(page, "cost-today") == "no data", "cost well before its data", 20)
+    check("cost_well_no_data_before_summary_ac3", text_of(page, "cost-today"), "no data")
+    check("cost_well_no_data_before_history_ac3", text_of(page, "cost-period"), "no data")
+    check("cost_well_no_money_before_data_ac3", "$" in (text_of(page, "cost-panel") or ""), False)
+    page.add_script_on_new_document(
+        "window.__probe && (window.__probe.delayMs = 0, window.__probe.delayMatch = '');"
+    )
+
     # AC8: a series whose engine publishes no cached counter prices nothing, and
     # the diagnostics gap list names the cached-input scope as its own line.
     install_fixture(server.state, SECOND, 500, 50, 1_000, 100)
     assert wait_for(lambda: len(series_ids(serve.port)) >= 2, 60), "second series never appeared"
+    # This fixture publishes the same counters the series was created with, so it stays at
+    # its opening balance and every observed figure reads "no data". That reading is also
+    # what a not-yet-loaded summary shows, so first prove this series' payload has landed:
+    # the header name comes from the summary of the selected series.
     page.navigate(f"http://127.0.0.1:{serve.port}/")
     select_series(page, serve.port, SECOND)
+    expect(page, lambda: SECOND["model_name"] in (text_of(page, "series-name") or ""),
+           "second series summary landed", 60)
     expect(page, lambda: text_of(page, "lifetime-cost") == "no data", "unpriced series cost", 60)
     check("cost_unpriced_is_no_data_ac8", text_of(page, "lifetime-cost"), "no data")
+    # AC3/AC7: switching series resets the well's figures — both read "no data" for a
+    # series with no accepted interval, and the period line follows the new history.
+    check("cost_well_switch_today_ac3", text_of(page, "cost-today"), "no data")
+    check("cost_period_no_data_ac7", text_of(page, "cost-period"), "no data")
+    # AC3: a series whose engine publishes no cached counter prices nothing, so the
+    # well's own figures agree with the card above it.
+    check("cost_well_unpriced_today_ac3", text_of(page, "cost-today"), "no data")
     check("cost_unpriced_share_ac8", text_of(page, "lifetime-cache"), "no data")
     unpriced = text_of(page, "lifetime-cost-coverage") or ""
     # A series created minutes ago has no complete hour yet, so coverage is
     # legitimately empty; once it has one, nothing is priced without cache tracking.
     check("cost_unpriced_coverage_ac8", unpriced == "" or unpriced.startswith("partial · covers 0"), True)
     receipt("cost_unpriced_coverage", unpriced)
-    open_details(page, "diagnostics-disclosure")
-    diagnostics = page.evaluate(
-        "(() => document.querySelector('[data-testid=\"diagnostics-disclosure\"]').innerText)()"
-    )
-    check("cost_diagnostics_names_cached_input", "Cached input" in diagnostics, True)
+
+    def diagnostics_text() -> str:
+        open_details(page, "diagnostics-disclosure")
+        return page.evaluate(
+            "(() => document.querySelector('[data-testid=\"diagnostics-disclosure\"]')"
+            ".innerText)()"
+        )
+
+    # The gap list only renders once the summary has landed, so this must be a
+    # polling expectation and not a one-shot read of a page that is still loading.
+    expect(page, lambda: "Cached input" in diagnostics_text(),
+           "diagnostics names the cached-input gap", 60)
+    receipt("cost_unpriced_diagnostics", diagnostics_text()[:200].replace("\n", " | "))
     cost_shot(page, "cost-1440-no-cached-counter.png")
 
     # AC4/AC6: rates are startup-only. The same volume without prices hides the
@@ -833,6 +1161,14 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     check("rates_free_keeps_coverage_ac4",
           (text_of(page, "month-cost-coverage") or "").startswith("partial · covers "), True)
     cost_shot(page, "cost-1440-rates-unset.png")
+    # AC3: the cost well explains the missing rates instead of showing an amount.
+    expect(page, lambda: visible(page, "cost-unpriced"), "cost well rates note", 60)
+    well = text_of(page, "cost-panel") or ""
+    check("rates_free_cost_well_explains_ac3", well.startswith("Cost rates not configured"), True)
+    check("rates_free_cost_well_has_no_amount_ac3", "$" in well, False)
+    check("rates_free_cost_figures_absent_ac3", count_of(page, '[data-testid="cost-today"]'), 0)
+    check("rates_free_cost_period_absent_ac3", count_of(page, '[data-testid="cost-period"]'), 0)
+    hud_shot(page, "hud-1440-cost-unpriced.png")
 
 
 def network(page, server: FixtureServer, port: int) -> None:
@@ -885,6 +1221,7 @@ def main() -> int:
     SHOTS.mkdir(parents=True, exist_ok=True)
     LIVE_SHOTS.mkdir(parents=True, exist_ok=True)
     COST_SHOTS.mkdir(parents=True, exist_ok=True)
+    HUD_SHOTS.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="jarvis-frontend-smoke-"))
     receipt("workdir", tmp)
     server = FixtureServer()
@@ -911,7 +1248,8 @@ def main() -> int:
         root_status, root_type = raw_get(serve.port, "/")
         receipt("root_response", f"{root_status} {root_type.split(';')[0] or 'no content-type'}")
 
-        dom_basics(page)
+        dom_basics(page, serve.port)
+        layout(page)
         ranges(page)
         chart_integrity(page, server)
         empty_and_baseline(tmp, browser)
@@ -920,7 +1258,7 @@ def main() -> int:
         optional_unavailable(page, server)
         ticker = live_phase(page, server, ticker)
         poll_lifecycle(page)
-        theme_and_a11y(page, serve.port)
+        a11y(page, serve.port)
         selection_race(page, server, serve.port)
         network(page, server, serve.port)
         cost_estimate(page, server, serve)
@@ -930,6 +1268,7 @@ def main() -> int:
         page.set_viewport(*DESKTOP)
         receipt("screenshots_written", len(list(SHOTS.glob("*.png"))))
         receipt("cost_screenshots_written", len(list(COST_SHOTS.glob("*.png"))))
+        receipt("hud_screenshots_written", sorted(p.name for p in HUD_SHOTS.glob("*.png")))
         receipt("browser_requests", len(page.requests))
         return 0
     finally:

@@ -1,16 +1,29 @@
 /* Design tokens: the only place colours, spacing and radii are declared.
- * Contrast pairs are machine-checked by tests/test_ui_tokens.py (WCAG AA). */
+ * One dark palette (HUD plan D1): the mockup is a single dark design, so there is
+ * no second theme to keep in sync. Contrast pairs are machine-checked by
+ * tests/test_ui_tokens.py (WCAG AA). Alpha variants live in app.css as
+ * color-mix(in srgb, var(--token) N%, transparent) so no raw colour escapes here. */
 :root {
-  --bg: #f6f7f9;
-  --panel: #ffffff;
-  --fg: #16181d;
-  --fg-muted: #4a5160;
-  --border: #d5d9e0;
-  --accent: #1d5fd0;
-  --series-input: #2563eb;
-  --series-output: #b45309;
-  --warning: #8a5a00;
-  --error: #b3261e;
+  --bg: #10131f; /* page ground: near-black, the mockup's bg-deep */
+  --panel: #1c2135; /* panel gradient top */
+  --panel-2: #161a2b; /* panel gradient bottom */
+  --sunk: #121627; /* inset wells, chart ground, inputs */
+  --fg: #c0caf5;
+  --fg-muted: #8892b8; /* comment colour lifted to AA on every surface */
+  --border: #2b3350;
+  --line: #565f89; /* decorative line work only, never body text */
+  --accent: #7aa2f7;
+  --series-input: #7aa2f7;
+  --series-output: #ff9e64;
+  --warning: #e0af68;
+  --error: #f7768e;
+  --cyan: #7dcfff;
+  --magenta: #bb9af7;
+  --green: #9ece6a;
+  --teal: #73daca;
+  --ok: #9ece6a;
+  --caution: #ff9e64; /* orange band between --warning and --error */
+  --cost: #e0af68;
 
   --sp-1: 4px;
   --sp-2: 8px;
@@ -19,36 +32,21 @@
   --sp-5: 24px;
   --sp-6: 32px;
 
-  --radius: 12px;
+  --radius: 2px;
   --border-width: 1px;
+  --cut: 16px; /* chamfer of the HUD panel frame */
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   --chart-height: 360px;
-}
-
-:root[data-theme="dark"] {
-  --bg: #12151b;
-  --panel: #1a1e26;
-  --fg: #e8eaef;
-  --fg-muted: #a8b0be;
-  --border: #2c333f;
-  --accent: #6ea8ff;
-  --series-input: #7aa2ff;
-  --series-output: #e0a458;
-  --warning: #e3b341;
-  --error: #ff8f88;
 }
 
 html {
   background: var(--bg);
   color: var(--fg);
-  color-scheme: light;
+  color-scheme: dark;
   font-family: var(--font);
   line-height: 1.45;
   -webkit-text-size-adjust: 100%;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
 }
 
 body {

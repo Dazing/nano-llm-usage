@@ -11,12 +11,13 @@ import {
   formatDay,
   formatRatesFootnote,
   formatTokens,
+  NO_DATA,
 } from "../lib/format";
 import Card from "./Card.vue";
-import LabelValue from "./LabelValue.vue";
+import Donut from "./Donut.vue";
+import HudPanel from "./HudPanel.vue";
 
 const state = dashboard.state;
-const NO_DATA = "no data";
 
 const CARDS = [
   { key: "today", title: "Observed today" },
@@ -36,8 +37,12 @@ const baseline = computed(() => {
   if (!lifetime) return false;
   const input = lifetime.counters.computed_input;
   const output = lifetime.counters.generated_output;
-  return input.tokens === null && output.tokens === null
-    && input.observed_intervals === 0 && output.observed_intervals === 0;
+  return (
+    input.tokens === null &&
+    output.tokens === null &&
+    input.observed_intervals === 0 &&
+    output.observed_intervals === 0
+  );
 });
 
 function range(key: CardKey): Range | null {
@@ -68,6 +73,10 @@ function amount(key: CardKey): string {
   return formatAmount(cost(key)?.amount ?? null);
 }
 
+function cacheRatio(key: CardKey): number | null {
+  return baseline.value ? null : range(key)?.api_equivalent.cache_hit_ratio ?? null;
+}
+
 function cacheShare(key: CardKey): string {
   return baseline.value ? NO_DATA : formatCacheShare(range(key)?.api_equivalent.cache_hit_ratio);
 }
@@ -91,55 +100,112 @@ function flags(key: CardKey): string[] {
   for (const flag of rangeValue.quality_flags) lines.push(flagLabel(flag));
   return lines;
 }
+
+/** Input/output split of the card's own totals, as bar widths. */
+function split(key: CardKey): { input: string; output: string } | null {
+  const rangeValue = range(key);
+  if (baseline.value || !rangeValue) return null;
+  const input = rangeValue.counters.computed_input.tokens;
+  const output = rangeValue.counters.generated_output.tokens;
+  if (input == null || output == null) return null;
+  const inTokens = Number(BigInt(input));
+  const outTokens = Number(BigInt(output));
+  const sum = inTokens + outTokens;
+  if (!Number.isFinite(sum) || sum <= 0) return null;
+  return {
+    input: `${((inTokens / sum) * 100).toFixed(2)}%`,
+    output: `${((outTokens / sum) * 100).toFixed(2)}%`,
+  };
+}
+
+const metaLine = computed(() => {
+  const summary = state.summary;
+  if (!summary) return "awaiting summary";
+  return `${summary.model_name} · engine ${summary.engine}`;
+});
 </script>
 
 <template>
-  <div class="summary-grid">
-    <Card v-for="card in CARDS" :key="card.key" :title="card.title" :testid="`card-${card.key}`">
-      <LabelValue label="Processed total" :testid="`${card.key}-total`">{{ total(card.key) }}</LabelValue>
-      <LabelValue label="Computed input" :testid="`${card.key}-input`" tone="muted">
-        {{ counter(card.key, "computed_input") }}
-      </LabelValue>
-      <LabelValue label="Generated output" :testid="`${card.key}-output`" tone="muted">
-        {{ counter(card.key, "generated_output") }}
-      </LabelValue>
-      <!-- Money and cache share are read off the range the card already shows. -->
-      <LabelValue
-        v-if="rates"
-        label="API-equivalent"
-        :testid="`${card.key}-cost`"
-        tone="strong"
-      >
-        {{ amount(card.key) }}
-      </LabelValue>
-      <LabelValue label="Cache hits" :testid="`${card.key}-cache`" tone="muted">
-        {{ cacheShare(card.key) }}
-      </LabelValue>
-      <p v-if="coverage(card.key)" class="note" :data-testid="`${card.key}-cost-coverage`">
-        {{ coverage(card.key) }}
-      </p>
-      <p
-        v-for="line in costFlags(card.key)"
-        :key="line"
-        class="flag"
-        :data-testid="`${card.key}-cost-flag`"
-      >
-        {{ line }}
-      </p>
-      <p
-        v-if="card.key === 'lifetime'"
-        class="lifetime-start"
-        data-testid="lifetime-start"
-      >
-        Collecting since {{ state.summary ? formatDay(state.summary.first_observation_at) : NO_DATA }}
-      </p>
-      <p v-if="card.key === 'lifetime' && baseline" class="note" data-testid="baseline-note">
-        Collecting a first baseline — no observed work yet
-      </p>
-      <p v-for="line in flags(card.key)" :key="line" class="flag" :data-testid="`${card.key}-flag`">
-        {{ line }}
-      </p>
-    </Card>
-  </div>
-  <p v-if="ratesFootnote" class="note" data-testid="cost-rates-footnote">{{ ratesFootnote }}</p>
+  <HudPanel
+    index="03"
+    title="Period summary"
+    testid="summary-panel"
+    class="pnl-sum"
+    aria-label="Period summary"
+  >
+    <template #meta>
+      <span class="meta">{{ metaLine }}</span>
+    </template>
+
+    <div class="cards">
+      <Card v-for="card in CARDS" :key="card.key" :title="card.title" :testid="`card-${card.key}`">
+        <template v-if="card.key === 'lifetime'" #since>
+          <span class="since" data-testid="lifetime-start">
+            Collecting since {{ state.summary ? formatDay(state.summary.first_observation_at) : NO_DATA }}
+          </span>
+        </template>
+
+        <div class="big num" :data-testid="`${card.key}-total`">{{ total(card.key) }}</div>
+
+        <div class="split">
+          <span v-if="split(card.key)" class="bar" aria-hidden="true">
+            <i class="in-bar" :style="{ width: split(card.key)?.input }"></i>
+            <i class="out-bar" :style="{ width: split(card.key)?.output }"></i>
+          </span>
+          <div class="keys">
+            <span>Computed input</span>
+            <b :data-testid="`${card.key}-input`">{{ counter(card.key, "computed_input") }}</b>
+            <span>Generated output</span>
+            <b :data-testid="`${card.key}-output`">{{ counter(card.key, "generated_output") }}</b>
+          </div>
+        </div>
+
+        <div class="row">
+          <Donut :value="cacheRatio(card.key)" />
+          <div class="kv">
+            <!-- Money only appears with configured prices (spec cost rule). -->
+            <template v-if="rates">
+              <span class="k">API-equivalent</span>
+              <b class="v tone-cost" :data-testid="`${card.key}-cost`">{{ amount(card.key) }}</b>
+            </template>
+            <template v-else>
+              <span class="k">API-equivalent</span>
+              <span class="v is-muted">cost rates not configured</span>
+            </template>
+            <span class="k">Cache hits</span>
+            <b class="v" :data-testid="`${card.key}-cache`">{{ cacheShare(card.key) }}</b>
+          </div>
+        </div>
+
+        <p v-if="coverage(card.key)" class="cost-line" :data-testid="`${card.key}-cost-coverage`">
+          {{ coverage(card.key) }}
+        </p>
+        <div v-if="costFlags(card.key).length || flags(card.key).length" class="flags">
+          <p
+            v-for="line in costFlags(card.key)"
+            :key="`cost-${line}`"
+            class="flag"
+            :data-testid="`${card.key}-cost-flag`"
+          >
+            {{ line }}
+          </p>
+          <p
+            v-for="line in flags(card.key)"
+            :key="line"
+            class="flag"
+            :data-testid="`${card.key}-flag`"
+          >
+            {{ line }}
+          </p>
+        </div>
+        <p v-if="card.key === 'lifetime' && baseline" class="note" data-testid="baseline-note">
+          Collecting a first baseline — no observed work yet
+        </p>
+      </Card>
+    </div>
+
+    <p v-if="ratesFootnote" class="note sum-foot" data-testid="cost-rates-footnote">
+      {{ ratesFootnote }}
+    </p>
+  </HudPanel>
 </template>

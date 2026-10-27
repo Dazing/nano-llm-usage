@@ -4,10 +4,11 @@ defineProps<{ title: string; testid: string }>();
 
 <template>
   <section class="card" :data-testid="testid" :aria-label="title">
-    <h2 class="card-title">
-      {{ title }}
-      <span class="utc-tag">UTC</span>
-    </h2>
+    <div class="ch">
+      <h3>{{ title }}</h3>
+      <span class="utc">UTC</span>
+      <slot name="since" />
+    </div>
     <slot />
   </section>
 </template>

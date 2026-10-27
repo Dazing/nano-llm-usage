@@ -32,7 +32,7 @@ This is a proposed greenfield footprint, not existing files. Copy this specifica
 │   ├── migrations/         — new: numbered SQLite migrations
 │   └── static/             — generated: production frontend assets in image/package
 ├── frontend/               — new: package manifest/lock, TypeScript and Vite configuration
-│   └── src/                — new: Vue app, API types, theme, reusable panel/chart components
+│   └── src/                — new: Vue app, API types, tokens, reusable panel/chart components
 ├── tests/                  — new: accounting, persistence, API and fixture HTTP server tests
 ├── scripts/                — new: reproducible container smoke and resource qualification
 └── docs/                   — new: operations, verification receipts
@@ -51,7 +51,7 @@ This is a proposed greenfield footprint, not existing files. Copy this specifica
 **In scope**
 - Fifteen-second polling, persistent restart-safe counter accounting, bounded raw retention and durable historical summaries.
 - Observed computed-prefill and generated-output totals, separate optional request-usage accounting, history charts and collection status.
-- A responsive dashboard with dark/light themes, explicit unavailable/stale/partial states and accessible controls.
+- A responsive dashboard with one dark HUD palette, explicit unavailable/stale/partial states and accessible controls.
 - A one-second live row of current engine activity — requests, prefill/decode TPS, MTP draft acceptance and MoE GPU hit — computed in memory and never persisted ([D10](#d10-live-usage-panel)).
 - A read-time API-equivalent cost estimate and cache-hit share for the intervals where cache tracking exists ([D11](#d11-api-equivalent-cost-estimate)).
 - One non-root runtime container, durable appdata, backup/restore, upgrade migrations and measurable resource qualification.
@@ -175,17 +175,19 @@ Use a consistent top-level `schema_version: 1` and UTC `generated_at` in applica
 ### D7. Dashboard design contract
 One screen, ranked tasks: (1) understand how much work Jarvis has processed, (2) see the trend, (3) understand whether the numbers are trustworthy. No sidebar, marketing hero, settings page or gratuitous animation.
 
-Foundation: system font stack; 4/8/12/16/24/32px spacing; 12px card radius; subtle 1px borders; tabular numerals; CSS variables for background, panel, foreground, muted text, border, accent, warning and error. Default to system theme with a light/dark toggle saved locally. Use two consistent series colors for computed input and generated output. Provide visible keyboard focus, contrast appropriate to WCAG AA, reduced-motion support and labels independent of color.
+Foundation: one dark palette only — `color-scheme: dark`, no theme toggle and no `data-theme` attribute. Monospace HUD type over a system sans body; 4/8/12/16/24/32px spacing; chamfered (clipped-corner) panel frames with a numbered head rule in place of card radius; tabular numerals; CSS variables for background, panel, sunk well, foreground, muted text, border, line, accent, cyan, magenta, green, teal, ok, caution, cost, warning and error. Raw colour literals live in `tokens.css` alone; every other rule composes with `color-mix()`. Use two consistent series colors for computed input and generated output. Provide visible keyboard focus, contrast appropriate to WCAG AA, reduced-motion support and labels independent of color.
 
-Layout:
-- Compact header: product name, selected series/model, collection-status badge, last successful update and theme toggle. Series picker appears only when needed.
-- Live row (D10): five tiles — requests `active / queued`, prefill TPS, decode TPS `total · per request`, MTP acceptance `5s · 1m · 30m · life`, MoE GPU hit `5s · 1m · 30m` — rendered above the primary row, independent of series selection, first load and empty state, with a Live/Stale/Starting chip. Every unknown value is `-`.
+Layout: seven stacked panels in one column — header, collection-status strip, live, trend, period summary, latest rate, diagnostics — capped at 1080px and centred. At 1080×1920 the rows are fixed so the screen fills exactly; below that the page scrolls vertically and never sideways. Panels clip; long content scrolls inside the panel, not the page.
+
+- Compact header: product name (the accessible name stays "Jarvis Token Dashboard"), selected series/model, collection-status badge, last successful update. Series picker appears only when needed.
+- Status strip: exactly one collection message at a time, ranked API error (with the stale-data timestamp) > offline > series stale > starting > loading > empty > nominal, where nominal states the poll interval and raw retention. It replaces the separate offline and API-error banners and carries the polite status line.
+- Live row (D10): five tiles — requests `active / queued`, prefill TPS, decode TPS `total · per request`, MTP acceptance `5s · 1m · 30m · life`, MoE GPU hit `5s · 1m · 30m` — rendered above the primary row, independent of series selection, first load and empty state, with a Live/Stale/Starting chip. Every unknown value is `-`. The right column opens with the API cost well (D11): today's amount and the selected period's amount with its coverage, and an explicit "Cost rates not configured" note in place of amounts when no rates are configured.
 - Primary row: **Observed today**, **Observed this month**, **Observed since collection began**. Each card shows processed total with smaller computed-input/output breakdowns and a partial/approximate indicator when applicable. When cost rates are configured each card also shows an `API-equivalent ≈ $x` line and a `Cache hits N% of input` line (D11), with a coverage note such as `partial · covers 18.0 of 31.0 days` whenever the priced hours are fewer than the range's expected hours; the line is hidden entirely when rates are unset. Always show UTC and the lifetime start date.
-- Main panel: stacked bars for computed input/generated output with 24h, 7d, 30d and custom UTC date-range controls. 24h uses hourly buckets; longer presets use daily buckets. Today includes current incomplete bucket visibly. Align requests to D6; custom date end is exclusive and labeled. One cost line for the selected range sits below the chart: money, cache share, coverage and — when cache tokens exceed request tokens — an explicit approximation note. No pie chart or redundant chart of the same data.
+- Main panel: stacked bars for computed input/generated output with 24h, 7d, 30d and custom UTC date-range controls. 24h uses hourly buckets; longer presets use daily buckets. Today includes current incomplete bucket visibly. Align requests to D6; the custom date end is labelled `UTC end (inclusive)` in the UI and travels as the exclusive bound D6 requires. One cost line for the selected range sits below the chart: money, cache share, coverage and — when cache tokens exceed request tokens — an explicit approximation note. No pie chart, per-bucket cost series or redundant chart of the same data.
 - Secondary panel: recent contiguous input/output rates; display N/A while stale, after a baseline or across a gap. A disclosure labeled “Request-accounted usage” shows the optional request totals with their different semantics.
 - Diagnostics disclosure: collection gaps, epoch changes, opening balances, last error, raw retention and meaning of each quality flag; gap seconds are listed per scope, including `Cached input`. No raw label dictionary beneath every number.
 
-States: loading skeletons on first load; real zero values distinct from no data; baseline-only guidance; offline banner retaining historical cards; unavailable optional counters; schema/parse errors with concise action; partial buckets with accessible descriptions; empty selection; API failure retaining last successful render with stale timestamp. Chart tooltips show exact values, UTC bucket bounds and quality. Supply an accessible table alternative inside the chart disclosure. Never draw a missing bucket as a zero bar or connect a line across missing data.
+States: loading skeletons on first load; real zero values distinct from no data; baseline-only guidance; the status strip naming an offline collector while historical panels keep their last values; unavailable optional counters; schema/parse errors with concise action; partial buckets with accessible descriptions; empty selection; API failure retaining last successful render with stale timestamp. Chart tooltips show exact values, UTC bucket bounds and quality. Supply an accessible table alternative inside the chart disclosure. Never draw a missing bucket as a zero bar or connect a line across missing data.
 
 Poll dashboard APIs every 15 seconds while visible, pause when hidden, refresh on focus, and prevent overlapping/out-of-order fetches. The live row polls `/api/v1/live` every second under the same visibility rules with at most one request in flight, and carries no `aria-live` on per-second values (the chip carries the state text). Use one consistent selected series across all panels. Charts are destroyed on unmount and reused on refresh; do not accumulate canvas instances or poll timers. Browser RAM and NAS RAM must be reported separately.
 
@@ -248,7 +250,7 @@ The cache share and the coverage note are derived from counters, not from prices
 - **Code area:** `frontend/`, `frontend/src/`, generated `src/jarvis_dashboard/static/`.
 - **Change:** Implement D7 with selected Vue/Chart.js stack, build-time bundling, shared tokens/components, polling lifecycle and exact numeric formatting.
 - **Depends on:** Step 3.
-- **Verification:** Open actual served production assets in a browser at mobile/desktop widths; exercise every UI state with the HTTP fixture, keyboard/theme controls and real API requests. No CDN, hydration/server rendering or browser calls to Jarvis (AC4, AC5).
+- **Verification:** Open actual served production assets in a browser at mobile/desktop widths; exercise every UI state with the HTTP fixture, keyboard controls and real API requests. No CDN, hydration/server rendering or browser calls to Jarvis (AC4, AC5).
 
 ### Step 5: Package, recover and qualify
 - **Code area:** root Docker/Compose/README files, `src/jarvis_dashboard/`, `scripts/`, `docs/`, `tests/`.
