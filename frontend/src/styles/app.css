@@ -349,15 +349,20 @@ summary:focus-visible {
 
 .brand {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--sp-3);
   flex: none;
   min-width: 0;
-  max-width: 228px;
 }
 
+/* One line: the product mark and the loaded model read left to right (item 5). */
 .brand .t {
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-width: 0;
   font: 700 23px/1 var(--font-mono);
   letter-spacing: 0.06em;
   color: var(--fg);
@@ -370,6 +375,9 @@ summary:focus-visible {
 }
 
 .brand .s {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
   font: 12px/1.2 var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
@@ -425,7 +433,8 @@ button.is-active {
 .hstat {
   margin-left: auto;
   display: flex;
-  align-items: center;
+  /* stretch: the update box and the health badge are the same height (item 10). */
+  align-items: stretch;
   gap: var(--sp-3);
   flex: none;
   flex-wrap: wrap;
@@ -529,15 +538,7 @@ button.is-active {
   color: var(--fg-muted);
 }
 
-.strip-live {
-  font: 11.5px/1.4 var(--font-mono);
-  letter-spacing: 0.1em;
-  color: var(--fg-muted);
-  text-transform: uppercase;
-  margin-left: auto;
-}
-
-.strip-live .stale-notice {
+.strip-msg .stale-notice {
   display: block;
   margin-top: 3px;
   color: var(--warning);
@@ -678,7 +679,8 @@ button.is-active {
   height: 100%;
 }
 
-.gauge svg {
+/* Only the dial: the sparkline in the same well keeps its own fluid box (item 4). */
+.gauge .dial {
   width: 114px;
   height: 100px;
   display: block;
@@ -788,6 +790,9 @@ button.is-active {
   flex: 1;
   min-height: 0;
   margin-top: 2px;
+  /* The ring art sits ~11px inside its box on the left; the value column gets the
+     same inset on the right, so the rows are not tight against the border (item 11). */
+  padding-right: 11px;
 }
 
 .rings svg {
@@ -813,7 +818,10 @@ button.is-active {
 
 .rrow {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 52px;
+  /* 46 + 44 + the two gaps must fit the list column of the 252px live-left well
+     (230 - 106 ring - 8 gap - 11 right padding), so the value column stays clear of
+     the panel border by the same margin the ring art keeps on its own side. */
+  grid-template-columns: 46px minmax(0, 1fr) 44px;
   gap: 7px;
   align-items: center;
   font: 12.5px/1 var(--font-mono);
@@ -928,23 +936,11 @@ button.is-active {
   font-weight: 700;
 }
 
-.live-hint {
-  padding: 7px 10px;
-}
-
 .ph .chip {
   margin-left: 6px;
 }
 
 /* ============================== cost well ============================== */
-.cost-well .cost-tag {
-  font: 600 10px/1.4 var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
-  margin-bottom: var(--sp-2);
-}
-
 .cost-rows {
   display: flex;
   flex-direction: column;
@@ -999,20 +995,24 @@ button.is-active {
 }
 
 .trend-ctl .utc {
+  align-self: center;
+}
+
+/* Always visible, pushed to the right end of the preset row (item 7). */
+.trend-ctl .custom-range {
   margin-left: auto;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
 }
 
-.custom-range > summary {
-  font-size: 11.5px;
-  padding: 6px 8px;
-  border: var(--border-width) solid color-mix(in srgb, var(--line) 70%, transparent);
-  background: var(--sunk);
-  border-radius: var(--radius);
-}
-
-.custom-range[open] > summary {
-  border-color: var(--cyan);
-  color: var(--cyan);
+.custom-title {
+  font: 600 10.5px/1.2 var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  padding-bottom: 7px;
 }
 
 .custom-fields {
@@ -1020,8 +1020,6 @@ button.is-active {
   align-items: flex-end;
   gap: var(--sp-2);
   flex-wrap: wrap;
-  margin-top: var(--sp-2);
-  padding: var(--sp-2) 0 0;
 }
 
 .custom-fields label {
@@ -1561,11 +1559,59 @@ tbody tr:hover {
 }
 
 /* ============================== responsive ============================ */
-/* The mockup's fixed portrait grid: seven rows filling a 1080x1920 screen. */
+/* The mockup's fixed portrait grid: one row per panel filling a 1080x1920 screen. */
 @media (min-width: 1080px) and (min-height: 1920px) {
   .hud {
     height: 100vh;
-    grid-template-rows: 92px 44px 454px 1fr 452px 212px 158px;
+    grid-template-rows:
+      [head] 92px
+      [strip] auto
+      [live] 454px
+      [trend] 1fr
+      [summary] 452px
+      [rates] 212px
+      [diag] 158px;
+  }
+
+  /* Named rows, not a seven-row count: the status strip renders only for a problem
+   * state, and its `auto` row collapses to nothing when the collection is healthy. */
+  .pnl-head {
+    grid-row: head;
+  }
+
+  .pnl-strip {
+    grid-row: strip;
+  }
+
+  .pnl-live {
+    grid-row: live;
+  }
+
+  .pnl-trend,
+  .pnl-empty,
+  .pnl.skeleton {
+    grid-row: trend;
+  }
+
+  .pnl-sum {
+    grid-row: summary;
+  }
+
+  .pnl-rate {
+    grid-row: rates;
+  }
+
+  .pnl-diag {
+    grid-row: diag;
+  }
+
+  /* Header: the one-line title plus the stat row must stay inside the fixed row. */
+  .pnl-head > .in {
+    gap: var(--sp-1) var(--sp-3);
+  }
+
+  .brand .t {
+    font-size: 20px;
   }
 
   .live-grid {
@@ -1603,17 +1649,22 @@ tbody tr:hover {
   }
 
   .trend-ctl button,
-  .custom-range > summary {
+  .custom-fields input,
+  .custom-fields button {
     padding: 4px 7px;
     font-size: 11px;
+  }
+
+  .custom-title {
+    padding-bottom: 5px;
   }
 
   .tr-notes {
     font-size: 12px;
   }
 
-  /* The MoE well is the flexible row: keep its rings, the cost figures and the
-   * hint small enough to fit the fixed live-panel height without clipping. */
+  /* The MoE well is the flexible row: keep its rings and the cost figures small
+   * enough to fit the fixed live-panel height without clipping. */
   .rings.sm {
     grid-template-columns: 60px minmax(0, 1fr);
   }
@@ -1627,10 +1678,6 @@ tbody tr:hover {
     font-size: 12px;
   }
 
-  .cost-well .cost-tag {
-    margin-bottom: 2px;
-  }
-
   .cost-rows {
     gap: var(--sp-1);
   }
@@ -1641,11 +1688,6 @@ tbody tr:hover {
 
   .cost-line {
     line-height: 1.3;
-  }
-
-  .live-hint {
-    font-size: 11.5px;
-    padding: 5px 9px;
   }
 
   .live-right .well {

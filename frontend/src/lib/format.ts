@@ -17,6 +17,40 @@ export function formatTokens(value: string | null | undefined): string {
   }
 }
 
+/**
+ * The headline form of a token total: `6.94 M`, `912.5 K`, `1 M`.
+ *
+ * Only the large number in a summary card uses it. The exact grouped figure stays
+ * on the card (its `title`) and in the input/output rows underneath, so the short
+ * form never hides precision.
+ */
+export function formatTokensShort(value: string | null | undefined): string {
+  if (value === null || value === undefined) return NO_DATA;
+  let tokens: bigint;
+  try {
+    tokens = BigInt(value);
+  } catch {
+    return value;
+  }
+  const sign = tokens < 0n ? "-" : "";
+  const abs = tokens < 0n ? -tokens : tokens;
+  const units: [bigint, string][] = [
+    [1_000_000_000_000n, "T"],
+    [1_000_000_000n, "B"],
+    [1_000_000n, "M"],
+    [1_000n, "K"],
+  ];
+  for (const [unit, suffix] of units) {
+    if (abs < unit) continue;
+    // Two decimals rounded half up, then the trailing zeros drop: 6.94 M, 1 M.
+    const hundredths = (abs * 100n + unit / 2n) / unit;
+    const fraction = (hundredths % 100n).toString().padStart(2, "0").replace(/0+$/, "");
+    const whole = groupThousands((hundredths / 100n).toString());
+    return `${sign}${whole}${fraction ? `.${fraction}` : ""} ${suffix}`;
+  }
+  return tokens.toLocaleString("en-US");
+}
+
 export function formatRate(rate: Rate | undefined): string {
   if (!rate || !rate.eligible || rate.tokens_per_second === null || rate.tokens_per_second === undefined) {
     return "N/A";
@@ -31,10 +65,13 @@ export function formatRate(rate: Rate | undefined): string {
  */
 export const LIVE_PLACEHOLDER = "-";
 
-/** `N tok/s` rounded to whole tokens; the live row has no sub-token precision. */
-export function formatTps(value: number | null | undefined): string {
+/**
+ * The whole-token number without the unit: the live row names the unit in the label
+ * above the number (`DECODE · TPS`), so the number stays bare.
+ */
+export function formatTpsNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return LIVE_PLACEHOLDER;
-  return `${Math.round(value).toLocaleString("en-US")} tok/s`;
+  return Math.round(value).toLocaleString("en-US");
 }
 
 /** `N/req` — decode throughput attributed to one running request. */

@@ -28,8 +28,21 @@ const PRESETS = [
   { id: "30d", label: "30d · daily" },
 ] as const;
 
-const customFrom = ref(state.customFrom);
-const customTo = ref(state.customTo);
+const DAY_MS = 86_400_000;
+
+/**
+ * The custom fields are always on screen (item 7), so they start on a usable default:
+ * the same seven UTC days the 7d preset covers. Applying is what moves the range, so
+ * the default alone never sends a request.
+ */
+function utcDay(offsetDays: number): string {
+  return new Date(Math.floor(Date.now() / DAY_MS) * DAY_MS + offsetDays * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+}
+
+const customFrom = ref(state.customFrom || utcDay(-6));
+const customTo = ref(state.customTo || utcDay(0));
 
 const metaLine = computed(() => {
   const historyValue = history.value;
@@ -125,23 +138,25 @@ function onTableToggle(event: Event): void {
         >
           {{ preset.label }}
         </button>
-        <details class="custom-range" data-testid="range-custom">
-          <summary>Custom · UTC</summary>
-          <div class="custom-fields">
-            <label for="custom-from">
-              UTC start (inclusive)
-              <input id="custom-from" v-model="customFrom" type="date" data-testid="custom-from" />
-            </label>
-            <label for="custom-to">
-              UTC end (inclusive)
-              <input id="custom-to" v-model="customTo" type="date" data-testid="custom-to" />
-            </label>
-            <button data-testid="custom-apply" @click="dashboard.applyCustomRange(customFrom, customTo)">
-              Apply
-            </button>
-          </div>
-        </details>
       </div>
+
+      <div class="custom-range" data-testid="range-custom">
+        <span class="custom-title">Custom · UTC</span>
+        <div class="custom-fields">
+          <label for="custom-from">
+            UTC start (inclusive)
+            <input id="custom-from" v-model="customFrom" type="date" data-testid="custom-from" />
+          </label>
+          <label for="custom-to">
+            UTC end (inclusive)
+            <input id="custom-to" v-model="customTo" type="date" data-testid="custom-to" />
+          </label>
+          <button data-testid="custom-apply" @click="dashboard.applyCustomRange(customFrom, customTo)">
+            Apply
+          </button>
+        </div>
+      </div>
+
       <span class="utc">UTC</span>
     </div>
 

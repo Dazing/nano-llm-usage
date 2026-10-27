@@ -11,6 +11,7 @@ import {
   formatDay,
   formatRatesFootnote,
   formatTokens,
+  formatTokensShort,
   NO_DATA,
 } from "../lib/format";
 import Card from "./Card.vue";
@@ -52,6 +53,21 @@ function range(key: CardKey): Range | null {
 function total(key: CardKey): string {
   const rangeValue = range(key);
   return baseline.value || !rangeValue ? NO_DATA : formatTokens(rangeValue.processed_total);
+}
+
+/**
+ * The headline number is the short form (`6.94 M`); `total` above stays the exact
+ * grouped figure and is carried as the element's `title`, so nothing is lost.
+ */
+function totalShort(key: CardKey): string {
+  const exact = total(key);
+  if (exact === NO_DATA) return NO_DATA;
+  return formatTokensShort(range(key)?.processed_total);
+}
+
+function totalTitle(key: CardKey): string | undefined {
+  const exact = total(key);
+  return exact === NO_DATA ? undefined : exact;
 }
 
 function counter(key: CardKey, counterKey: "computed_input" | "generated_output"): string {
@@ -145,7 +161,13 @@ const metaLine = computed(() => {
           </span>
         </template>
 
-        <div class="big num" :data-testid="`${card.key}-total`">{{ total(card.key) }}</div>
+        <div
+          class="big num"
+          :data-testid="`${card.key}-total`"
+          :title="totalTitle(card.key)"
+        >
+          {{ totalShort(card.key) }}
+        </div>
 
         <div class="split">
           <span v-if="split(card.key)" class="bar" aria-hidden="true">

@@ -56,8 +56,8 @@ LIVE_SHOTS = ROOT / "docs" / "receipts" / "live-panel"
 COST_SHOTS = ROOT / "docs" / "receipts" / "cost-estimate"
 HUD_SHOTS = ROOT / "docs" / "receipts" / "hud-dashboard"
 SECOND = {"model_name": "second-model", "engine": "0"}
-FOCUS_EXPECTED = ["range-24h", "range-7d", "range-30d", "range-custom",
-                  "chart-disclosure", "requests-disclosure"]
+FOCUS_EXPECTED = ["range-24h", "range-7d", "range-30d", "custom-from", "custom-to",
+                  "custom-apply", "chart-disclosure", "requests-disclosure"]
 DESKTOP = (1440, 900)
 MOBILE = (390, 844)
 PORTRAIT = (1080, 1920)
@@ -69,7 +69,16 @@ MOCKUP_ONLY = ("SIMULATED", "Signal history", "design mockup")
 # can delay a response for URLs containing ``delayMatch`` (selection race).
 PROBE = """
 (() => {
-  const p = {timers: [], cleared: [], fetches: [], delayMs: 0, delayMatch: ""};
+  // The delay is armed through sessionStorage: the probe is re-installed on every
+  // document, so a value written into the live object cannot survive the navigation
+  // whose request it is meant to slow. Opaque-origin documents (about:blank) have no
+  // sessionStorage at all, so the read is guarded.
+  let dMs = 0, dMatch = "";
+  try {
+    dMs = Number(sessionStorage.getItem("__delayMs") || 0);
+    dMatch = sessionStorage.getItem("__delayMatch") || "";
+  } catch (e) { dMs = 0; dMatch = ""; }
+  const p = {timers: [], cleared: [], fetches: [], delayMs: dMs, delayMatch: dMatch};
   const si = window.setInterval, ci = window.clearInterval, f = window.fetch;
   window.setInterval = (fn, ms, ...a) => { const id = si(fn, ms, ...a); p.timers.push({id, ms}); return id; };
   window.clearInterval = (id) => { p.cleared.push(id); return ci(id); };
@@ -119,6 +128,21 @@ def probe(page, expression: str):
     return page.evaluate(f"(() => {{ const p = window.__probe; return {expression}; }})()")
 
 
+def arm_delay(page, ms: int, match: str = "/api/v1/summary") -> None:
+    """Arm a response delay for the NEXT document, then disarm with ``arm_delay(page, 0)``.
+
+    A delay written into the live probe is wiped when a navigation installs the fresh
+    document's probe, so it is carried in sessionStorage, which the probe reads at init.
+    """
+    page.evaluate(
+        "(() => { try { sessionStorage.setItem('__delayMs', "
+        + json.dumps(str(ms))
+        + "); sessionStorage.setItem('__delayMatch', "
+        + json.dumps(match)
+        + "); } catch (e) { /* opaque origin */ } })()"
+    )
+
+
 def fetches(page, needle: str = "") -> list[str]:
     return page.evaluate(
         f"(() => window.__probe.fetches.filter((u) => u.includes({json.dumps(needle)})))()"
@@ -160,6 +184,61 @@ def open_details(page, testid: str) -> None:
     page.evaluate(
         f"(() => {{ const el = document.querySelector({js(testid)});"
         " if (el && !el.open) el.open = true; })()"
+    )
+
+
+def header_box_heights(page) -> dict:
+    """Item 10: the update box and the health badge are boxes of one height."""
+    return page.evaluate(
+        "(() => { const box = document.querySelector('[data-testid=\"last-update\"]')"
+        ".closest('.hbox').getBoundingClientRect().height;"
+        " const badge = document.querySelector('[data-testid=\"status-badge\"]')"
+        ".getBoundingClientRect().height;"
+        " return {box: Math.round(box * 10) / 10, badge: Math.round(badge * 10) / 10,"
+        " equal: Math.abs(box - badge) < 1}; })()"
+    )
+
+
+def short_tokens(value) -> str:
+    """Mirror the bundle's `formatTokensShort`: 6,941,333 -> `6.94 M`, 960 -> `960`."""
+    if value is None:
+        return "no data"
+    tokens = int(value)
+    for unit, suffix in ((10**12, "T"), (10**9, "B"), (10**6, "M"), (10**3, "K")):
+        if tokens < unit:
+            continue
+        hundredths = (tokens * 100 + unit // 2) // unit
+        fraction = f"{hundredths % 100:02d}".rstrip("0")
+        return f"{hundredths // 100:,}{('.' + fraction) if fraction else ''} {suffix}"
+    return f"{tokens:,}"
+
+
+def ring_radii(page, scope: str) -> list[int]:
+    """The concentric ring radii in DOM (window) order, read from each track arc."""
+    return page.evaluate(
+        f"(() => [...document.querySelectorAll({json.dumps(scope + ' .rings-svg .track')})]"
+        ".map((p) => Number(/A([\\d.]+)/.exec(p.getAttribute('d'))[1])))()"
+    )
+
+
+def ring_row_insets(page) -> dict:
+    """Item 11: the ring art's left inset and the value column's right inset.
+
+    The outer ring (r 46 plus its 6.5 glow) starts (66 - 52.5) of 132 viewBox units
+    inside the svg box, so the art is inset from the well border even when the svg
+    box is flush with the padding. A value column that sits on the padding edge is
+    visually tighter than the art is.
+    """
+    return page.evaluate(
+        "(() => { const rings = document.querySelector('[data-testid=\"live-panel\"]"
+        " .live-left .rings'); const well = rings.closest('.well');"
+        " const svg = rings.querySelector('svg');"
+        " const w = well.getBoundingClientRect(), s = svg.getBoundingClientRect();"
+        " const left = (s.left - w.left) + s.width * ((66 - 52.5) / 132);"
+        " const right = w.right - Math.max(...[...rings.querySelectorAll('.rrow b')]"
+        ".map((b) => b.getBoundingClientRect().right));"
+        " return {left: Math.round(left * 10) / 10, right: Math.round(right * 10) / 10,"
+        " balanced: Math.abs(left - right) <= 2}; })()"
     )
 
 
@@ -322,7 +401,17 @@ def dom_basics(page, port: int) -> None:
     ok = wait_for(lambda: text_of(page, "lifetime-total") == "960", 40)
     receipt("dom_first_paint_seconds", round(time.monotonic() - started, 1))
     check("dom_renders_lifetime_total", ok, True)
-    check("product name", text_of(page, "product-name"), "Jarvis Token Dashboard")
+    check("product name", text_of(page, "product-name"), "Nano LLM Usage - JARVIS")
+    # AC5: the product line and the loaded model name share one line in the title.
+    title = page.evaluate(
+        "(() => { const h1 = document.querySelector('.brand .t');"
+        " const mark = h1.querySelector('.mark'), model = h1.querySelector('.series-name');"
+        " const a = mark.getBoundingClientRect(), b = model.getBoundingClientRect();"
+        " return {text: h1.innerText.replace(/\\s+/g, ' ').trim(),"
+        " oneLine: b.top < a.bottom - 1 && a.top < b.bottom - 1 && b.left > a.right}; })()"
+    )
+    receipt("header_title", title["text"])
+    check("title_and_model_on_one_line_ac5", title["oneLine"], True)
     check("dom_lifetime_total", text_of(page, "lifetime-total"), "960")
     check("dom_lifetime_input", text_of(page, "lifetime-input"), "900")
     check("dom_lifetime_output", text_of(page, "lifetime-output"), "60")
@@ -350,27 +439,29 @@ def dom_basics(page, port: int) -> None:
     check("panel_order", page.evaluate(
         "(() => [...document.querySelectorAll('.hud > .pnl')]"
         ".map((el) => el.getAttribute('data-testid')))()"),
-        ["app-header", "status-strip", "live-panel", "trend-panel", "summary-panel",
+        ["app-header", "live-panel", "trend-panel", "summary-panel",
          "rates-panel", "diagnostics-panel"])
-    # D5: the healthy strip says so and quotes the collector's own settings, which the
-    # harness reads from the API rather than from the page.
-    status = api(port, "/status")[1]
-    receipt("strip_nominal_code", page.evaluate(
-        "document.querySelector('[data-testid=\"status-strip\"] .strip-msg .code')?.textContent") or "")
-    check("strip_nominal_line_ac6", page.evaluate(
-        "document.querySelector('[data-testid=\"status-strip\"] .strip-msg .txt')?.textContent?.trim()"),
-        f"Collection healthy \u00b7 live 1 Hz \u00b7 collector polls every "
-        f"{status['poll_interval_seconds']}s \u00b7 raw retention {status['raw_retention_days']} days")
-    # The polite status line App computes, in a polite region the strip owns.
+    # AC2 (change list): a healthy collection draws no status bar at all. The strip is
+    # a problem surface (API failure, offline, stale, starting, loading, empty), so a
+    # nominal line is the one state it must not render.
+    check("nominal_bar_removed", count_of(page, '[data-testid="status-strip"]'), 0)
+    check("nominal_copy_removed", "Collection healthy \u00b7 live 1 Hz" in body, False)
+    # AC6 survives the bar: one polite region, in the header, naming the last update.
+    check("polite_region_count", count_of(page, '[aria-live="polite"]'), 1)
     check("polite_line_is_status_region", page.evaluate(
-        "(() => { const el = document.querySelector('[data-testid=\"status-strip\"] .strip-live');"
+        "(() => { const el = document.querySelector('[data-testid=\"status-live\"]');"
         " return [el.getAttribute('role'), el.getAttribute('aria-live')].join(' '); })()"),
         "status polite")
-    polite = page.evaluate(
-        "document.querySelector('[data-testid=\"status-strip\"] .strip-live')?.textContent?.trim()") or ""
+    polite = text_of(page, "status-live") or ""
     receipt("polite_line", polite)
     check("polite_line_names_the_update_ac6", bool(re.fullmatch(
         r"Healthy\. Last successful update \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC\.", polite)), True)
+    check("polite_line_is_not_visible_ink", page.evaluate(
+        "(() => { const r = document.querySelector('[data-testid=\"status-live\"]')"
+        ".getBoundingClientRect(); return r.width <= 1 && r.height <= 1; })()"), True)
+    # AC10: the update box and the health badge are boxes of one height.
+    receipt("header_box_heights", header_box_heights(page))
+    check("header_boxes_same_height_ac10", header_box_heights(page)["equal"], True)
     shot(page, "desktop-1440-normal.png")
 
 
@@ -397,7 +488,9 @@ def layout(page) -> None:
         " client: e.clientHeight, content: e.scrollHeight})))"))
     check("portrait_no_vertical_scroll", metrics["h"] <= 1920, True)
     check("portrait_no_horizontal_scroll", metrics["w"] <= 1080, True)
-    check("portrait_seven_panels", count_of(page, ".hud > .pnl"), 7)
+    check("portrait_panels_without_nominal_bar", count_of(page, ".hud > .pnl"), 6)
+    receipt("portrait_header_box_heights", header_box_heights(page))
+    check("portrait_header_boxes_same_height_ac10", header_box_heights(page)["equal"], True)
     hud_shot(page, "hud-1080x1920-normal.png")
 
     for width, height in (DESKTOP, (1000, 900), MOBILE):
@@ -434,7 +527,42 @@ def ranges(page) -> None:
     check("range_30d_bucket", parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)["bucket"][0],
           "day")
 
-    open_details(page, "range-custom")
+    # AC7: the custom range is always visible and sits on the right of the preset row.
+    check("custom_range_always_visible", visible(page, "range-custom"), True)
+    check("custom_fields_visible_without_opening",
+          all(visible(page, field) for field in ("custom-from", "custom-to", "custom-apply")), True)
+    receipt("custom_range_placement", json.dumps(page.evaluate(
+        "(() => { const r = (el) => { const b = el.getBoundingClientRect();"
+        " return {left: Math.round(b.left), right: Math.round(b.right),"
+        " width: Math.round(b.width)}; };"
+        " return {ctl: r(document.querySelector('.trend-ctl')),"
+        " grp: r(document.querySelector('.trend-ctl .grp')),"
+        " box: r(document.querySelector('[data-testid=\"range-custom\"]')),"
+        " utc: r(document.querySelector('.trend-ctl .utc'))}; })()")))
+    placement = page.evaluate(
+        "(() => { const r = (el) => { const b = el.getBoundingClientRect();"
+        " return {left: b.left, right: b.right, width: b.width}; };"
+        " return {ctl: r(document.querySelector('.trend-ctl')),"
+        " grp: r(document.querySelector('.trend-ctl .grp')),"
+        " box: r(document.querySelector('[data-testid=\"range-custom\"]')),"
+        " utc: r(document.querySelector('.trend-ctl .utc'))}; })()")
+    check("custom_range_right_of_presets_ac7", placement["box"]["left"] >= placement["grp"]["right"], True)
+    # The custom fields take the right-hand end of the row: the UTC tag is the only thing
+    # past them, and they clear the row's midpoint. A left-packed row fails this.
+    gap = float((page.evaluate(
+        "getComputedStyle(document.querySelector('.trend-ctl')).columnGap") or "0").rstrip("px"))
+    receipt("trend_control_gap", gap)
+    check("custom_range_ends_the_row_ac7",
+          placement["utc"]["right"] >= placement["ctl"]["right"] - 1
+          and placement["box"]["right"] >= placement["utc"]["left"] - gap - 1
+          and placement["box"]["right"] <= placement["utc"]["left"] + gap + 1
+          and placement["ctl"]["right"] - placement["box"]["right"] <= placement["ctl"]["width"] * 0.25
+          and placement["box"]["right"] - placement["ctl"]["left"] >= placement["ctl"]["width"] * 0.5,
+          True)
+    check("custom_range_shares_the_preset_row_ac7", page.evaluate(
+        "(() => { const grp = document.querySelector('.trend-ctl .grp').getBoundingClientRect();"
+        " const box = document.querySelector('[data-testid=\"range-custom\"]').getBoundingClientRect();"
+        " return box.top < grp.bottom && grp.top < box.bottom; })()"), True)
     # The HUD styles micro-labels in caps, so the check reads the rendered text as-is.
     check("custom_end_label", "utc end (inclusive)" in (page.evaluate("document.body.innerText") or "").lower(), True)
     check("custom_end_label_is_the_end_input", page.evaluate(
@@ -623,8 +751,49 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     server.state.start_live_advancer(labels=L)
     expect(page, lambda: text_of(page, "live-requests") == "3 / 1", "live AC1 requests")
     check("live_state_ac1", text_of(page, "live-state"), "Live")
-    check("live_prefill_ac1", text_of(page, "live-prefill"), "1,240 tok/s")
-    check("live_decode_ac1", text_of(page, "live-decode"), "180 tok/s · 60/req")
+    check("live_prefill_ac1", text_of(page, "live-prefill"), "1,240")
+    check("live_decode_ac1", text_of(page, "live-decode"), "180")
+    # AC4 (change list): the unit lives in the label above the number, so the number is
+    # bare; the per-request reading is the gauge's only supporting caption.
+    receipt("live_gauge_labels", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .gauge .g-body .lab')]"
+        ".map((el) => el.textContent.trim()))()"))
+    check("live_gauge_labels_name_the_unit_ac4", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .gauge .g-body .lab')]"
+        ".map((el) => el.textContent.trim()))()"),
+        ["Prefill \u00b7 TPS", "Decode \u00b7 TPS"])
+    check("live_instantaneous_captions_removed_ac4", page.evaluate(
+        "document.querySelectorAll('[data-testid=\"live-panel\"] .gauge .g-unit').length"), 1)
+    check("live_decode_per_request_ac4", text_of(page, "live-decode-per"),
+          "60/req \u00b7 per running request")
+    # AC4: the live line chart follows the MTP sparkline's style — a short, fluid box,
+    # not the dial's 114x100 square, which is what warped the line.
+    receipt("live_gauge_spark_box", page.evaluate(
+        "(() => { const svg = document.querySelector('[data-testid=\"live-panel\"]"
+        " .gauge .spark svg'); const r = svg.getBoundingClientRect();"
+        " return {w: Math.round(r.width), h: Math.round(r.height),"
+        " box: svg.getAttribute('viewBox')}; })()"))
+    check("live_gauge_spark_matches_mtp_ac4", page.evaluate(
+        "(() => { const gauge = document.querySelector('[data-testid=\"live-panel\"]"
+        " .gauge .spark svg');"
+        " const mtp = document.querySelector('[data-testid=\"live-panel\"] .live-left .spark svg');"
+        " const g = gauge.getBoundingClientRect(), m = mtp.getBoundingClientRect();"
+        " return mtp.getAttribute('viewBox') === gauge.getAttribute('viewBox')"
+        " && Math.abs(g.height - 30) <= 1 && Math.abs(g.height - m.height) <= 1"
+        " && g.width > 120 && g.width > g.height * 3; })()"), True)
+    # AC6 (change list): the short rolling window is the outer ring, not the inner one.
+    receipt("mtp_ring_radii", ring_radii(page, '[data-testid="live-panel"] .live-left'))
+    check("mtp_rings_shortest_window_outermost_ac6", ring_radii(page, '[data-testid="live-panel"] .live-left'),
+          [46, 33, 20])
+    check("moe_rings_shortest_window_outermost_ac6", ring_radii(page, '[data-testid="live-panel"] .live-right'),
+          [46, 33, 20])
+    # AC11: the value column is as far from the panel border as the ring art is.
+    receipt("mtp_row_insets", ring_row_insets(page))
+    check("mtp_rows_equally_inset_ac11", ring_row_insets(page)["balanced"], True)
+    # AC9 (change list): the live panel carries no glossary widget; the slots are labeled.
+    check("live_glossary_widget_removed_ac9", count_of(page, '.live-hint'), 0)
+    check("live_glossary_copy_removed_ac9",
+          "MoE GPU hit is expert residency" in (text_of(page, "live-panel") or ""), False)
     # Lifetime needs a second /metrics sample, so it lands about a second after the
     # instantaneous stats tiles - a dash here is the engine refusing a one-point ratio.
     expect(page, lambda: (live_slots(page, "mtp") or "").endswith("70%"), "live AC1 MTP lifetime", 20)
@@ -662,10 +831,10 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     # Zero running requests: the per-request slot is undefined, so it is a dash -
     # and the instantaneous throughput beside it stays real (plan AC1).
     server.state.set_live(running=0, waiting=1, prefill_tps=1240.4, decode_tps=180.2)
-    expect(page, lambda: (text_of(page, "live-decode") or "").endswith("· -"),
+    expect(page, lambda: (text_of(page, "live-decode-per") or "").startswith("-"),
            "live per-request placeholder")
     check("live_requests_zero_running", text_of(page, "live-requests"), "0 / 1")
-    check("live_decode_value_kept", (text_of(page, "live-decode") or "").startswith("180 tok/s"), True)
+    check("live_decode_value_kept", text_of(page, "live-decode"), "180")
     server.state.set_live(running=3, waiting=1, prefill_tps=1240.4, decode_tps=180.2)
 
     expect(page, lambda: (live_slots(page, "mtp") or "").startswith("70% / - / - /"),
@@ -705,7 +874,7 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     expect(page, lambda: live_slots(page, "moe") == "- / - / -", "live MoE windows reset", 20)
     check("live_mtp_keeps_windows_across_stats_reset",
           (live_slots(page, "mtp") or "").startswith("70% / 70%"), True)
-    check("live_instant_tile_survives_stats_reset", text_of(page, "live-prefill"), "1,240 tok/s")
+    check("live_instant_tile_survives_stats_reset", text_of(page, "live-prefill"), "1,240")
     live_shot(page, "live-1440-run-reset.png")
     ticker = UptimeTicker(server, base=200.0)  # resumes the chainable clock above the drop
     expect(page, lambda: (live_slots(page, "moe") or "").startswith("93%"),
@@ -717,7 +886,9 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     expect(page, lambda: text_of(page, "live-state") == "Stale", "live outage stale chip", 20)
     check("live_outage_requests", text_of(page, "live-requests"), "- / -")
     check("live_outage_prefill", text_of(page, "live-prefill"), "-")
-    check("live_outage_decode", text_of(page, "live-decode"), "- · -")
+    check("live_outage_decode", text_of(page, "live-decode"), "-")
+    check("live_outage_decode_per_request", text_of(page, "live-decode-per"),
+          "- \u00b7 per running request")
     check("live_outage_mtp", live_slots(page, "mtp"), "- / - / - / -")
     check("live_outage_moe", live_slots(page, "moe"), "- / - / -")
     # AC7: with nothing received, the dials draw tracks only - no needle at zero,
@@ -828,7 +999,7 @@ def a11y(page, port: int) -> None:
 
     page.evaluate("document.activeElement && document.activeElement.blur()")
     seen = []
-    for _ in range(len(FOCUS_EXPECTED)):
+    for _ in range(len(FOCUS_EXPECTED) + 12):
         page.tab(1)
         seen.append(page.evaluate(
             "(() => { const el = document.activeElement;"
@@ -836,9 +1007,31 @@ def a11y(page, port: int) -> None:
             " return {id: box ? box.getAttribute('data-testid') : null,"
             " outline: el ? getComputedStyle(el).outlineWidth : null}; })()"
         ))
-    receipt("keyboard_focus_sequence", [item["id"] for item in seen])
-    check("keyboard_focus_order", [item["id"] for item in seen], FOCUS_EXPECTED)
-    check("keyboard_focus_visible", [item["outline"] for item in seen], ["2px"] * len(seen))
+    # A date input is several Chromium stops (the fields, then its calendar glyph), so
+    # consecutive stops inside one control are one stop of the order contract.
+    order = []
+    for item in seen:
+        if not order or order[-1] != item["id"]:
+            order.append(item["id"])
+    receipt("keyboard_focus_sequence", order)
+    check("keyboard_focus_order", order[:len(FOCUS_EXPECTED)], FOCUS_EXPECTED)
+    # Every panel control in the audit draws the design's 2px focus ring; Chromium's own
+    # internals (the date glyph and the parts past this audit) keep the UA ring, which is
+    # visible — an unfocused-looking 0px ring anywhere in the walk is the failure.
+    rings: dict[str, set[str]] = {}
+    for item in seen:
+        rings.setdefault(str(item["id"]), set()).add(str(item["outline"]))
+    # Chromium paints its own ring on the date field's internal segment parts, which is
+    # 3px and visible; every control the HUD styles draws the design's 2px ring.
+    ua_ring = {"custom-from", "custom-to"}
+    receipt("keyboard_focus_rings", {key: sorted(value) for key, value in rings.items()})
+    check("keyboard_focus_visible", {
+        key: sorted(value) for key, value in rings.items()
+        if key in FOCUS_EXPECTED
+        and not (value == {"2px"} or (key in ua_ring and value <= {"2px", "3px"}))
+    }, {})
+    check("keyboard_focus_never_invisible",
+          [key for key, value in rings.items() if value == {"0px"}], [])
 
 
 def selection_race(page, server: FixtureServer, port: int) -> None:
@@ -952,16 +1145,17 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     # One priced interval: +1,000,000 request input, +100,000 request output,
     # +600,000 cached input.
     publish(server, 2000, 170, 1_000_100, 100_100, 1_200_000)
-    # AC3: before the summary and history land, the well must read "no data" — no
-    # zero, no money. The page probe delays the summary response (the collector
-    # fetches summary before history) so the live panel is up with its data absent.
-    probe(page, "p.delayMs = 3500; p.delayMatch = '/api/v1/summary';")
+    # AC3: before the summary and history land, the well must read "no data" - no
+    # zero, no money. The delay is armed in sessionStorage so it survives the navigation
+    # that reinstalls the probe; a value written into the live probe would be wiped and
+    # the collector would answer before the well ever painted its placeholder.
+    arm_delay(page, 3500)
     page.navigate(f"http://127.0.0.1:{serve.port}/")
     expect(page, lambda: text_of(page, "cost-today") == "no data", "cost well before its data", 20)
     check("cost_well_no_data_before_summary_ac3", text_of(page, "cost-today"), "no data")
     check("cost_well_no_data_before_history_ac3", text_of(page, "cost-period"), "no data")
     check("cost_well_no_money_before_data_ac3", "$" in (text_of(page, "cost-panel") or ""), False)
-    probe(page, "p.delayMs = 0; p.delayMatch = '';")
+    arm_delay(page, 0)
     # Earlier phases leave the page on the second series, so point the page at the
     # priced one before reading any money.
     priced = select_series(page, serve.port, L)
@@ -1019,6 +1213,15 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
         r"partial \u00b7 covers [\d.]+ of [\d.]+ (days|h)", coverage)), True)
     receipt("cost_amount_api", cost.get("amount"))
     check("cost_no_skew_flag", visible(page, "lifetime-cost-flag"), False)
+    # AC8 (change list): the card's large number is the short form of the same exact
+    # total, and the element's title still carries the grouped figure.
+    life = summary_of(serve.port, priced).get("ranges", {}).get("lifetime", {})
+    receipt("summary_big_number", f"{text_of(page, 'lifetime-total')} | {life.get('processed_total')}")
+    check("summary_big_number_is_short_form_ac8", text_of(page, "lifetime-total"),
+          short_tokens(life.get("processed_total")))
+    check("summary_big_number_keeps_the_exact_value_ac8", page.evaluate(
+        "document.querySelector('[data-testid=\"lifetime-total\"]').getAttribute('title')"),
+        dom_number(life.get("processed_total")))
     # The trend panel prices the selected range, so the 24 h line carries the same
     # money and share as the cards.
     page.click('[data-testid="range-24h"]')
@@ -1041,6 +1244,16 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     check("cost_well_span_is_hourly_ac2", bool(re.fullmatch(
         r"24 h \u00b7 \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC \u2192 \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC",
         text_of(page, "cost-period-span") or "")), True)
+    # AC3 (change list): the well keeps its own numbers and the period they cover, and
+    # drops the caption and the coverage caption. Quality flags are not captions.
+    check("cost_well_caption_removed_ac3", count_of(page, '[data-testid="cost-panel"] .cost-tag'), 0)
+    check("cost_well_no_equivalent_caption_ac3",
+          "API-equivalent" in (text_of(page, "cost-panel") or ""), False)
+    check("cost_well_coverage_lines_removed_ac3", page.evaluate(
+        "(() => { const well = document.querySelector('[data-testid=\"cost-panel\"]');"
+        " return [...well.querySelectorAll('.cost-line')]"
+        ".filter((l) => !l.classList.contains('is-flag'))"
+        ".every((l) => l.getAttribute('data-testid') === 'cost-period-span'); })()"), True)
     hud_shot(page, "hud-1440-cost-well.png")
     # AC2: a preset change moves the well's period to the new history response.
     page.click('[data-testid="range-7d"]')
@@ -1081,21 +1294,16 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     expect(page, lambda: (text_of(page, "series-name") or "").startswith(SECOND["model_name"]),
            "switch to the second series lands", 60)
 
-    # AC3 on a fresh load: the page probe runs as a document-init script, so a second
-    # script delays the summary on the next navigation and a third undoes it. The live
-    # panel is painted while its summary and history are still in flight.
-    page.add_script_on_new_document(
-        "window.__probe && (window.__probe.delayMs = 1500, "
-        "window.__probe.delayMatch = '/api/v1/summary');"
-    )
+    # AC3 on a fresh load: the delay is armed in sessionStorage and read by the probe as
+    # a document-init script, so it applies to the next navigation. The live panel is
+    # painted while its summary and history are still in flight.
+    arm_delay(page, 1500)
     page.navigate(f"http://127.0.0.1:{serve.port}/")
     expect(page, lambda: text_of(page, "cost-today") == "no data", "cost well before its data", 20)
     check("cost_well_no_data_before_summary_ac3", text_of(page, "cost-today"), "no data")
     check("cost_well_no_data_before_history_ac3", text_of(page, "cost-period"), "no data")
     check("cost_well_no_money_before_data_ac3", "$" in (text_of(page, "cost-panel") or ""), False)
-    page.add_script_on_new_document(
-        "window.__probe && (window.__probe.delayMs = 0, window.__probe.delayMatch = '');"
-    )
+    arm_delay(page, 0)
 
     # AC8: a series whose engine publishes no cached counter prices nothing, and
     # the diagnostics gap list names the cached-input scope as its own line.

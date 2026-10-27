@@ -4,7 +4,6 @@ import type { ApiEquivalent } from "../api/client";
 import { dashboard } from "../lib/dashboard";
 import {
   formatAmount,
-  formatCoverage,
   formatCostFlags,
   formatHistorySpan,
 } from "../lib/format";
@@ -41,17 +40,11 @@ const period = computed<ApiEquivalent | null>(() =>
   baseline.value ? null : state.history?.range.api_equivalent ?? null,
 );
 
-function lines(cost: ApiEquivalent | null): string[] {
-  return cost ? [formatCoverage(cost)].filter((line) => line !== "") : [];
-}
-
 /** The cache-skew note is a warning, so it is styled as a flag line, not a caption. */
 function flagLines(cost: ApiEquivalent | null): string[] {
   return cost ? formatCostFlags(cost) : [];
 }
 
-const todayLines = computed(() => lines(today.value));
-const periodLines = computed(() => lines(period.value));
 const todayFlags = computed(() => flagLines(today.value));
 const periodFlags = computed(() => flagLines(period.value));
 const periodSpan = computed(() => formatHistorySpan(state.history));
@@ -64,13 +57,11 @@ const periodSpan = computed(() => formatHistorySpan(state.history));
 
     <template v-else>
       <span class="lab tone-cost">API cost</span>
-      <span class="cost-tag">API-equivalent · UTC</span>
 
       <div class="cost-rows">
         <div class="cost-row">
           <span class="lab">Today · UTC</span>
           <div class="cost-amount num" data-testid="cost-today">{{ formatAmount(today?.amount) }}</div>
-          <div v-for="line in todayLines" :key="line" class="cost-line">{{ line }}</div>
           <div v-for="line in todayFlags" :key="line" class="cost-line is-flag">{{ line }}</div>
         </div>
 
@@ -80,7 +71,6 @@ const periodSpan = computed(() => formatHistorySpan(state.history));
           <span class="lab">Selected period</span>
           <div class="cost-amount num" data-testid="cost-period">{{ formatAmount(period?.amount) }}</div>
           <div class="cost-line" data-testid="cost-period-span">{{ periodSpan }}</div>
-          <div v-for="line in periodLines" :key="line" class="cost-line">{{ line }}</div>
           <div v-for="line in periodFlags" :key="line" class="cost-line is-flag">{{ line }}</div>
         </div>
 

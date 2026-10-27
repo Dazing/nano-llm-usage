@@ -5,6 +5,10 @@ import { collectionLabel, formatUtc } from "../lib/format";
 
 const state = dashboard.state;
 
+// The polite status sentence moved here with the nominal strip (item 2): the header is
+// the one live region, so a screen reader still hears the collection state change.
+defineProps<{ liveLine: string }>();
+
 const collectionStatus = computed(
   () => state.summary?.collection_status ?? state.seriesCollectionStatus ?? "starting",
 );
@@ -36,10 +40,10 @@ function onPick(event: Event): void {
     <div class="in">
       <div class="brand">
         <h1 class="t">
-          <span class="visually-hidden" data-testid="product-name">Jarvis Token Dashboard</span>
-          <span class="mark" aria-hidden="true">JARVIS<i>·</i>TOKEN<i>//</i>HUD</span>
+          <span class="visually-hidden" data-testid="product-name">Nano LLM Usage - JARVIS</span>
+          <span class="mark" aria-hidden="true">Nano LLM Usage<i> - </i>JARVIS</span>
+          <span class="s series-name" data-testid="series-name">{{ seriesName }}</span>
         </h1>
-        <p class="s series-name" data-testid="series-name">{{ seriesName }}</p>
       </div>
       <div v-if="state.series.length > 1" class="sel">
         <label class="lab" for="series-picker">Series</label>
@@ -68,6 +72,13 @@ function onPick(event: Event): void {
         <span class="badge" :class="badgeTone" data-testid="status-badge">
           <span class="dot" aria-hidden="true"></span>{{ badgeText }}
         </span>
+        <span
+          class="visually-hidden status-live"
+          role="status"
+          aria-live="polite"
+          data-testid="status-live"
+          >{{ liveLine }}</span
+        >
       </div>
     </div>
   </section>

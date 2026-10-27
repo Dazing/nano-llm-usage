@@ -39,13 +39,8 @@ const liveLine = computed(
 
 <template>
   <div class="hud">
-    <AppHeader />
-    <StatusStrip
-      :first-load="state.firstLoad"
-      :empty="isEmpty"
-      :status="collectionStatus"
-      :live-line="liveLine"
-    />
+    <AppHeader :live-line="liveLine" />
+    <StatusStrip :first-load="state.firstLoad" :empty="isEmpty" :status="collectionStatus" />
     <!-- The live panel renders its five placeholders before any 15 s data exists. -->
     <LivePanel />
     <SkeletonBlock v-if="state.firstLoad" />

@@ -3,13 +3,13 @@ import { computed } from "vue";
 import { dashboard } from "../lib/dashboard";
 import { formatUtc, rangeErrorText } from "../lib/format";
 
-// One strip for every collection message (plan D5): it replaces the old separate
-// offline and API-error banners, and carries the visible polite status line.
+// One strip for every collection message that needs the operator's attention (plan D5):
+// it replaces the old separate offline and API-error banners. A healthy collection runs
+// no strip at all — the badge and the header's polite region carry that state.
 const props = defineProps<{
   firstLoad: boolean;
   empty: boolean;
   status: string;
-  liveLine: string;
 }>();
 
 const state = dashboard.state;
@@ -30,7 +30,7 @@ interface StripCase {
   notice?: string;
 }
 
-const message = computed<StripCase>(() => {
+const message = computed<StripCase | null>(() => {
   if (state.apiError) {
     return {
       code: `API ${state.apiError.code}`,
@@ -56,20 +56,18 @@ const message = computed<StripCase>(() => {
   if (props.empty) {
     return { code: "SYS", tone: "is-idle", text: EMPTY_COPY };
   }
-  const poll = state.status?.poll_interval_seconds;
-  const retention = state.status?.raw_retention_days;
-  return {
-    code: "NOMINAL",
-    tone: "is-idle",
-    text:
-      `Collection healthy · live 1 Hz · collector polls every ${poll ?? "no data"}s` +
-      ` · raw retention ${retention ?? "no data"} days`,
-  };
+  // Healthy: no bar. The nominal read-out lived here; it is the header badge's job now.
+  return null;
 });
 </script>
 
 <template>
-  <section class="pnl pnl-strip" data-testid="status-strip" aria-label="Collection status">
+  <section
+    v-if="message"
+    class="pnl pnl-strip"
+    data-testid="status-strip"
+    aria-label="Collection status"
+  >
     <div class="in">
       <div class="strip-msg" :class="message.tone" :data-testid="message.testid" :role="message.role">
         <span class="code">{{ message.code }}</span>
@@ -78,7 +76,6 @@ const message = computed<StripCase>(() => {
           message.notice
         }}</span>
       </div>
-      <span class="strip-live" role="status" aria-live="polite">{{ liveLine }}</span>
     </div>
   </section>
 </template>

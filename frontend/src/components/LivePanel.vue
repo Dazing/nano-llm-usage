@@ -5,7 +5,7 @@ import { filledCells, filledRequests, MOE_BANDS, MTP_BANDS, ratioTone } from "..
 import {
   formatPerRequest,
   formatRatio,
-  formatTps,
+  formatTpsNumber,
   formatUtc,
   LIVE_PLACEHOLDER,
 } from "../lib/format";
@@ -48,20 +48,15 @@ const prefillValue = computed(() => snapshot.value?.prefill_tokens_per_second ??
 const decodeValue = computed(() => snapshot.value?.decode_tokens_per_second ?? null);
 
 /**
- * `1,240 tok/s` split so the unit renders smaller: the two parts concatenated are
- * exactly the text `formatTps` produces, placeholders included.
+ * The number alone: the unit is named in the label above it (`PREFILL · TPS`), so the
+ * value stays a bare count and the row reads like the mockup.
  */
-const prefill = computed(() => splitUnit(formatTps(prefillValue.value)));
-const decode = computed(() => {
-  const parts = splitUnit(formatTps(decodeValue.value));
-  return { ...parts, tail: ` · ${formatPerRequest(snapshot.value?.decode_tokens_per_second_per_request)}` };
-});
-
-function splitUnit(text: string): { main: string; unit: string } {
-  return text.endsWith(" tok/s")
-    ? { main: text.slice(0, -" tok/s".length), unit: " tok/s" }
-    : { main: text, unit: "" };
-}
+const prefillText = computed(() => formatTpsNumber(prefillValue.value));
+const decodeText = computed(() => formatTpsNumber(decodeValue.value));
+const decodePerRequest = computed(() =>
+  formatPerRequest(snapshot.value?.decode_tokens_per_second_per_request),
+);
+const decodePerText = computed(() => `${decodePerRequest.value} · per running request`);
 
 interface RatioRow {
   key: string;
@@ -90,16 +85,6 @@ const moeRows = computed<RatioRow[]>(() => {
 });
 
 const observedAt = computed(() => formatUtc(snapshot.value?.observed_at));
-
-const note = computed(() => {
-  if (snapshot.value === null || snapshot.value.state === "starting") {
-    return "No engine sample accepted yet; every slot shows -.";
-  }
-  if (isStale.value) {
-    return "Live state Stale — the engine has not answered within the stale window; values are frozen at the last accepted sample, unknown values show -.";
-  }
-  return "Prefill and decode are instantaneous; MTP acceptance is proposed tokens accepted per window, MoE GPU hit is expert residency on GPU.";
-});
 </script>
 
 <template>
@@ -170,20 +155,31 @@ const note = computed(() => {
         <div class="well gauge live-cell">
           <Gauge :value="prefillValue" :peak="peaks.prefill" unit="tok/s" tone="tone-prefill" />
           <div class="g-body">
-            <span class="lab">Prefill</span>
-            <div class="g-val num tone-prefill" data-testid="live-prefill" :class="{ 'is-null': prefill.main === '-' }">{{ prefill.main }}<span v-if="prefill.unit" class="g-unit">{{ prefill.unit }}</span></div>
-            <div class="g-unit">instantaneous</div>
-            <Sparkline class="tone-prefill" :values="samples.prefill" />
+            <span class="lab">Prefill · TPS</span>
+            <div
+              class="g-val num tone-prefill"
+              data-testid="live-prefill"
+              :class="{ 'is-null': prefillText === '-' }"
+            >{{ prefillText }}</div>
+            <div class="spark">
+              <Sparkline class="tone-prefill" :values="samples.prefill" :height="34" />
+            </div>
           </div>
         </div>
 
         <div class="well gauge live-cell">
           <Gauge :value="decodeValue" :peak="peaks.decode" unit="tok/s" tone="tone-decode" />
           <div class="g-body">
-            <span class="lab">Decode</span>
-            <div class="g-val num tone-decode" data-testid="live-decode" :class="{ 'is-null': decode.main === '-' }">{{ decode.main }}<span v-if="decode.unit" class="g-unit">{{ decode.unit }}</span><span class="g-unit">{{ decode.tail }}</span></div>
-            <div class="g-unit">instantaneous · per running request</div>
-            <Sparkline class="tone-decode" :values="samples.decode" />
+            <span class="lab">Decode · TPS</span>
+            <div
+              class="g-val num tone-decode"
+              data-testid="live-decode"
+              :class="{ 'is-null': decodeText === '-' }"
+            >{{ decodeText }}</div>
+            <div class="g-unit" data-testid="live-decode-per">{{ decodePerText }}</div>
+            <div class="spark">
+              <Sparkline class="tone-decode" :values="samples.decode" :height="34" />
+            </div>
           </div>
         </div>
       </div>
@@ -208,10 +204,6 @@ const note = computed(() => {
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="well live-hint">
-          <span class="note">{{ note }}</span>
         </div>
       </div>
     </div>
