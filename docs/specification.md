@@ -99,7 +99,7 @@ Required environment contract:
 | `POLL_INTERVAL_SECONDS` | `15` | Integer 5–300 |
 | `HTTP_TIMEOUT_SECONDS` | `3` | Per-request deadline; positive and less than poll interval |
 | `DATABASE_PATH` | `/data/dashboard.sqlite3` | Persistent local database |
-| `RAW_RETENTION_DAYS` | `30` | Integer 1–365; only detailed samples/events expire |
+| `RAW_RETENTION_DAYS` | `180` | Integer 1–365 (six months by default); only detailed samples/events expire |
 | `PORT` | `8080` | Internal HTTP port |
 | `LOG_LEVEL` | `INFO` | Standard bounded operational logging |
 
@@ -148,7 +148,7 @@ Logical tables (implementation may normalize fields, but must preserve these con
 - `series`: ID, source ID, canonical label JSON, display model/engine; unique `(source_id, canonical_labels)`.
 - `collector_state`: per-series epoch, last primary baseline/time, optional baselines/times, uptime-start interval, latest attempt/success/error and gap state. This data never expires.
 - `epochs`: series, start time, reason, opening balances. Retained indefinitely.
-- `samples`: unique observation ID, series, UTC timestamps, counter values, applied deltas and quality flags. Retain 30 days by default.
+- `samples`: unique observation ID, series, UTC timestamps, counter values, applied deltas and quality flags. Retain 180 days (six months) by default.
 - `hourly_totals`: unique `(series_id, utc_hour)`, sums of accepted deltas for each counter, per-counter observed-interval counts, last observation time, quality flags and gap-duration overlap. Retain indefinitely. Optional totals with zero observed intervals are null in API responses, not zero.
 - `events`: bounded error/reset/clock details for diagnostics. Raw retention applies; durable quality flags in hourly summaries and epoch records survive deletion.
 

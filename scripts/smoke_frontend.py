@@ -124,6 +124,14 @@ def count_of(page, selector: str) -> int:
     return page.evaluate(f"document.querySelectorAll({json.dumps(selector)}).length")
 
 
+def panel_meta(page, testid: str) -> str:
+    """The caption one panel prints under its title (its `.meta` line)."""
+    return page.evaluate(
+        "(() => { const el = document.querySelector('[data-testid=\"" + testid + "\"] .meta');"
+        " return el ? el.textContent.trim() : ''; })()"
+    )
+
+
 def probe(page, expression: str):
     return page.evaluate(f"(() => {{ const p = window.__probe; return {expression}; }})()")
 
@@ -402,16 +410,17 @@ def dom_basics(page, port: int) -> None:
     receipt("dom_first_paint_seconds", round(time.monotonic() - started, 1))
     check("dom_renders_lifetime_total", ok, True)
     check("product name", text_of(page, "product-name"), "Nano LLM Usage - JARVIS")
-    # AC5: the product line and the loaded model name share one line in the title.
+    # The title is the product mark alone (change list 1): the picker and the panel
+    # captions name the loaded series, the header title does not.
     title = page.evaluate(
         "(() => { const h1 = document.querySelector('.brand .t');"
-        " const mark = h1.querySelector('.mark'), model = h1.querySelector('.series-name');"
-        " const a = mark.getBoundingClientRect(), b = model.getBoundingClientRect();"
         " return {text: h1.innerText.replace(/\\s+/g, ' ').trim(),"
-        " oneLine: b.top < a.bottom - 1 && a.top < b.bottom - 1 && b.left > a.right}; })()"
+        " extra: h1.querySelectorAll('span:not(.visually-hidden):not(.mark)').length}; })()"
     )
     receipt("header_title", title["text"])
-    check("title_and_model_on_one_line_ac5", title["oneLine"], True)
+    check("title_is_the_mark_alone_ac5", title["extra"], 0)
+    check("title_carries_no_engine_ac5", "engine" in title["text"].lower(), False)
+    check("title_carries_no_model_name_ac5", L["model_name"] in title["text"], False)
     check("dom_lifetime_total", text_of(page, "lifetime-total"), "960")
     check("dom_lifetime_input", text_of(page, "lifetime-input"), "900")
     check("dom_lifetime_output", text_of(page, "lifetime-output"), "60")
@@ -423,7 +432,9 @@ def dom_basics(page, port: int) -> None:
         " return cards.length === 3 && cards.every((c) => c.textContent.includes('UTC'));"
         " })()"
     ), True)
-    receipt("dom_series_name", text_of(page, "series-name"))
+    receipt("summary_series_meta", panel_meta(page, "summary-panel"))
+    check("series_named_in_the_summary_caption",
+          L["model_name"] in panel_meta(page, "summary-panel"), True)
     receipt("dom_status_badge", text_of(page, "status-badge"))
     receipt("dom_last_update", text_of(page, "last-update"))
     # AC4/AC5: nothing from the mockup's simulation layer, and one dark palette only.
@@ -526,6 +537,10 @@ def ranges(page) -> None:
                           .endswith("T00:00:00.000Z")), "midnight-aligned-30d")
     check("range_30d_bucket", parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)["bucket"][0],
           "day")
+    # Change list 8: the trend caption counts the buckets; it no longer names the model.
+    receipt("trend_meta", panel_meta(page, "trend-panel"))
+    check("trend_meta_carries_no_model_name", L["model_name"] in panel_meta(page, "trend-panel"), False)
+    check("trend_meta_names_the_buckets", " buckets \u00b7 " in panel_meta(page, "trend-panel"), True)
 
     # AC7: the custom range is always visible and sits on the right of the preset row.
     check("custom_range_always_visible", visible(page, "range-custom"), True)
@@ -537,39 +552,51 @@ def ranges(page) -> None:
         " width: Math.round(b.width)}; };"
         " return {ctl: r(document.querySelector('.trend-ctl')),"
         " grp: r(document.querySelector('.trend-ctl .grp')),"
-        " box: r(document.querySelector('[data-testid=\"range-custom\"]')),"
-        " utc: r(document.querySelector('.trend-ctl .utc'))}; })()")))
+        " box: r(document.querySelector('[data-testid=\"range-custom\"]'))}; })()")))
     placement = page.evaluate(
         "(() => { const r = (el) => { const b = el.getBoundingClientRect();"
         " return {left: b.left, right: b.right, width: b.width}; };"
         " return {ctl: r(document.querySelector('.trend-ctl')),"
         " grp: r(document.querySelector('.trend-ctl .grp')),"
-        " box: r(document.querySelector('[data-testid=\"range-custom\"]')),"
-        " utc: r(document.querySelector('.trend-ctl .utc'))}; })()")
+        " box: r(document.querySelector('[data-testid=\"range-custom\"]'))}; })()")
     check("custom_range_right_of_presets_ac7", placement["box"]["left"] >= placement["grp"]["right"], True)
-    # The custom fields take the right-hand end of the row: the UTC tag is the only thing
-    # past them, and they clear the row's midpoint. A left-packed row fails this.
+    # The custom range is the last control in the row and owns its right half: it ends at
+    # the row's right edge. A left-packed row fails this.
     gap = float((page.evaluate(
         "getComputedStyle(document.querySelector('.trend-ctl')).columnGap") or "0").rstrip("px"))
     receipt("trend_control_gap", gap)
     check("custom_range_ends_the_row_ac7",
-          placement["utc"]["right"] >= placement["ctl"]["right"] - 1
-          and placement["box"]["right"] >= placement["utc"]["left"] - gap - 1
-          and placement["box"]["right"] <= placement["utc"]["left"] + gap + 1
-          and placement["ctl"]["right"] - placement["box"]["right"] <= placement["ctl"]["width"] * 0.25
+          placement["ctl"]["right"] - placement["box"]["right"] <= gap + 1
           and placement["box"]["right"] - placement["ctl"]["left"] >= placement["ctl"]["width"] * 0.5,
           True)
     check("custom_range_shares_the_preset_row_ac7", page.evaluate(
         "(() => { const grp = document.querySelector('.trend-ctl .grp').getBoundingClientRect();"
         " const box = document.querySelector('[data-testid=\"range-custom\"]').getBoundingClientRect();"
         " return box.top < grp.bottom && grp.top < box.bottom; })()"), True)
-    # The HUD styles micro-labels in caps, so the check reads the rendered text as-is.
-    check("custom_end_label", "utc end (inclusive)" in (page.evaluate("document.body.innerText") or "").lower(), True)
-    check("custom_end_label_is_the_end_input", page.evaluate(
-        "(() => { const to = document.querySelector('[data-testid=\"custom-to\"]');"
-        " const label = to && document.querySelector(`label[for=\"${to.id}\"]`);"
-        " return label ? label.textContent.trim().toLowerCase() : null; })()"),
-        "utc end (inclusive)")
+    # Change list 4, 5, 6 and 7: the bounds are named for assistive tech and not printed,
+    # the trailing UTC tag is gone, the title names both bounds, and Apply is as tall as
+    # the fields it sits next to.
+    body_lower = (page.evaluate("document.body.innerText") or "").lower()
+    check("custom_bound_captions_removed_ac4",
+          "utc start (inclusive)" in body_lower or "utc end (inclusive)" in body_lower, False)
+    check("custom_bound_inputs_are_named_ac4", page.evaluate(
+        "(() => ['custom-from', 'custom-to'].map((id) => document.getElementById(id).ariaLabel))()"),
+        ["UTC start (inclusive)", "UTC end (inclusive)"])
+    check("trend_utc_tag_removed_ac5", count_of(page, '.trend-ctl .utc'), 0)
+    check("custom_title_names_both_bounds_ac7", page.evaluate(
+        "(() => { const t = document.querySelector('[data-testid=\"range-custom\"] .custom-title');"
+        " return t ? t.textContent.trim() : null; })()"),
+        "Custom \u00b7 UTC \u00b7 From/To")
+    receipt("apply_vs_field_height", page.evaluate(
+        "(() => { const b = document.querySelector('[data-testid=\"custom-apply\"]');"
+        " const f = document.getElementById('custom-to');"
+        " return [Math.round(b.getBoundingClientRect().height),"
+        " Math.round(f.getBoundingClientRect().height)]; })()"))
+    check("apply_matches_the_field_height_ac6", page.evaluate(
+        "(() => { const b = document.querySelector('[data-testid=\"custom-apply\"]');"
+        " const f = document.getElementById('custom-to');"
+        " return Math.abs(b.getBoundingClientRect().height - f.getBoundingClientRect().height); })()"),
+        0)
     set_date(page, "custom-from", day(-40))
     set_date(page, "custom-to", day(0))
     before = len(fetches(page, "/api/v1/history"))
@@ -743,6 +770,62 @@ def live_phase(page, server: FixtureServer, ticker: UptimeTicker) -> UptimeTicke
     started = time.monotonic()
     check("live_panel_visible", visible(page, "live-panel"), True)
     check("live_tiles", count_of(page, '[data-testid="live-panel"] .live-cell'), 5)
+    # Change list 3: the six live wells are two rows of one height, not three heights.
+    receipt("live_well_rows", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".map((w) => { const b = w.getBoundingClientRect();"
+        " return {label: (w.querySelector('.lab') || {textContent: '?'}).textContent.trim().slice(0, 16),"
+        " top: Math.round(b.top), height: Math.round(b.height)}; }))()"))
+    check("live_wells_are_two_equal_rows_ac3", page.evaluate(
+        "(() => { const wells = [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')];"
+        " const rows = new Map();"
+        " for (const w of wells) { const b = w.getBoundingClientRect();"
+        " const key = Math.round(b.top / 10) * 10;"
+        " rows.set(key, [...(rows.get(key) || []), Math.round(b.height)]); }"
+        " const list = [...rows.values()];"
+        " return list.length === 2 && list.every((r) => r.length === 3"
+        " && Math.max(...r) - Math.min(...r) <= 2); })()"), True)
+    # The dial column is the taller one in a throughput well, and the rows are uniform, so
+    # "thinner" is the well's own vertical padding: it must sit below every other well.
+    receipt("live_well_padding", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".map((w) => { const s = getComputedStyle(w);"
+        " return {label: (w.querySelector('.lab') || {textContent: '?'}).textContent.trim().slice(0, 14),"
+        " v: parseFloat(s.paddingTop) + parseFloat(s.paddingBottom)}; }))()"))
+    check("gauge_wells_have_less_vertical_padding_ac3", page.evaluate(
+        "(() => { const pad = (el) => { const s = getComputedStyle(el);"
+        " return parseFloat(s.paddingTop) + parseFloat(s.paddingBottom); };"
+        " const gauges = [...document.querySelectorAll('[data-testid=\"live-panel\"] .well.gauge')];"
+        " const other = [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".filter((w) => !w.classList.contains('gauge'));"
+        " return gauges.length === 2 && gauges.every((w) => pad(w) < Math.min(...other.map(pad))); })()"),
+        True)
+    # The uniform row must not cost anyone their content: a well whose own content exceeds
+    # its box is the grid being shorter than the tallest well.
+    receipt("live_well_content", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".map((w) => ({label: (w.querySelector('.lab') || {textContent: '?'}).textContent.trim().slice(0, 14),"
+        " client: w.clientHeight, content: w.scrollHeight})))()"))
+    check("live_wells_clip_nothing_ac3", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"live-panel\"] .well')]"
+        ".filter((w) => w.scrollHeight > w.clientHeight + 1)"
+        ".map((w) => (w.querySelector('.lab') || {textContent: '?'}).textContent.trim()))()"), [])
+    # The MTP circle diagram sits on the row baseline: the gap under it is the sparkline's
+    # own inset, not slack the grid left behind.
+    receipt("mtp_art_bottom_gap", page.evaluate(
+        "(() => { const rings = document.querySelector('[data-testid=\"live-panel\"] .live-left .rings');"
+        " const well = rings.closest('.well');"
+        " const svg = well.querySelector('.rings svg').getBoundingClientRect();"
+        " const spark = well.querySelector('.spark');"
+        " const next = spark ? spark.getBoundingClientRect() : well.getBoundingClientRect();"
+        " return Math.round(next.top - svg.bottom); })()"))
+    check("mtp_art_sits_near_the_row_below_ac3", page.evaluate(
+        "(() => { const rings = document.querySelector('[data-testid=\"live-panel\"] .live-left .rings');"
+        " const well = rings.closest('.well');"
+        " const svg = well.querySelector('.rings svg').getBoundingClientRect();"
+        " const spark = well.querySelector('.spark');"
+        " const next = spark ? spark.getBoundingClientRect() : well.getBoundingClientRect();"
+        " return next.top - svg.bottom <= 12; })()"), True)
     check("no_signal_history", count_of(page, '[data-testid="signal-history"]'), 0)
     # No draft counters, no experts block and no running requests yet: five placeholders.
     check("live_mtp_placeholder_before_counters", live_slots(page, "mtp"), "- / - / - / -")
@@ -1069,11 +1152,21 @@ def selection_race(page, server: FixtureServer, port: int) -> None:
     )
     time.sleep(3.5)
     page.evaluate("window.__probe.delayMs = 0; window.__probe.delayMatch = '';")
-    check("race_series_name", "second-model" in (text_of(page, "series-name") or ""), True)
+    check("race_series_name", "second-model" in panel_meta(page, "summary-panel"), True)
     check("race_no_stale_overwrite", "first-model" not in (text_of(page, "card-lifetime") or ""), True)
     life = summary_of(port, second).get("ranges", {}).get("lifetime", {})
+    # A series whose counters have only ever been baselined renders as no data by contract
+    # (SummaryCards), even when the range sums are present, so the expectation mirrors that
+    # rule. A stale summary from the previous series would show its thousands of tokens.
+    counters = life.get("counters", {})
+    is_baseline = not life or all(
+        counters.get(side, {}).get("tokens") is None
+        and counters.get(side, {}).get("observed_intervals") == 0
+        for side in ("computed_input", "generated_output")
+    )
     check("race_lifetime_matches_selection",
-          text_of(page, "lifetime-total"), dom_number(life.get("processed_total")))
+          text_of(page, "lifetime-total"),
+          "no data" if is_baseline else dom_number(life.get("processed_total")))
 
 
 def select_series(page, port: int, labels: dict) -> str:
@@ -1240,10 +1333,13 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     receipt("cost_well_today", text_of(page, "cost-today"))
     period = text_of(page, "cost-period") or ""
     check("cost_well_period_matches_trend_ac2", period in trend, True)
-    receipt("cost_well_period", f"{period} | {text_of(page, 'cost-period-span')}")
-    check("cost_well_span_is_hourly_ac2", bool(re.fullmatch(
-        r"24 h \u00b7 \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC \u2192 \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC",
-        text_of(page, "cost-period-span") or "")), True)
+    receipt("cost_well_period", f"{period} | {text_of(page, 'cost-period-label')}")
+    # Change list 2: the well names the range selection it prices, and carries no bounds.
+    check("cost_well_period_names_the_selection_ac2", text_of(page, "cost-period-label"),
+          "Selected period - 24h")
+    check("cost_well_span_line_removed_ac2", count_of(page, '[data-testid="cost-period-span"]'), 0)
+    check("cost_well_period_carries_no_bounds_ac2",
+          "\u2192" in (text_of(page, "cost-panel") or ""), False)
     # AC3 (change list): the well keeps its own numbers and the period they cover, and
     # drops the caption and the coverage caption. Quality flags are not captions.
     check("cost_well_caption_removed_ac3", count_of(page, '[data-testid="cost-panel"] .cost-tag'), 0)
@@ -1252,20 +1348,26 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     check("cost_well_coverage_lines_removed_ac3", page.evaluate(
         "(() => { const well = document.querySelector('[data-testid=\"cost-panel\"]');"
         " return [...well.querySelectorAll('.cost-line')]"
-        ".filter((l) => !l.classList.contains('is-flag'))"
-        ".every((l) => l.getAttribute('data-testid') === 'cost-period-span'); })()"), True)
+        ".filter((l) => !l.classList.contains('is-flag')).length; })()"), 0)
     hud_shot(page, "hud-1440-cost-well.png")
-    # AC2: a preset change moves the well's period to the new history response.
+    # AC2: a preset change moves the well's period label to the new selection.
     page.click('[data-testid="range-7d"]')
-    expect(page, lambda: (text_of(page, "cost-period-span") or "").startswith("7 days \u00b7 "),
-           "cost well period follows the 7d history", 90)
-    check("cost_well_span_is_daily_ac2", (text_of(page, "cost-period-span") or "").endswith(" UTC"),
-          True)
+    expect(page, lambda: text_of(page, "cost-period-label") == "Selected period - 7d",
+           "cost well period names the 7d selection", 90)
     check("cost_well_period_still_tracks_trend_ac2",
           (text_of(page, "cost-period") or "") in (text_of(page, "trend-cost") or ""), True)
     page.click('[data-testid="range-24h"]')
-    expect(page, lambda: (text_of(page, "cost-period-span") or "").startswith("24 h \u00b7 "),
-           "cost well period follows the 24h history", 90)
+    expect(page, lambda: text_of(page, "cost-period-label") == "Selected period - 24h",
+           "cost well period names the 24h selection", 90)
+    # The custom range is a selection too: the label reads the preset, not the bounds.
+    set_date(page, "custom-from", day(-5))
+    set_date(page, "custom-to", day(0))
+    page.click('[data-testid="custom-apply"]')
+    expect(page, lambda: text_of(page, "cost-period-label") == "Selected period - Custom",
+           "cost well period names the custom selection", 30)
+    page.click('[data-testid="range-24h"]')
+    expect(page, lambda: text_of(page, "cost-period-label") == "Selected period - 24h",
+           "cost well period returns to the preset", 30)
 
     page.set_viewport(*MOBILE)
     expect(page, lambda: visible(page, "lifetime-cost"), "mobile money line", 30)
@@ -1291,7 +1393,7 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     check("cost_well_switch_no_stale_money_ac3",
           "$" in (text_of(page, "cost-panel") or ""), False)
     probe(page, "p.delayMs = 0; p.delayMatch = '';")
-    expect(page, lambda: (text_of(page, "series-name") or "").startswith(SECOND["model_name"]),
+    expect(page, lambda: (panel_meta(page, "summary-panel") or "").startswith(SECOND["model_name"]),
            "switch to the second series lands", 60)
 
     # AC3 on a fresh load: the delay is armed in sessionStorage and read by the probe as
@@ -1312,10 +1414,10 @@ def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
     # This fixture publishes the same counters the series was created with, so it stays at
     # its opening balance and every observed figure reads "no data". That reading is also
     # what a not-yet-loaded summary shows, so first prove this series' payload has landed:
-    # the header name comes from the summary of the selected series.
+    # the summary caption names the selected series.
     page.navigate(f"http://127.0.0.1:{serve.port}/")
     select_series(page, serve.port, SECOND)
-    expect(page, lambda: SECOND["model_name"] in (text_of(page, "series-name") or ""),
+    expect(page, lambda: SECOND["model_name"] in (panel_meta(page, "summary-panel") or ""),
            "second series summary landed", 60)
     expect(page, lambda: text_of(page, "lifetime-cost") == "no data", "unpriced series cost", 60)
     check("cost_unpriced_is_no_data_ac8", text_of(page, "lifetime-cost"), "no data")

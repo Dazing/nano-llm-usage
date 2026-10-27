@@ -1,4 +1,4 @@
-import type { ApiEquivalent, Bucket, CostRates, HistoryResponse, Rate } from "../api/client";
+import type { ApiEquivalent, Bucket, CostRates, Rate } from "../api/client";
 
 /**
  * Display helpers. Token totals are never the product of arithmetic on a JS
@@ -179,6 +179,22 @@ export function collectionLabel(status: string | null | undefined): string {
   return COLLECTION_LABELS[status] ?? status;
 }
 
+/**
+ * The range preset as the operator reads it: the chip ids stay as typed, and the
+ * one id that is not a duration (`custom`) is spelled out.
+ */
+const RANGE_PRESET_LABELS: Record<string, string> = {
+  "24h": "24h",
+  "7d": "7d",
+  "30d": "30d",
+  custom: "Custom",
+};
+
+export function rangePresetLabel(preset: string | null | undefined): string {
+  if (!preset) return NO_DATA;
+  return RANGE_PRESET_LABELS[preset] ?? preset;
+}
+
 // ---------------------------------------------------------------------------
 // API-equivalent cost estimate (docs/cost-estimate-implementation-plan.md D6)
 // ---------------------------------------------------------------------------
@@ -255,9 +271,6 @@ export function formatRatesFootnote(rates: CostRates | null | undefined): string
   );
 }
 
-const HOUR_MS = 3_600_000;
-const DAY_MS = 86_400_000;
-
 /**
  * A compact scale label for an axis end: `18K`, `4.1M`, `2B`.
  *
@@ -269,25 +282,4 @@ export function formatCompact(value: number): string {
   if (value >= 1e6) return `${(value / 1e6).toFixed(value >= 1e7 ? 0 : 1)}M`;
   if (value >= 1e3) return `${Math.round(value / 1e3)}K`;
   return String(Math.round(value));
-}
-
-/**
- * The selected history period as one readable line (plan D3).
- *
- * Hour buckets show both bounds to the minute; day buckets show dates, where the
- * last day is `to - 1 day` because the wire bound is the following midnight, so
- * the inclusive reading matches what the chart contains.
- */
-export function formatHistorySpan(history: HistoryResponse | null | undefined): string {
-  if (!history) return NO_DATA;
-  const from = Date.parse(history.from);
-  const to = Date.parse(history.to);
-  if (!Number.isFinite(from) || !Number.isFinite(to)) return NO_DATA;
-  if (history.bucket === "hour") {
-    const hours = Math.max(1, Math.round((to - from) / HOUR_MS));
-    return `${hours} h · ${formatUtc(history.from)} → ${formatUtc(history.to)}`;
-  }
-  const days = Math.max(1, Math.round((to - from) / DAY_MS));
-  const lastDay = new Date(to - DAY_MS).toISOString().slice(0, 10);
-  return `${days} days · ${history.from.slice(0, 10)} → ${lastDay} UTC`;
 }

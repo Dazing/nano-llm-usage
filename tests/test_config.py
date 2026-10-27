@@ -34,7 +34,7 @@ def test_defaults_match_spec():
     assert c.source_id == "jarvis"
     assert c.poll_interval_seconds == 15
     assert c.http_timeout_seconds == 3.0
-    assert c.raw_retention_days == 30
+    assert c.raw_retention_days == 180
     assert c.port == 8080
     assert c.log_level == "INFO"
     assert c.metrics_url == "http://192.168.1.228:8000/metrics"

@@ -22,12 +22,6 @@ const badgeTone = computed(() => {
   return collectionStatus.value === "healthy" ? "is-ok" : "is-warn";
 });
 
-const seriesName = computed(() => {
-  const selected = state.summary ?? state.series.find((item) => item.series_id === state.selectedSeriesId);
-  if (!selected) return "No series yet";
-  return `${selected.model_name} · engine ${selected.engine}`;
-});
-
 function onPick(event: Event): void {
   const value = (event.target as HTMLSelectElement).value;
   if (value) dashboard.selectSeries(value);
@@ -42,7 +36,6 @@ function onPick(event: Event): void {
         <h1 class="t">
           <span class="visually-hidden" data-testid="product-name">Nano LLM Usage - JARVIS</span>
           <span class="mark" aria-hidden="true">Nano LLM Usage<i> - </i>JARVIS</span>
-          <span class="s series-name" data-testid="series-name">{{ seriesName }}</span>
         </h1>
       </div>
       <div v-if="state.series.length > 1" class="sel">

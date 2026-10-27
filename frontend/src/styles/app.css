@@ -356,7 +356,7 @@ summary:focus-visible {
   min-width: 0;
 }
 
-/* One line: the product mark and the loaded model read left to right (item 5). */
+/* The title is the product mark alone: the picker names the loaded series. */
 .brand .t {
   margin: 0;
   display: flex;
@@ -372,19 +372,6 @@ summary:focus-visible {
 .brand .t i {
   font-style: normal;
   color: var(--cyan);
-}
-
-.brand .s {
-  display: block;
-  flex: 0 1 auto;
-  min-width: 0;
-  font: 12px/1.2 var(--font-mono);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  letter-spacing: 0.1em;
-  color: var(--fg-muted);
-  text-transform: uppercase;
 }
 
 .sel {
@@ -586,29 +573,29 @@ button.is-active {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
+  gap: 10px;
   min-height: 0;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .live-left {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 10px;
+  gap: var(--sp-2);
   min-height: 0;
 }
 
 .live-mid {
   display: grid;
   grid-template-rows: 1fr 1fr;
-  gap: 10px;
+  gap: var(--sp-2);
   min-height: 0;
 }
 
 .live-right {
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 10px;
+  gap: var(--sp-2);
   min-height: 0;
 }
 
@@ -616,7 +603,7 @@ button.is-active {
   position: relative;
   background: var(--sunk);
   border: var(--border-width) solid color-mix(in srgb, var(--line) 34%, transparent);
-  padding: var(--sp-2) 10px;
+  padding: 6px 10px;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -677,6 +664,13 @@ button.is-active {
   gap: 10px;
   align-items: center;
   height: 100%;
+}
+
+/* The dial carries the reading, so the throughput wells keep their height around the
+   art and shed the padding above and below it. */
+.well.gauge {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 /* Only the dial: the sparkline in the same well keeps its own fluid box (item 4). */
@@ -793,6 +787,11 @@ button.is-active {
   /* The ring art sits ~11px inside its box on the left; the value column gets the
      same inset on the right, so the rows are not tight against the border (item 11). */
   padding-right: 11px;
+}
+
+/* The MTP well: the four window rows are the taller column, so the art drops to their
+   baseline instead of floating with slack under it. */
+.live-left .rings {
 }
 
 .rings svg {
@@ -994,10 +993,6 @@ button.is-active {
   flex-wrap: wrap;
 }
 
-.trend-ctl .utc {
-  align-self: center;
-}
-
 /* Always visible, pushed to the right end of the preset row (item 7). */
 .trend-ctl .custom-range {
   margin-left: auto;
@@ -1012,7 +1007,7 @@ button.is-active {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--fg-muted);
-  padding-bottom: 7px;
+  padding-bottom: 8px;
 }
 
 .custom-fields {
@@ -1022,14 +1017,10 @@ button.is-active {
   flex-wrap: wrap;
 }
 
-.custom-fields label {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  font: 10.5px/1.2 var(--font-mono);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+/* The Apply control is one of the range controls, so it shares their box height. */
+.custom-fields input,
+.custom-fields button {
+  height: 30px;
 }
 
 .tr-notes {
@@ -1655,6 +1646,11 @@ tbody tr:hover {
     font-size: 11px;
   }
 
+  .custom-fields input,
+  .custom-fields button {
+    height: 26px;
+  }
+
   .custom-title {
     padding-bottom: 5px;
   }
@@ -1702,6 +1698,24 @@ tbody tr:hover {
 @media (min-width: 1000px) {
   .live-grid {
     grid-template-columns: 252px minmax(0, 1fr) 296px;
+  }
+
+  /* Two rows of one height: each column splits its track equally, so the three columns
+     line up as two uniform rows. */
+  .live-left,
+  .live-mid,
+  .live-right {
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+/* Below the 1080x1920 frame the live panel is a flexible row, so the grid itself takes
+   the fixed height that makes those `1fr` rows measure the same. In the portrait frame
+   the panel row is already fixed, and the grid fills it. */
+@media (min-width: 1000px) and (max-height: 1919px) {
+  .live-grid {
+    flex: none;
+    height: var(--live-height);
   }
 }
 

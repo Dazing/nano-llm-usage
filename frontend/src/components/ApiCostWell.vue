@@ -5,7 +5,7 @@ import { dashboard } from "../lib/dashboard";
 import {
   formatAmount,
   formatCostFlags,
-  formatHistorySpan,
+  rangePresetLabel,
 } from "../lib/format";
 
 // The API cost well (plan D3): the same money the summary and trend panels
@@ -47,7 +47,12 @@ function flagLines(cost: ApiEquivalent | null): string[] {
 
 const todayFlags = computed(() => flagLines(today.value));
 const periodFlags = computed(() => flagLines(period.value));
-const periodSpan = computed(() => formatHistorySpan(state.history));
+
+/**
+ * The period the figure covers is the selected range, so the label names the
+ * selection itself (the range chip) instead of repeating the range's bounds.
+ */
+const periodLabel = computed(() => `Selected period - ${rangePresetLabel(state.rangePreset)}`);
 </script>
 
 <template>
@@ -68,9 +73,8 @@ const periodSpan = computed(() => formatHistorySpan(state.history));
         <div class="hr" aria-hidden="true"></div>
 
         <div class="cost-row">
-          <span class="lab">Selected period</span>
+          <span class="lab" data-testid="cost-period-label">{{ periodLabel }}</span>
           <div class="cost-amount num" data-testid="cost-period">{{ formatAmount(period?.amount) }}</div>
-          <div class="cost-line" data-testid="cost-period-span">{{ periodSpan }}</div>
           <div v-for="line in periodFlags" :key="line" class="cost-line is-flag">{{ line }}</div>
         </div>
 

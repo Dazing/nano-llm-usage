@@ -49,7 +49,7 @@ const metaLine = computed(() => {
   if (!historyValue) return "awaiting history";
   return (
     `${historyValue.bucket_count} ${historyValue.bucket} buckets · ` +
-    `${formatUtc(historyValue.from)} → ${formatUtc(historyValue.to)} · ${historyValue.model_name}`
+    `${formatUtc(historyValue.from)} → ${formatUtc(historyValue.to)}`
   );
 });
 
@@ -141,23 +141,29 @@ function onTableToggle(event: Event): void {
       </div>
 
       <div class="custom-range" data-testid="range-custom">
-        <span class="custom-title">Custom · UTC</span>
+        <span class="custom-title">Custom · UTC · From/To</span>
         <div class="custom-fields">
-          <label for="custom-from">
-            UTC start (inclusive)
-            <input id="custom-from" v-model="customFrom" type="date" data-testid="custom-from" />
-          </label>
-          <label for="custom-to">
-            UTC end (inclusive)
-            <input id="custom-to" v-model="customTo" type="date" data-testid="custom-to" />
-          </label>
+          <!-- The bounds are printed on the panel's meta line and in the column title,
+               so the fields carry their caption as an accessible name, not as ink. -->
+          <input
+            id="custom-from"
+            v-model="customFrom"
+            type="date"
+            aria-label="UTC start (inclusive)"
+            data-testid="custom-from"
+          />
+          <input
+            id="custom-to"
+            v-model="customTo"
+            type="date"
+            aria-label="UTC end (inclusive)"
+            data-testid="custom-to"
+          />
           <button data-testid="custom-apply" @click="dashboard.applyCustomRange(customFrom, customTo)">
             Apply
           </button>
         </div>
       </div>
-
-      <span class="utc">UTC</span>
     </div>
 
     <div class="tr-notes">

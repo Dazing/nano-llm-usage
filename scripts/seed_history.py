@@ -54,7 +54,7 @@ sys.path.insert(0, str(ROOT / "tests" / "fixtures"))
 from fixture_server import FixtureServer, install_fixture  # noqa: E402
 from jarvis_dashboard import storage  # noqa: E402
 from jarvis_dashboard.collector import Collector  # noqa: E402
-from jarvis_dashboard.config import Config  # noqa: E402
+from jarvis_dashboard.config import DEFAULT_RAW_RETENTION_DAYS, Config  # noqa: E402
 from jarvis_dashboard.domain import (  # noqa: E402
     COUNTER_KEYS,
     COMPUTED_INPUT,
@@ -689,7 +689,7 @@ def main() -> int:
     parser.add_argument("--window-days", type=int, default=367, help="D5 window (test runs may shorten)")
     parser.add_argument("--cadence-early", type=int, default=300)
     parser.add_argument("--cadence-recent", type=int, default=15)
-    parser.add_argument("--retention-days", type=int, default=30)
+    parser.add_argument("--retention-days", type=int, default=DEFAULT_RAW_RETENTION_DAYS)
     parser.add_argument("--case-days", default="",
                         help="designed-case placement, e.g. idle_day=2,collector_downtime=9 "
                              "(short test runs only; default: the D5 offsets)")

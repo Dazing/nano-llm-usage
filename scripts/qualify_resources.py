@@ -35,6 +35,7 @@ for _extra in (ROOT / "scripts", ROOT / "tests" / "fixtures", ROOT / "src"):
 import qualify_common as qc  # noqa: E402
 import smoke_frontend as sf  # noqa: E402
 from browser_driver import Browser  # noqa: E402
+from jarvis_dashboard.config import DEFAULT_RAW_RETENTION_DAYS  # noqa: E402
 from jarvis_dashboard.domain import COUNTER_KEYS, PRIMARY_KEYS  # noqa: E402
 from qualify_common import (  # noqa: E402
     SOURCE_ID,
@@ -255,12 +256,13 @@ def growth_report(db: Path, receipts: RunLog, *, window_days: float, series: int
         report["index_bytes"] = {"samples": with_indexes("samples"),
                                  "hourly_totals": with_indexes("hourly_totals")}
         # Assumptions, stated plainly (plan AC7): raw samples are kept for
-        # RAW_RETENTION_DAYS (30), so the raw volume is bounded by 30 days of
-        # polls; the unbounded term is the hourly rollup, one row per counter
-        # per hour per series, plus the daily rollup the read path derives.
+        # RAW_RETENTION_DAYS (the configured default window), so the raw volume
+        # is bounded by that many days of polls; the unbounded term is the
+        # hourly rollup, one row per counter per hour per series, plus the daily
+        # rollup the read path derives.
         hourly_rows_per_day = 24 * len(COUNTER_KEYS) * series
         report["assumptions"] = {
-            "retention_days": 30,
+            "retention_days": DEFAULT_RAW_RETENTION_DAYS,
             "poll_seconds": POLL_SECONDS,
             "series_count": series,
             "counters_per_hourly_row": 1,

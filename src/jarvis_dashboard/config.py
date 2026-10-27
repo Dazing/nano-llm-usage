@@ -20,7 +20,9 @@ DEFAULT_SOURCE_ID = "jarvis"
 DEFAULT_POLL_INTERVAL_SECONDS = 15
 DEFAULT_HTTP_TIMEOUT_SECONDS = 3.0
 DEFAULT_DATABASE_PATH = "/data/dashboard.sqlite3"
-DEFAULT_RAW_RETENTION_DAYS = 30
+# Six months of detailed samples/events. Only raw detail expires: hourly
+# totals, epochs, baselines and collector state never do (specification D5).
+DEFAULT_RAW_RETENTION_DAYS = 180
 DEFAULT_PORT = 8080
 DEFAULT_BIND_ADDRESS = "127.0.0.1"
 DEFAULT_LOG_LEVEL = "INFO"
