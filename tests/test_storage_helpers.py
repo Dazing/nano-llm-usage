@@ -86,23 +86,32 @@ def seed_chain(
     poll: int = 15,
     ri_base: int = 100,
     ro_base: int = 10,
+    ri_step: int = 1,
+    ro_step: int = 1,
+    ca_base: int | None = None,
+    ca_step: int = 1,
     uptime_base: float = 1000,
 ) -> None:
     """Write one continuous chain for a series so hourly buckets exist.
 
     Uptime follows the wall clock, so the chain stays continuity-verified;
-    pass ``times`` to model outages and hour-boundary crossings.
+    pass ``times`` to model outages and hour-boundary crossings. ``ca_base``
+    publishes the optional cached-input counter; leaving it out models an
+    upstream that has no cache counter at all.
     """
     labels = {"model_name": model, "engine": "0"}
     state = None
     for index, (ci, go) in enumerate(steps):
         at = start + timedelta(seconds=poll * index) if times is None else times[index]
-        scrape = ScrapeCounters(
-            labels,
-            {"computed_input": ci, "generated_output": go,
-             "request_input": ri_base + index, "request_output": ro_base + index},
-            {},
-        )
+        values = {
+            "computed_input": ci,
+            "generated_output": go,
+            "request_input": ri_base + ri_step * index,
+            "request_output": ro_base + ro_step * index,
+        }
+        if ca_base is not None:
+            values["cached_input"] = ca_base + ca_step * index
+        scrape = ScrapeCounters(labels, values, {})
         evidence = StatsEvidence(model, uptime_base + (at - start).total_seconds(), at, at)
         plan = transition_series(state, scrape, at, evidence, poll)
         apply(conn, f"{model}-p{index}", [plan], at)
@@ -118,6 +127,10 @@ def resume_chain(
     poll: int = 15,
     ri_base: int = 102,
     ro_base: int = 12,
+    ri_step: int = 0,
+    ro_step: int = 0,
+    ca_base: int | None = None,
+    ca_step: int = 0,
     uptime_base: float = 1000,
 ) -> None:
     """Continue an existing series chain (the durable state is the baseline)."""
@@ -126,12 +139,15 @@ def resume_chain(
     state = storage.load_series(conn, SOURCE)[identity].state
     for index, (ci, go) in enumerate(steps):
         at = start + timedelta(seconds=poll * index)
-        scrape = ScrapeCounters(
-            labels,
-            {"computed_input": ci, "generated_output": go,
-             "request_input": ri_base, "request_output": ro_base},
-            {},
-        )
+        values = {
+            "computed_input": ci,
+            "generated_output": go,
+            "request_input": ri_base + ri_step * index,
+            "request_output": ro_base + ro_step * index,
+        }
+        if ca_base is not None:
+            values["cached_input"] = ca_base + ca_step * index
+        scrape = ScrapeCounters(labels, values, {})
         evidence = StatsEvidence(model, uptime_base + (at - T0).total_seconds(), at, at)
         plan = transition_series(state, scrape, at, evidence, poll)
         apply(conn, f"{model}-resume-{to_iso(at)}", [plan], at)
@@ -154,6 +170,8 @@ def downgrade_to_v1(conn) -> None:
     ):
         conn.execute(f"DROP INDEX IF EXISTS {name}")
     conn.execute("DROP TABLE IF EXISTS latest_interval")
+    for column in ("cached_input", "delta_cached_input"):
+        conn.execute(f"ALTER TABLE samples DROP COLUMN {column}")
     for column in ("first_observed_at", "last_observed_at", "metadata_complete"):
         conn.execute(f"ALTER TABLE hourly_totals DROP COLUMN {column}")
     for column in ("seq", "first_valid_at", "last_valid_at"):

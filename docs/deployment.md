@@ -90,6 +90,7 @@ RADIANCE_BASE_URL=http://192.168.1.228:8000
 | `JARVIS_SOURCE_ID` | Optional label for the collected series, default `jarvis`. Written into the database, not into the image; changing it starts a new series identity. |
 | `POLL_INTERVAL_SECONDS` | Optional, default `15`, accepted range `5..300`. |
 | `HTTP_TIMEOUT_SECONDS`, `RAW_RETENTION_DAYS`, `LOG_LEVEL` | Optional tuning; validated at startup, invalid values exit `2`. |
+| `COST_RATE_INPUT_PER_MTOK`, `COST_RATE_CACHED_INPUT_PER_MTOK`, `COST_RATE_OUTPUT_PER_MTOK` | Optional. List price per million tokens for the API-equivalent estimate, in USD. Set all three together or leave all three empty; a partial set exits `2` naming every missing variable. See [Cost rates](#cost-rates-the-api-equivalent-estimate). |
 
 Inside the container the API binds the container's own interface on the bridge
 network; reachability is decided by the published
@@ -149,6 +150,53 @@ The dashboard is a build-time bundle, not a runtime dependency:
   concurrent read transactions** across all clients; the fifth concurrent read
   is rejected with `503 read_capacity_exceeded` and retried on the next
   refresh, so a handful of open tabs is well inside the limit.
+
+## Cost rates: the API-equivalent estimate
+
+The dashboard can price what it observed at list prices you supply, so the cache
+benefit is visible. The word **API-equivalent** is deliberate: a real provider
+invoice carries request counts, cache-write rates, batch discounts and rounding
+this app cannot see. Nothing here is an invoice, and no amount is ever stored,
+exported, or reconciled against a bill.
+
+```bash
+# .env — optional. All three, or none of them.
+COST_RATE_INPUT_PER_MTOK=3
+COST_RATE_CACHED_INPUT_PER_MTOK=0.30
+COST_RATE_OUTPUT_PER_MTOK=15
+```
+
+- **All three or none.** One or two of the three is a startup error that names the
+  missing variables and exits `2`; the container never starts. Prices that cover
+  only part of the model would print a plausible number for the wrong reason.
+- **Prices, not data.** Tokens are stored, money is not: no table, column, backup
+  or migration contains an amount. Editing the three values and running
+  `docker compose up -d` (which recreates the container) reprices the whole stored
+  history from the same tokens. Nothing needs to be recollected.
+- **Only intervals with cache tracking are priced.** An hour is priced only when
+  request input, request output *and* cached input were all observed in it. Hours
+  from before cache tracking existed, and hours broken by a collection gap, are
+  left out of the amount and out of the cache share; the card then states its
+  coverage, e.g. `partial · covers 18.0 of 31.0 days`.
+- **Rates unset** removes the dollar line and the footnote only. The cache share
+  and the coverage note come from counters, not prices, so they stay readable.
+
+Before trusting an estimate, confirm the source publishes the cache counter, and
+treat a source that does not as unpriced rather than free:
+
+```bash
+curl -s http://192.168.1.228:8000/metrics | grep -c '^radiance:linear_cached_tokens_total{'
+docker compose exec -T dashboard python -c 'import json,urllib.request as u; \
+  d=json.load(u.urlopen("http://127.0.0.1:8080/api/v1/summary?series_id=" + \
+  json.load(u.urlopen("http://127.0.0.1:8080/api/v1/series"))["items"][0]["series_id"])); \
+  c=d["ranges"]["lifetime"]; print(c["counters"]["cached_input"]["tokens"], c["api_equivalent"])'
+```
+
+A count of `0` from the first line means the engine publishes no cache counter:
+the estimate stays empty (`no data`), `cached_input` stays `null`, and the
+diagnostics disclosure lists the `Cached input` scope. `priced_hours` of `0` with
+a non-zero `expected_hours` is the same fact from the API side. Never read a zero
+amount as "the requests were free".
 
 ## Backup
 
@@ -230,6 +278,14 @@ docker compose up -d
 
 A database from a newer schema version is refused with `schema_version_newer`
 — roll back by restoring the step 1 snapshot instead of down-migrating.
+
+Schema version 3 (the API-equivalent estimate) adds two nullable columns,
+`cached_input` and `delta_cached_input`, to `samples`. A version 2 volume
+therefore takes one `pre-migration-3` snapshot and keeps every pre-cache sample
+with `cached_input = null`, which is exactly what leaves those hours unpriced.
+Engine and request totals, gap reporting and `processed_total` are unchanged by
+the migration — verify the lifetime totals from step 1 are identical, not merely
+close. An older image refuses that volume rather than guessing at the columns.
 
 ## Unraid
 

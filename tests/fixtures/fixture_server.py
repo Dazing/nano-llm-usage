@@ -19,6 +19,9 @@ SELECTED_METRICS = (
     "vllm:prompt_tokens_total",
     "vllm:generation_tokens_total",
 )
+# Optional cache-tracking counter: published only when a test installs it, so the
+# default scrape stays byte-identical for suites that predate cache tracking.
+CACHED_METRIC = "radiance:linear_cached_tokens_total"
 # Live-panel draft counters: emitted only when a test sets them, so the default
 # scrape stays byte-identical.
 DRAFT_METRICS = (
@@ -239,7 +242,7 @@ def stats_body(state: FixtureState) -> str:
 def metrics_body(state: FixtureState) -> str:
     """Render `/metrics`; caller holds `state.lock`."""
     lines: list[str] = []
-    for metric in SELECTED_METRICS + DRAFT_METRICS:
+    for metric in SELECTED_METRICS + (CACHED_METRIC,) + DRAFT_METRICS:
         rows = [(labels, lexeme) for (name, labels), lexeme in state.samples.items() if name == metric]
         if rows:
             lines.append(f"# TYPE {metric} counter")
@@ -368,7 +371,15 @@ class FixtureServer:
         self.stop()
 
 
-def install_fixture(state: FixtureState, labels: dict[str, str], ci: object, go: object, ri: object | None = None, ro: object | None = None) -> None:
+def install_fixture(
+    state: FixtureState,
+    labels: dict[str, str],
+    ci: object,
+    go: object,
+    ri: object | None = None,
+    ro: object | None = None,
+    ca: object | None = None,
+) -> None:
     values: dict[str, object] = {
         SELECTED_METRICS[0]: ci,
         SELECTED_METRICS[1]: go,
@@ -377,4 +388,6 @@ def install_fixture(state: FixtureState, labels: dict[str, str], ci: object, go:
         values[SELECTED_METRICS[2]] = ri
     if ro is not None:
         values[SELECTED_METRICS[3]] = ro
+    if ca is not None:
+        values[CACHED_METRIC] = ca
     state.set_series(labels, values)

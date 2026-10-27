@@ -37,6 +37,12 @@ services:
       HTTP_TIMEOUT_SECONDS: "${HTTP_TIMEOUT_SECONDS:-3}"
       RAW_RETENTION_DAYS: "${RAW_RETENTION_DAYS:-30}"
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      # API-equivalent cost estimate (docs/deployment.md): set all three to price
+      # history, leave all three empty to disable the money line. Prices are read
+      # at startup only, and no amount is ever written to the database.
+      COST_RATE_INPUT_PER_MTOK: "${COST_RATE_INPUT_PER_MTOK:-}"
+      COST_RATE_CACHED_INPUT_PER_MTOK: "${COST_RATE_CACHED_INPUT_PER_MTOK:-}"
+      COST_RATE_OUTPUT_PER_MTOK: "${COST_RATE_OUTPUT_PER_MTOK:-}"
     mem_limit: 512m
     cpus: 0.5
     pids_limit: 128

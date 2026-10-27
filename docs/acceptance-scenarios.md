@@ -60,6 +60,17 @@ Normative companion to `specification.md`. These are requirements and synthetic 
 39. **Live staleness:** a source with no successful sample for over 3 s renders `-`; with both sources stale the row is marked stale. Durable collection, `/health/ready` and `/api/v1/status` are unaffected by live failures, and `/api/v1/live` keeps answering while the read-admission cap is saturated.
 40. **Live persistence and timers:** no live value reaches SQLite and the durable collector's request volume is unchanged. The browser keeps exactly one 1 s live timer and one 15 s history timer per tab; both pause while hidden and resume when visible; the browser never contacts Radiance directly.
 
+## G. API-equivalent cost estimate (specification D11)
+
+Rates for these scenarios are `COST_RATE_INPUT_PER_MTOK=3`, `COST_RATE_CACHED_INPUT_PER_MTOK=0.30`, `COST_RATE_OUTPUT_PER_MTOK=15`. `Triples` below mean `(request_input, request_output, cached_input)` totals accepted in one hour, and every hour named has at least one observed interval for all three counters unless stated.
+
+41. **Priced hour:** one priced hour totals request input 1,000,000, request output 100,000 and cached input 600,000. `api_equivalent.amount` is exactly `"2.880000"` (`400000×3 + 600000×0.30 + 100000×15` per million), `tokens` are `{"400000","600000","100000"}`, `cache_hit_ratio` is `0.6`, `priced_hours` equals `expected_hours`, `partial` is false and `flags` is empty. The card reads `≈ $2.88` and `Cache hits 60% of input`.
+42. **Cache tracking starts late:** a 31-day month where `cached_input` is only observed from day 14. Only the hours with all three counters are priced: days 1–13 contribute nothing to the amount and nothing to `cache_hit_ratio` — request tokens are never priced as if uncached when the cache counter is unknown. `priced_hours` is about 18 days of hours, `expected_hours` the whole month, `partial` true, and the card states the coverage in words (`partial · covers 18.0 of 31.0 days`). A fully tracked month shows no coverage note at all.
+43. **Cache counter ahead of request counter:** over the priced hours cached input 1,200,000 exceeds request input 1,000,000. The uncached remainder prices as zero, `flags` contains `cache_exceeds_input`, the amount stays visible and is labelled approximate in the UI (`approximate — cache count ahead of request count`). Never hide the flag by clamping the displayed share.
+44. **No rates / partial rates:** with no `COST_RATE_*` set, `api_equivalent.amount` is `null` while `cache_hit_ratio`, `priced_hours` and `expected_hours` remain populated and the card hides the money line. Setting only one or two of the three variables is a startup configuration error that names every missing variable; the process does not start.
+45. **Source never publishes the cached counter:** a scrape without `radiance:linear_cached_tokens_total` leaves engine and request counters exactly as before, prices nothing (`amount` null, `priced_hours` 0, coverage `0.0` of the range) and lists a `Cached input` scope in diagnostics. Nothing is ever priced from the two request counters alone.
+46. **Money is never stored:** changing the three rates and restarting reprices the same database. No table, column, migration or backup artifact contains an amount, and an older image refuses a schema-3 database rather than guessing at the new columns.
+
 ## Suggested raw exposition fixture
 
 Use a local fixture HTTP server; do not send test traffic to Jarvis by default. Change values under test control and expose a compatible `/stats` document containing `model` and `uptime_s`. Keep request-counting behavior distinct from per-step engine counters.
@@ -73,4 +84,6 @@ radiance:decode_tokens_total{model_name="fixture-model",engine="0"} 100
 vllm:prompt_tokens_total{model_name="fixture-model",engine="0"} 2000
 # TYPE vllm:generation_tokens_total counter
 vllm:generation_tokens_total{model_name="fixture-model",engine="0"} 100
+# TYPE radiance:linear_cached_tokens_total counter
+radiance:linear_cached_tokens_total{model_name="fixture-model",engine="0"} 1200
 ```

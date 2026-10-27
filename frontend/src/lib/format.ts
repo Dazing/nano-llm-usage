@@ -1,4 +1,4 @@
-import type { Bucket, Rate } from "../api/client";
+import type { ApiEquivalent, Bucket, CostRates, Rate } from "../api/client";
 
 /**
  * Display helpers. Token totals are never the product of arithmetic on a JS
@@ -145,4 +145,80 @@ const COLLECTION_LABELS: Record<string, string> = {
 export function collectionLabel(status: string | null | undefined): string {
   if (!status) return "Collecting";
   return COLLECTION_LABELS[status] ?? status;
+}
+
+// ---------------------------------------------------------------------------
+// API-equivalent cost estimate (docs/cost-estimate-implementation-plan.md D6)
+// ---------------------------------------------------------------------------
+
+/** Amounts arrive as exact 6-decimal strings: display maths stays in BigInt. */
+function scaledUnits(value: string, places: number): bigint | null {
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!match) return null;
+  const fraction = (match[2] ?? "").padEnd(places, "0").slice(0, places);
+  return BigInt(match[1]) * 10n ** BigInt(places) + BigInt(fraction || "0");
+}
+
+function groupThousands(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/** `$1,234.56`; a positive amount under a cent reads `< $0.01`, never `$0.00`. */
+export function formatMoney(amount: string | null | undefined): string {
+  if (amount === null || amount === undefined) return NO_DATA;
+  const micros = scaledUnits(amount, 6);
+  if (micros === null) return amount;
+  if (micros > 0n && micros < 5_000n) return "< $0.01";
+  // Six decimal places are micro-dollars: 10_000 of them make one cent.
+  const cents = (micros + 5_000n) / 10_000n;
+  const fraction = (cents % 100n).toString().padStart(2, "0");
+  return `$${groupThousands((cents / 100n).toString())}.${fraction}`;
+}
+
+/** Operator price per M tokens with at least two decimals: `3` -> `$3.00`. */
+export function formatUnitPrice(value: string): string {
+  const [whole = "0", fraction = ""] = value.trim().split(".");
+  const decimals = fraction.length < 2 ? fraction.padEnd(2, "0") : fraction;
+  return `$${groupThousands(whole)}.${decimals}`;
+}
+
+/** `≈ $2.88`; a range with no priced hour reads `no data`, never `≈ $0.00`. */
+export function formatAmount(amount: string | null | undefined): string {
+  if (amount === null || amount === undefined) return NO_DATA;
+  return `≈ ${formatMoney(amount)}`;
+}
+
+/** `62% of input` — the cache share over priced hours only. */
+export function formatCacheShare(ratio: number | null | undefined): string {
+  if (ratio === null || ratio === undefined) return NO_DATA;
+  return `${Math.round(ratio * 100)}% of input`;
+}
+
+/** Coverage of the priced window: `partial · covers 18.0 of 31.0 days`. */
+export function formatCoverage(cost: ApiEquivalent | null | undefined): string {
+  if (!cost || !cost.partial) return "";
+  if (cost.expected_hours >= 48) {
+    const days = (hours: number) => (hours / 24).toFixed(1);
+    return `partial · covers ${days(cost.priced_hours)} of ${days(cost.expected_hours)} days`;
+  }
+  return `partial · covers ${cost.priced_hours} of ${cost.expected_hours} h`;
+}
+
+/** The skew caveat is text, not colour (spec D7). */
+export const CACHE_SKEW_NOTE = "approximate — cache count ahead of request count";
+
+export function formatCostFlags(cost: ApiEquivalent | null | undefined): string[] {
+  if (!cost) return [];
+  return cost.flags.includes("cache_exceeds_input") ? [CACHE_SKEW_NOTE] : [];
+}
+
+/** Footnote naming the prices behind every dollar figure on the page. */
+export function formatRatesFootnote(rates: CostRates | null | undefined): string {
+  if (!rates) return "";
+  return (
+    `Approximate API-equivalent at ${formatUnitPrice(rates.input_per_mtok)} input / ` +
+    `${formatUnitPrice(rates.cached_input_per_mtok)} cached / ` +
+    `${formatUnitPrice(rates.output_per_mtok)} output per M tokens (${rates.currency}). ` +
+    "Priced only where cache tracking exists."
+  );
 }

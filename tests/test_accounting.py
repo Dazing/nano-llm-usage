@@ -6,6 +6,7 @@ import pytest
 
 from jarvis_dashboard.accounting import transition_series
 from jarvis_dashboard.domain import (
+    CACHED_INPUT,
     COMPUTED_INPUT,
     GENERATED_OUTPUT,
     EpochReason,
@@ -13,6 +14,7 @@ from jarvis_dashboard.domain import (
     ScrapeCounters,
     StatsEvidence,
     checked_add_int64,
+    hour_label,
 )
 
 T0 = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
@@ -21,8 +23,14 @@ E0 = {"model_name": MODEL, "engine": "0"}
 E1 = {"model_name": MODEL, "engine": "1"}
 
 
-def counters(labels, ci=None, go=None, ri=None, ro=None):
-    values = {COMPUTED_INPUT: ci, GENERATED_OUTPUT: go, "request_input": ri, "request_output": ro}
+def counters(labels, ci=None, go=None, ri=None, ro=None, ca=None):
+    values = {
+        COMPUTED_INPUT: ci,
+        GENERATED_OUTPUT: go,
+        "request_input": ri,
+        "request_output": ro,
+        CACHED_INPUT: ca,
+    }
     problems = {k: "missing" for k, v in values.items() if v is None}
     return ScrapeCounters(labels=dict(labels), values=values, problems=problems)
 
@@ -31,8 +39,8 @@ def stats(at: datetime, uptime: float, dur: float = 0.0, model: str = MODEL):
     return StatsEvidence(model=model, uptime_s=uptime, request_start=at, response_end=at + timedelta(seconds=dur))
 
 
-def poll(state, t, ci, go, ri=None, ro=None, st=None, labels=E0, interval=15):
-    return transition_series(state, counters(labels, ci, go, ri, ro), t, st, interval)
+def poll(state, t, ci, go, ri=None, ro=None, ca=None, st=None, labels=E0, interval=15):
+    return transition_series(state, counters(labels, ci, go, ri, ro, ca), t, st, interval)
 
 
 def deltas(plan, key):
@@ -234,3 +242,56 @@ def test_int64_overflow_guard():
         checked_add_int64(2**63 - 1, 1)
     with pytest.raises(OverflowError):
         checked_add_int64(-5, -1)
+
+
+# ------------------------------------------------- cached_input (cost plan D1)
+
+
+def test_cached_counter_is_tracked_independently():
+    # Cost plan D1: cached_input behaves exactly like request_input.
+    p1 = poll(None, T0, 1000, 100, ri=10, ro=5, ca=4, st=stats(T0, 100))
+    assert set(p1.state.optional) == {"request_input", "request_output", CACHED_INPUT}
+    p2 = poll(p1.state, T0 + timedelta(seconds=15), 1100, 110, ri=14, ro=7, ca=9, st=stats(T0 + timedelta(seconds=15), 115))
+    assert deltas(p2, CACHED_INPUT) == 5
+    assert deltas(p2, "request_input") == 4
+    assert deltas(p2, COMPUTED_INPUT) == 100
+    assert p2.hour_gaps == []
+
+
+def test_cached_counter_decrease_resets_only_its_scope():
+    # D1: a cached decrease re-baselines cached_input and nothing else.
+    p1 = poll(None, T0, 1000, 100, ri=100, ro=50, ca=40, st=stats(T0, 100))
+    p2 = poll(p1.state, T0 + timedelta(seconds=15), 1100, 110, ri=140, ro=60, ca=2, st=stats(T0 + timedelta(seconds=15), 115))
+    assert deltas(p2, CACHED_INPUT) == 0
+    assert deltas(p2, "request_input") == 40
+    assert deltas(p2, "request_output") == 10
+    assert deltas(p2, COMPUTED_INPUT) == 100
+    resets = [e for e in p2.events if e.kind == "optional_reset"]
+    assert [e.details["counter"] for e in resets] == [CACHED_INPUT]
+    p3 = poll(p2.state, T0 + timedelta(seconds=30), 1200, 120, ri=150, ro=65, ca=7, st=stats(T0 + timedelta(seconds=30), 130))
+    assert deltas(p3, CACHED_INPUT) == 5  # from the new baseline, never negative
+
+
+def test_absent_cached_counter_never_opens_a_primary_gap():
+    # AC8: no cached counter at all -> other counters keep crediting, no gaps.
+    p1 = poll(None, T0, 1000, 100, ri=10, ro=5, st=stats(T0, 100))
+    p2 = poll(p1.state, T0 + timedelta(seconds=15), 1100, 110, ri=14, ro=7, ca=None, st=stats(T0 + timedelta(seconds=15), 115))
+    assert deltas(p2, COMPUTED_INPUT) == 100
+    assert deltas(p2, "request_input") == 4
+    assert p2.sample.deltas.get(CACHED_INPUT) is None
+    assert p2.hour_gaps == []
+    assert p2.gaps_opened == []
+
+
+def test_cached_counter_gap_marks_only_its_scope():
+    # AC3: a collection gap leaves cached_input without an observed interval.
+    p1 = poll(None, T0, 1000, 100, ri=10, ro=5, ca=4, st=stats(T0, 100))
+    p2 = poll(p1.state, T0 + timedelta(minutes=10), 1100, 110, ri=14, ro=7, ca=9, st=stats(T0 + timedelta(minutes=10), 700))
+    assert CACHED_INPUT in {hg.scope for hg in p2.hour_gaps}
+    assert CACHED_INPUT in {span.scope for span in p2.gaps_closed}
+    # the interval is credited, but flagged: a gapped hour is not rate eligible
+    assert deltas(p2, CACHED_INPUT) == 5
+    assert QualityFlag.COLLECTION_GAP in p2.sample.quality
+    gap_hours = {hg.hour for hg in p2.hour_gaps if hg.scope == CACHED_INPUT}
+    assert gap_hours == {hour_label(T0)}
+    assert {hg.scope for hg in p2.hour_gaps if hg.scope == COMPUTED_INPUT} == set()

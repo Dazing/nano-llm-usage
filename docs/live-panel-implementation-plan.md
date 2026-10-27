@@ -96,7 +96,7 @@ scripts/                             — frontend smoke live phase + timer/traff
 - D5: Route `GET /api/v1/live` returns proposed model `LiveResponse`. It is an `async` handler that reads the latest snapshot reference and does no SQLite read, so it bypasses `ReadAdmission` and adds no read-capacity pressure. It keeps the existing envelope and `no-store`. Reason: the existing envelope/no-store conventions; the snapshot is already computed. Contract (rates in tokens/second, ratios 0..1, `null` = render `-`):
   ```json
   {
-    "schema_version": 2,
+    "schema_version": 1,
     "generated_at": "2026-10-27T12:00:00.000Z",
     "state": "starting | live | stale | unavailable",
     "observed_at": "2026-10-27T11:59:59.812Z",

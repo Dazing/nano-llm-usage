@@ -156,6 +156,7 @@ def build_router() -> APIRouter:
             raw_retention_days=state.config.raw_retention_days,
             health=state.health.snapshot(now),
             now=now,
+            cost_rates=state.config.cost_rates,
         )
         return _envelope(payload, now)
 
@@ -202,6 +203,7 @@ def build_router() -> APIRouter:
             health=state.health.snapshot(now),
             now=now,
             poll_interval_seconds=state.config.poll_interval_seconds,
+            cost_rates=state.config.cost_rates,
         )
         return _envelope(payload, now)
 
@@ -232,6 +234,7 @@ def build_router() -> APIRouter:
             health=state.health.snapshot(now),
             now=now,
             poll_interval_seconds=state.config.poll_interval_seconds,
+            cost_rates=state.config.cost_rates,
         )
         return _envelope(payload, now)
 

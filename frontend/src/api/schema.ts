@@ -171,6 +171,30 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApiEquivalent
+         * @description Read-time API-equivalent estimate for a range (spec D4).
+         *
+         *     ``amount`` is null when rates are unset or no hour has every priced counter
+         *     observed; ``partial`` is true when priced hours are fewer than expected.
+         */
+        ApiEquivalent: {
+            /** Amount */
+            amount?: string | null;
+            /** Cache Hit Ratio */
+            cache_hit_ratio?: number | null;
+            /** Currency */
+            currency: string;
+            /** Expected Hours */
+            expected_hours: number;
+            /** Flags */
+            flags: string[];
+            /** Partial */
+            partial: boolean;
+            /** Priced Hours */
+            priced_hours: number;
+            tokens: components["schemas"]["CostTokens"];
+        };
         /** Bucket */
         Bucket: {
             /** Bucket */
@@ -191,6 +215,32 @@ export interface components {
             quality_flags: string[];
             /** Started At */
             started_at: string;
+        };
+        /**
+         * CostRateConfig
+         * @description Operator-configured prices per million tokens (null when unset).
+         */
+        CostRateConfig: {
+            /** Cached Input Per Mtok */
+            cached_input_per_mtok: string;
+            /** Currency */
+            currency: string;
+            /** Input Per Mtok */
+            input_per_mtok: string;
+            /** Output Per Mtok */
+            output_per_mtok: string;
+        };
+        /**
+         * CostTokens
+         * @description Token totals over the priced hours only.
+         */
+        CostTokens: {
+            /** Cached Input */
+            cached_input: string;
+            /** Output */
+            output: string;
+            /** Uncached Input */
+            uncached_input: string;
         };
         /**
          * CounterBlock
@@ -217,6 +267,7 @@ export interface components {
         };
         /** CounterBlocks */
         CounterBlocks: {
+            cached_input: components["schemas"]["CounterBlock"];
             computed_input: components["schemas"]["CounterBlock"];
             generated_output: components["schemas"]["CounterBlock"];
             request_input: components["schemas"]["CounterBlock"];
@@ -299,6 +350,8 @@ export interface components {
          * @description Unobserved seconds per collection scope inside a bucket or range.
          */
         GapScopes: {
+            /** Cached Input */
+            cached_input: number;
             /** Primary */
             primary: number;
             /** Request Input */
@@ -419,6 +472,7 @@ export interface components {
         };
         /** Range */
         Range: {
+            api_equivalent: components["schemas"]["ApiEquivalent"];
             counters: components["schemas"]["CounterBlocks"];
             /** Ended At */
             ended_at: string;
@@ -555,6 +609,7 @@ export interface components {
             collector_code?: string | null;
             /** Collector Status */
             collector_status: string;
+            cost_rates?: components["schemas"]["CostRateConfig"] | null;
             /** First Observation At */
             first_observation_at?: string | null;
             /** Generated At */

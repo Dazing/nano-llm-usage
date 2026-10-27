@@ -14,6 +14,7 @@ import contextlib
 import json
 import sqlite3
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,7 @@ from jarvis_dashboard import queries, storage
 from jarvis_dashboard.api import ReadAdmission
 from jarvis_dashboard.app import AppState, create_app, create_asgi_app
 from jarvis_dashboard.accounting import transition_series
-from jarvis_dashboard.config import Config
+from jarvis_dashboard.config import Config, CostRates
 from jarvis_dashboard.domain import (
     ScrapeCounters,
     StatsEvidence,
@@ -38,6 +39,7 @@ from jarvis_dashboard.queries import encode_series_id
 
 SERIES_ID = encode_series_id(SOURCE, '{"engine":"0","model_name":"m"}')
 A2_STEPS = [(1000, 100), (1600, 140), (1900, 160)]
+RATES = CostRates(Decimal("3"), Decimal("0.30"), Decimal("15"))
 
 
 def make_config(db_path: Path) -> Config:
@@ -665,3 +667,89 @@ def test_root_is_a_plain_404_until_the_delivery_3_ui(db):
     body = response.json()
     assert body["error"]["code"] == "not_found"
     assert envelope_ok(response)
+
+
+# --------------------------------------------------------------------------- #
+# API-equivalent cost estimate (docs/cost-estimate-implementation-plan.md D5)
+# --------------------------------------------------------------------------- #
+def cost_app(db: Path, rates: CostRates | None = RATES):
+    return app_for(db, cost_rates=rates)
+
+
+@pytest.fixture
+def cost_db(tmp_path: Path) -> Path:
+    """One hour of exact traffic: 2 000 000 input, 1 200 000 cached, 200 000 output."""
+    path = tmp_path / "cost.sqlite3"
+    conn = storage.open_storage(path)
+    seed_chain(
+        conn,
+        "m",
+        A2_STEPS,
+        T0,
+        ri_base=0,
+        ri_step=1_000_000,
+        ro_base=0,
+        ro_step=100_000,
+        ca_base=0,
+        ca_step=600_000,
+    )
+    conn.close()
+    return path
+
+
+def test_summary_reports_the_api_equivalent_estimate(cost_db):
+    response = get(cost_app(cost_db), "/api/v1/summary", f"series_id={SERIES_ID}")
+    body = envelope_ok(response)
+    assert response.status_code == 200
+    lifetime = body["ranges"]["lifetime"]
+    assert lifetime["api_equivalent"] == {
+        "currency": "USD",
+        "amount": "5.760000",  # 800000*3 + 1200000*0.30 + 200000*15, / 1e6
+        "tokens": {
+            "uncached_input": "800000",
+            "cached_input": "1200000",
+            "output": "200000",
+        },
+        "cache_hit_ratio": pytest.approx(0.6),
+        "priced_hours": 1,
+        "expected_hours": lifetime["api_equivalent"]["expected_hours"],
+        "partial": True,
+        "flags": [],
+    }
+    # Money is exact: the amount never passes through a float.
+    assert isinstance(lifetime["api_equivalent"]["amount"], str)
+    # The new counter is visible everywhere the other counters are.
+    assert lifetime["counters"]["cached_input"]["tokens"] == "1200000"
+    assert "cached_input" in lifetime["gap_seconds"]
+    assert body["ranges"]["today"]["api_equivalent"]["amount"] is None
+
+
+def test_summary_stays_valid_without_configured_rates(cost_db):
+    response = get(cost_app(cost_db, None), "/api/v1/summary", f"series_id={SERIES_ID}")
+    body = envelope_ok(response)
+    cost = body["ranges"]["lifetime"]["api_equivalent"]
+    assert cost["amount"] is None
+    assert cost["cache_hit_ratio"] == pytest.approx(0.6)
+    assert cost["priced_hours"] == 1
+
+
+def test_history_range_carries_cost_but_buckets_do_not(cost_db):
+    query = (
+        f"series_id={SERIES_ID}&bucket=hour"
+        f"&from={to_iso(T0)}&to={to_iso(T0 + timedelta(hours=1))}"
+    )
+    body = envelope_ok(get(cost_app(cost_db), "/api/v1/history", query))
+    assert body["range"]["api_equivalent"]["amount"] == "5.760000"
+    assert all("api_equivalent" not in bucket for bucket in body["buckets"])
+
+
+def test_status_reports_configured_rates_and_null_without(cost_db):
+    body = envelope_ok(get(cost_app(cost_db), "/api/v1/status"))
+    assert body["cost_rates"] == {
+        "currency": "USD",
+        "input_per_mtok": "3",
+        "cached_input_per_mtok": "0.30",
+        "output_per_mtok": "15",
+    }
+    plain = envelope_ok(get(app_for(cost_db), "/api/v1/status"))
+    assert plain["cost_rates"] is None

@@ -21,6 +21,7 @@ from urllib.parse import quote
 from . import backup
 from .accounting import HourDelta, HourGap, SeriesPlan
 from .domain import (
+    CACHED_INPUT,
     COUNTERS_FOR_SCOPE,
     COUNTER_KEYS,
     PRIMARY_KEYS,
@@ -36,7 +37,7 @@ from .domain import (
     to_iso,
 )
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 # Max hourly gap rows materialized per transaction (resumable beyond that).
 GAP_MATERIALIZE_BATCH = 500
 GAP_QUEUE_KEY = "gap_materialization_queue"
@@ -561,9 +562,10 @@ def apply_poll(
                 conn.execute(
                     "INSERT INTO samples(source_id, identity, applied_key, observed_at, "
                     "computed_input, generated_output, request_input, request_output, "
-                    "delta_computed_input, delta_generated_output, delta_request_input, "
-                    "delta_request_output, quality_json, rate_eligible) "
-                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "cached_input, delta_computed_input, delta_generated_output, "
+                    "delta_request_input, delta_request_output, delta_cached_input, "
+                    "quality_json, rate_eligible) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         source_id,
                         identity,
@@ -573,10 +575,12 @@ def apply_poll(
                         sample.counters.get("generated_output"),
                         sample.counters.get("request_input"),
                         sample.counters.get("request_output"),
+                        sample.counters.get(CACHED_INPUT),
                         sample.deltas.get("computed_input"),
                         sample.deltas.get("generated_output"),
                         sample.deltas.get("request_input"),
                         sample.deltas.get("request_output"),
+                        sample.deltas.get(CACHED_INPUT),
                         json.dumps(sorted(sample.quality), ensure_ascii=False),
                         int(sample.rate_eligible),
                     ),

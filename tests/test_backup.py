@@ -183,15 +183,16 @@ def test_failed_copy_removes_only_its_own_partial_output(tmp_path: Path, monkeyp
 def test_migration_snapshot_is_verified_and_applied(tmp_path: Path, monkeypatch):
     db = tmp_path / "d.sqlite3"
     apply_seed(storage.open_storage(db)).close()
-    pending = storage._migration_files() + [(3, "CREATE TABLE extra(x INTEGER);")]
-    monkeypatch.setattr(storage, "CURRENT_SCHEMA_VERSION", 3)
+    before = storage.CURRENT_SCHEMA_VERSION
+    pending = storage._migration_files() + [(before + 1, "CREATE TABLE extra(x INTEGER);")]
+    monkeypatch.setattr(storage, "CURRENT_SCHEMA_VERSION", before + 1)
     monkeypatch.setattr(storage, "_migration_files", lambda: pending)
     conn = storage.open_storage(db)
     conn.close()
-    snap = db.with_name("d.sqlite3.pre-migration-3.sqlite3")
+    snap = db.with_name(f"d.sqlite3.pre-migration-{before + 1}.sqlite3")
     assert snap.exists()
-    # The snapshot captured the pre-migration schema (version 2), verified.
-    assert storage.verify_database(snap) == 2
+    # The snapshot captured the pre-migration schema, verified.
+    assert storage.verify_database(snap) == before
 
 
 def test_migration_refuses_pre_existing_snapshot_and_applies_nothing(tmp_path: Path, monkeypatch):

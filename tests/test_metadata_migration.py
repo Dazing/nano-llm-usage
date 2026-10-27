@@ -90,9 +90,21 @@ def seal_v1(conn: sqlite3.Connection) -> None:
 
 
 def migrate_to_v2(tmp_path: Path, monkeypatch) -> sqlite3.Connection:
-    """Upgrade the version-1 database through the real migration path."""
-    monkeypatch.setattr(storage, "CURRENT_SCHEMA_VERSION", 2)
-    return storage.open_storage(tmp_path / "d.sqlite3")
+    """Upgrade a version-1 database the way a real deployment would.
+
+    First the pinned Delivery 2 image (migrations 0001+0002 only, schema 2, and
+    no cached-input column in its backfill) upgrades v1 to v2; the current build
+    then applies 0003 and the startup backfill. Callers therefore get a database
+    at ``storage.CURRENT_SCHEMA_VERSION`` written through the real migration
+    path, which is the only shape the current writer can insert into.
+    """
+    db = tmp_path / "d.sqlite3"
+    with monkeypatch.context() as step:
+        step.setattr(storage, "CURRENT_SCHEMA_VERSION", 2)
+        step.setattr(storage, "_migration_files", lambda: [(1, MIG_0001), (2, MIG_0002)])
+        step.setattr(storage, "run_backfills", lambda conn, **_kw: 0)
+        storage.open_storage(db).close()
+    return storage.open_storage(db)
 
 
 def hourly_row(conn, counter=COMPUTED_INPUT, hour="2026-01-15T10Z"):
@@ -127,7 +139,7 @@ def test_migration_preserves_scenario_a2_totals(tmp_path: Path, monkeypatch):
     seal_v1(conn)
 
     conn = migrate_to_v2(tmp_path, monkeypatch)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == storage.CURRENT_SCHEMA_VERSION
     assert checksum(conn) == before
     assert (tmp_path / "d.sqlite3.pre-migration-2.sqlite3").exists()
     assert storage.verify_database(tmp_path / "d.sqlite3.pre-migration-2.sqlite3") == 1
@@ -140,10 +152,18 @@ def test_migration_is_idempotent_and_indexed(tmp_path: Path, monkeypatch):
     conn = build_v1(tmp_path, monkeypatch)
     run_a2(conn)
     seal_v1(conn)
-    migrate_to_v2(tmp_path, monkeypatch).close()
     conn = migrate_to_v2(tmp_path, monkeypatch)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
-    assert not (tmp_path / "d.sqlite3.pre-migration-3.sqlite3").exists()
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == storage.CURRENT_SCHEMA_VERSION
+    # Every applied migration snapshotted its predecessor; reopening a current
+    # database applies nothing and writes no new snapshot.
+    snapshots = sorted(p.name for p in tmp_path.glob("d.sqlite3.pre-migration-*"))
+    assert snapshots == [
+        "d.sqlite3.pre-migration-2.sqlite3",
+        "d.sqlite3.pre-migration-3.sqlite3",
+    ]
+    conn.close()
+    conn = storage.open_storage(tmp_path / "d.sqlite3")
+    assert sorted(p.name for p in tmp_path.glob("d.sqlite3.pre-migration-*")) == snapshots
     indexes = {
         r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")
     }

@@ -18,20 +18,28 @@ COMPUTED_INPUT = "computed_input"
 GENERATED_OUTPUT = "generated_output"
 REQUEST_INPUT = "request_input"
 REQUEST_OUTPUT = "request_output"
-COUNTER_KEYS: tuple[str, ...] = (COMPUTED_INPUT, GENERATED_OUTPUT, REQUEST_INPUT, REQUEST_OUTPUT)
+CACHED_INPUT = "cached_input"
+COUNTER_KEYS: tuple[str, ...] = (
+    COMPUTED_INPUT,
+    GENERATED_OUTPUT,
+    REQUEST_INPUT,
+    REQUEST_OUTPUT,
+    CACHED_INPUT,
+)
 PRIMARY_KEYS: tuple[str, ...] = (COMPUTED_INPUT, GENERATED_OUTPUT)
-OPTIONAL_KEYS: tuple[str, ...] = (REQUEST_INPUT, REQUEST_OUTPUT)
+OPTIONAL_KEYS: tuple[str, ...] = (REQUEST_INPUT, REQUEST_OUTPUT, CACHED_INPUT)
 
 # Gap scopes: the two primary counters share one gap scope; optional counters
 # each own their scope (specification D4, delivery plan D3).
 PRIMARY_SCOPE = "primary"
-SCOPES: tuple[str, ...] = (PRIMARY_SCOPE, REQUEST_INPUT, REQUEST_OUTPUT)
+SCOPES: tuple[str, ...] = (PRIMARY_SCOPE, REQUEST_INPUT, REQUEST_OUTPUT, CACHED_INPUT)
 
 SCOPE_FOR_COUNTER = {
     COMPUTED_INPUT: PRIMARY_SCOPE,
     GENERATED_OUTPUT: PRIMARY_SCOPE,
     REQUEST_INPUT: REQUEST_INPUT,
     REQUEST_OUTPUT: REQUEST_OUTPUT,
+    CACHED_INPUT: CACHED_INPUT,
 }
 
 # Reverse mapping: a gap in one scope degrades exactly the counters that share
@@ -40,6 +48,7 @@ COUNTERS_FOR_SCOPE: dict[str, tuple[str, ...]] = {
     PRIMARY_SCOPE: PRIMARY_KEYS,
     REQUEST_INPUT: (REQUEST_INPUT,),
     REQUEST_OUTPUT: (REQUEST_OUTPUT,),
+    CACHED_INPUT: (CACHED_INPUT,),
 }
 
 # Raw metric names as exposed upstream (family names are normalised by some
@@ -49,6 +58,7 @@ METRIC_FOR_COUNTER = {
     GENERATED_OUTPUT: "radiance:decode_tokens_total",
     REQUEST_INPUT: "vllm:prompt_tokens_total",
     REQUEST_OUTPUT: "vllm:generation_tokens_total",
+    CACHED_INPUT: "radiance:linear_cached_tokens_total",
 }
 COUNTER_FOR_METRIC = {metric: key for key, metric in METRIC_FOR_COUNTER.items()}
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -22,12 +23,17 @@ from test_storage_helpers import (
 )
 
 from jarvis_dashboard import queries, storage
+from jarvis_dashboard.accounting import transition_series
+from jarvis_dashboard.config import CostRates
 from jarvis_dashboard.domain import (
+    CACHED_INPUT,
     COMPUTED_INPUT,
     GENERATED_OUTPUT,
     INT64_MAX,
     REQUEST_INPUT,
     REQUEST_OUTPUT,
+    ScrapeCounters,
+    StatsEvidence,
 )
 from jarvis_dashboard.lifecycle import RuntimeHealth
 from jarvis_dashboard.queries import QueryError, encode_series_id
@@ -658,6 +664,7 @@ def test_history_overlays_implicit_downtime_beyond_two_intervals(tmp_path):
         "primary": 0.0,
         "request_input": 0.0,
         "request_output": 0.0,
+        "cached_input": 0.0,
     }
 
 
@@ -790,3 +797,299 @@ def test_events_page_is_descending_inclusive_and_stable(tmp_path):
     )
     assert "newer" not in [item["kind"] for item in second["items"]]
     assert "source_wide" in [item["kind"] for item in second["items"]]  # included, page 2
+
+
+# --------------------------------------------------------------------------- #
+# API-equivalent cost estimate (docs/cost-estimate-implementation-plan.md D4)
+# --------------------------------------------------------------------------- #
+RATES = CostRates(
+    input_per_mtok=Decimal("3"),
+    cached_input_per_mtok=Decimal("0.30"),
+    output_per_mtok=Decimal("15"),
+)
+
+
+def _polls(db, model: str, samples, poll: int = 15) -> None:
+    """Write exact per-poll counters: (at, ci, go, ri, ro, ca-or-None)."""
+    labels = {"model_name": model, "engine": "0"}
+    state = None
+    for index, (at, ci, go, ri, ro, ca) in enumerate(samples):
+        values = {"computed_input": ci, "generated_output": go}
+        if ri is not None:
+            values["request_input"] = ri
+        if ro is not None:
+            values["request_output"] = ro
+        if ca is not None:
+            values["cached_input"] = ca
+        plan = transition_series(
+            state,
+            ScrapeCounters(labels, values, {}),
+            at,
+            StatsEvidence(model, 1000 + (at - T0).total_seconds(), at, at),
+            poll,
+        )
+        storage.apply_poll(
+            db,
+            source_id=SOURCE,
+            endpoint_fingerprint="fp1",
+            poll_id=f"cost-{model}-{index}",
+            observed_at=at,
+            plans=[plan],
+        )
+        state = plan.state
+
+
+def _cost_series(
+    tmp_path: Path,
+    model: str = "cost",
+    *,
+    cached_from: int | None = None,
+    hours: tuple[int, ...] = (10,),
+) -> None:
+    """One hour of exact traffic: 1 000 000 input, 600 000 cached, 100 000 output.
+
+    `cached_from` is the first hour publishing the cache counter (None = from the
+    baseline; a counter's first observation only sets a baseline, so it is first
+    priced the hour after it appears).
+    """
+    db = storage.open_storage(tmp_path / "d.sqlite3")
+    samples = [(T0, 0, 0, 0, 0, 0 if cached_from is None else None)]
+    for hour in sorted(hours):
+        at = T0 + timedelta(seconds=15) if hour == 10 else T0 + timedelta(hours=hour - 10)
+        cached = None if cached_from is not None and hour < cached_from else 600_000 * (hour - 9)
+        samples.append(
+            (
+                at,
+                100 * (hour - 9),
+                10 * (hour - 9),
+                1_000_000 * (hour - 9),
+                100_000 * (hour - 9),
+                cached,
+            )
+        )
+    _polls(db, model, samples)
+
+
+def _summary(tmp_path: Path, model: str, rates, now: datetime):
+    return queries.read_summary(
+        tmp_path / "d.sqlite3",
+        source_id=SOURCE,
+        series_id=encode_series_id(SOURCE, _ident(model)),
+        epoch_limit=5,
+        epoch_cursor=None,
+        health=snapshot(now),
+        now=now,
+        poll_interval_seconds=15,
+        cost_rates=rates,
+    )
+
+
+def test_api_equivalent_prices_a_fully_observed_hour(tmp_path):  # AC1
+    _cost_series(tmp_path, "cost", hours=(10,))
+    cost = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=1))["ranges"]["lifetime"][
+        "api_equivalent"
+    ]
+    assert cost["amount"] == "2.880000"  # 400000*3 + 600000*0.30 + 100000*15, / 1e6
+    assert cost["currency"] == "USD"
+    assert cost["tokens"] == {
+        "uncached_input": "400000",
+        "cached_input": "600000",
+        "output": "100000",
+    }
+    assert cost["cache_hit_ratio"] == 0.6
+    assert cost["priced_hours"] == 1
+    assert cost["expected_hours"] == 1
+    assert cost["partial"] is False
+    assert cost["flags"] == []
+
+
+def test_api_equivalent_prices_only_hours_with_cache_tracking(tmp_path):  # AC2
+    _cost_series(tmp_path, "cost", cached_from=11, hours=(10, 11, 12))
+    cost = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=3))["ranges"]["lifetime"][
+        "api_equivalent"
+    ]
+    # Hours 10-11 request tokens are excluded from the amount AND the cache share.
+    assert cost["amount"] == "2.880000"
+    assert cost["cache_hit_ratio"] == 0.6
+    assert cost["tokens"]["cached_input"] == "600000"
+    assert cost["priced_hours"] == 1
+    assert cost["expected_hours"] == 3
+    assert cost["partial"] is True
+
+
+def test_api_equivalent_leaves_a_gap_hour_unpriced(tmp_path):  # AC3
+    db = storage.open_storage(tmp_path / "d.sqlite3")
+    _polls(
+        db,
+        "cost",
+        [
+            (T0, 1000, 100, 0, 0, 0),
+            (T0 + timedelta(seconds=15), 1001, 101, 1_000_000, 100_000, 600_000),
+            # The cache counter vanishes; the request counters keep running.
+            (T0 + timedelta(hours=1), 1100, 110, 2_000_000, 200_000, None),
+            (T0 + timedelta(hours=1, seconds=15), 1101, 111, 3_000_000, 300_000, None),
+        ],
+    )
+    cost = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=2))["ranges"]["lifetime"][
+        "api_equivalent"
+    ]
+    assert cost["priced_hours"] == 1
+    assert cost["expected_hours"] == 2
+    assert cost["partial"] is True
+    # The unpriced hour's request tokens are not in the amount or the share.
+    assert cost["tokens"] == {
+        "uncached_input": "400000",
+        "cached_input": "600000",
+        "output": "100000",
+    }
+    assert cost["amount"] == "2.880000"
+    # The existing per-scope gap reporting is unchanged by the cost model.
+    lifetime = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=2))["ranges"]["lifetime"]
+    assert lifetime["gap_seconds"][CACHED_INPUT] > 0
+
+
+def test_api_equivalent_flags_cached_input_ahead_of_request(tmp_path):  # AC5
+    db = storage.open_storage(tmp_path / "d.sqlite3")
+    _polls(
+        db,
+        "cost",
+        [
+            (T0, 1000, 100, 0, 0, 0),
+            (T0 + timedelta(seconds=15), 1001, 101, 1_000_000, 100_000, 1_200_000),
+        ],
+    )
+    cost = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=1))["ranges"]["lifetime"][
+        "api_equivalent"
+    ]
+    assert cost["tokens"]["uncached_input"] == "0"
+    assert cost["tokens"]["cached_input"] == "1200000"
+    assert cost["flags"] == ["cache_exceeds_input"]
+    # Uncached priced as zero, never a negative credit: 1.2M*0.30 + 100k*15.
+    assert cost["amount"] == "1.860000"
+    assert cost["cache_hit_ratio"] == 1.2
+
+
+def test_api_equivalent_without_rates_keeps_share_and_coverage(tmp_path):  # AC4
+    _cost_series(tmp_path, "cost", hours=(10, 11))
+    cost = _summary(tmp_path, "cost", None, T0 + timedelta(hours=2))["ranges"]["lifetime"][
+        "api_equivalent"
+    ]
+    assert cost["amount"] is None
+    assert cost["cache_hit_ratio"] == 0.6
+    assert cost["priced_hours"] == 2
+    assert cost["expected_hours"] == 2
+    assert cost["partial"] is False
+
+
+def test_api_equivalent_is_null_when_nothing_is_priced(tmp_path):  # AC8
+    _cost_series(tmp_path, "cost", cached_from=99, hours=(10,))
+    cost = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=1))["ranges"]["lifetime"][
+        "api_equivalent"
+    ]
+    assert cost["amount"] is None
+    assert cost["cache_hit_ratio"] is None
+    assert cost["priced_hours"] == 0
+    assert cost["expected_hours"] == 1
+    assert cost["partial"] is True
+    assert cost["flags"] == []
+
+
+def test_repeated_identical_polls_never_recredit_the_estimate(tmp_path):  # money integrity
+    db = storage.open_storage(tmp_path / "d.sqlite3")
+    priced = (T0 + timedelta(seconds=15), 100, 10, 1_000_000, 100_000, 1_200_000)
+    _polls(
+        db,
+        "cost",
+        [(T0, 0, 0, 0, 0, 600_000), priced]
+        + [
+            (priced[0] + timedelta(seconds=15 * (index + 1)), *priced[1:])
+            for index in range(10)
+        ],
+    )
+    db.close()
+    # Ten unchanged republishes after the priced jump must add nothing: a repeated
+    # scrape is a valid zero increment, never a second credit of the same tokens.
+    cost = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=1))["ranges"]["lifetime"][
+        "api_equivalent"
+    ]
+    assert cost["amount"] == "2.880000"
+    assert cost["tokens"] == {
+        "uncached_input": "400000",
+        "cached_input": "600000",
+        "output": "100000",
+    }
+    assert cost["priced_hours"] == 1
+
+
+def test_expected_hours_ignores_a_current_hour_without_rows(tmp_path):
+    _cost_series(tmp_path, "cost", hours=(10,))
+    # Mid-hour: the hour containing `now` has rows, so it is expected and priced.
+    inside = _summary(tmp_path, "cost", RATES, T0 + timedelta(minutes=30))["ranges"]["lifetime"]
+    assert inside["api_equivalent"]["expected_hours"] == 1
+    assert inside["api_equivalent"]["partial"] is False
+    # Two hours later the trailing hour has no rows: it is not expected yet.
+    later = _summary(tmp_path, "cost", RATES, T0 + timedelta(hours=2, minutes=30))[
+        "ranges"
+    ]["lifetime"]
+    assert later["api_equivalent"]["expected_hours"] == 2
+    assert later["api_equivalent"]["partial"] is True
+
+
+def test_rates_reprice_the_same_stored_history(tmp_path):  # AC6
+    _cost_series(tmp_path, "cost", hours=(10,))
+    now = T0 + timedelta(hours=1)
+    cheap = CostRates(Decimal("1"), Decimal("0.10"), Decimal("5"))
+    first = _summary(tmp_path, "cost", RATES, now)["ranges"]["lifetime"]["api_equivalent"]
+    second = _summary(tmp_path, "cost", cheap, now)["ranges"]["lifetime"]["api_equivalent"]
+    assert first["amount"] == "2.880000"
+    # 400000*1 + 600000*0.10 + 100000*5 = 960,000 / 1e6
+    assert second["amount"] == "0.960000"
+    # Money is a read-time function of the rows: nothing monetary is stored.
+    tables = {
+        row[0]
+        for row in storage.open_storage(tmp_path / "d.sqlite3").execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        )
+    }
+    assert not [name for name in tables if "cost" in name or "amount" in name]
+
+
+def test_history_range_carries_cost_but_buckets_do_not(tmp_path):  # D5
+    _cost_series(tmp_path, "cost", hours=(10,))
+    payload = queries.read_history(
+        tmp_path / "d.sqlite3",
+        source_id=SOURCE,
+        series_id=encode_series_id(SOURCE, _ident("cost")),
+        started_at=T0,
+        ended_at=T0 + timedelta(hours=1),
+        bucket="hour",
+        health=snapshot(T0 + timedelta(hours=1)),
+        now=T0 + timedelta(hours=1),
+        poll_interval_seconds=15,
+        cost_rates=RATES,
+    )
+    assert payload["range"]["api_equivalent"]["amount"] == "2.880000"
+    assert all("api_equivalent" not in bucket for bucket in payload["buckets"])
+
+
+def test_status_reports_configured_cost_rates(tmp_path):  # D5
+    storage.open_storage(tmp_path / "d.sqlite3").close()
+
+    def status(rates):
+        return queries.read_status(
+            tmp_path / "d.sqlite3",
+            source_id=SOURCE,
+            poll_interval_seconds=15,
+            raw_retention_days=30,
+            health=snapshot(),
+            now=NOW,
+            cost_rates=rates,
+        )
+
+    assert status(RATES)["cost_rates"] == {
+        "currency": "USD",
+        "input_per_mtok": "3",
+        "cached_input_per_mtok": "0.30",
+        "output_per_mtok": "15",
+    }
+    assert status(None)["cost_rates"] is None

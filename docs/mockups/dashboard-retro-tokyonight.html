@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis Token Dashboard · retro instrument panel mockup</title>
+<style>
+/* ==========================================================================
+   Jarvis Token Dashboard — retro "instrument panel" mockup (Tokyo Night Storm)
+   Static design mockup. All data below is MOCK DATA. No network requests.
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* Tokyo Night Storm — stock values */
+  --page: #24283b;            /* bg */
+  --page-dark: #1f2335;       /* bg_dark */
+  --highlight: #292e42;       /* bg_highlight */
+  --terminal-black: #414868;  /* terminal_black */
+  --fg: #c0caf5;
+  --fg-dark: #a9b1d6;
+  --comment: #565f89;         /* stock; decorative only (ticks, ghost segments) — fails AA as text */
+  --blue: #7aa2f7;
+  --cyan: #7dcfff;
+  --teal: #73daca;
+  --green: #9ece6a;
+  --yellow: #e0af68;
+  --orange: #ff9e64;
+  --red: #f7768e;
+  --magenta: #bb9af7;
+
+  /* Tuned / added for the hardware look and for AA contrast */
+  --muted: #9aa5ce;           /* comment lifted for text: 4.9:1 on --panel */
+  --panel: #2f3550;           /* slate faceplate, between bg_highlight and terminal_black */
+  --panel-hi: #3b4261;        /* bezel highlight, fg_gutter */
+  --module: #2a3047;          /* nested module face */
+  --outline: #13141c;         /* thick hardware outline */
+  --screen: #16161e;          /* recessed display */
+  --ghost: #262b40;           /* unlit segment / lamp (decorative) */
+  --cream: #b4bde4;           /* label strips and dial faces */
+  --ink: #1a1b26;             /* ink on cream: 9.9:1 */
+  --needle: #f7768e;
+  --focus: #7dcfff;
+
+  --ow: 3px;                  /* outline weight */
+  --radius: 16px;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-seg: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --screw: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Ccircle cx='6' cy='6' r='5' fill='%23414868' stroke='%2313141c' stroke-width='1.6'/%3E%3Cpath d='M3.3 8.7L8.7 3.3' stroke='%2313141c' stroke-width='1.7'/%3E%3C/svg%3E");
+}
+
+* { box-sizing: border-box; }
+html { background: var(--page); color: var(--fg); font-family: var(--font-ui); line-height: 1.4; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; font-variant-numeric: tabular-nums; overflow-x: hidden;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 31px, rgba(65,72,104,.20) 31px 32px),
+    repeating-linear-gradient(90deg, transparent 0 31px, rgba(65,72,104,.20) 31px 32px),
+    var(--page);
+}
+h1, h2, h3, p, ul, ol, dl, dd, figure { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+button, select, input, summary { font: inherit; color: inherit; }
+
+.shell { max-width: 1520px; margin: 0 auto; padding: 18px 20px 72px; display: flex; flex-direction: column; gap: 18px; }
+
+/* ---- Faceplate (panel) with corner screws and thick outline ------------- */
+.panel {
+  position: relative; min-width: 0;
+  background-color: var(--panel);
+  border: var(--ow) solid var(--outline);
+  border-radius: var(--radius);
+  padding: 16px 18px 18px;
+  box-shadow: inset 0 2px 0 rgba(192,202,245,.10), inset 0 -4px 0 rgba(0,0,0,.22), 0 5px 0 #0e0f16, 0 14px 22px rgba(0,0,0,.35);
+  background-image: var(--screw), var(--screw), var(--screw), var(--screw);
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
+  background-position: 7px 7px, calc(100% - 7px) 7px, 7px calc(100% - 7px), calc(100% - 7px) calc(100% - 7px);
+}
+
+/* ---- Engraved nameplate (panel title bar) ------------------------------- */
+.plate {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px;
+  margin: 0 14px 14px; padding: 6px 12px; min-height: 34px;
+  background: var(--page-dark); border: 2px solid var(--outline); border-radius: 7px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.55), 0 1px 0 rgba(192,202,245,.14);
+}
+.plate h2, .plate h3 { font-size: .8rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--fg); text-shadow: 0 1px 0 #000; }
+.plate .grow { flex: 1; }
+.tag { font-size: .68rem; font-weight: 800; letter-spacing: .14em; padding: 2px 7px; border: 2px solid var(--outline); border-radius: 5px; background: var(--ink); color: var(--fg-dark); }
+.plate-note { font-size: .78rem; color: var(--muted); font-family: var(--font-seg); }
+.card-plate { flex-wrap: nowrap; }
+.card-plate h2 { font-size: .76rem; letter-spacing: .1em; min-width: 0; }
+
+/* ---- Lamps and status chips -------------------------------------------- */
+.lamp { display: inline-block; flex: none; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--outline); background: var(--ghost); box-shadow: inset 0 2px 2px rgba(255,255,255,.08); }
+.lamp.on.green  { background: var(--green);  box-shadow: 0 0 9px 1px rgba(158,206,106,.65), inset 0 2px 2px rgba(255,255,255,.45); }
+.lamp.on.amber  { background: var(--yellow); box-shadow: 0 0 9px 1px rgba(224,175,104,.65), inset 0 2px 2px rgba(255,255,255,.45); }
+.lamp.on.red    { background: var(--red);    box-shadow: 0 0 9px 1px rgba(247,118,142,.65), inset 0 2px 2px rgba(255,255,255,.45); }
+.lamp.on.cyan   { background: var(--cyan);   box-shadow: 0 0 9px 1px rgba(125,207,255,.6),  inset 0 2px 2px rgba(255,255,255,.45); }
+.lamp.sm { width: 11px; height: 11px; border-width: 2px; }
+.lamp.pulse.on { animation: lamp 2.4s ease-in-out infinite; }
+@keyframes lamp { 50% { filter: brightness(.7); } }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 3px 12px 3px 9px; border: 2px solid var(--outline); border-radius: 999px; background: var(--screen); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--fg); box-shadow: inset 0 2px 3px rgba(0,0,0,.5); }
+
+/* ---- Recessed screen / LCD ---------------------------------------------- */
+.screen { position: relative; background: var(--screen); border: var(--ow) solid var(--outline); border-radius: 10px; padding: 10px 12px; overflow: hidden; box-shadow: inset 0 0 0 2px #262a3f, inset 0 8px 16px rgba(0,0,0,.45), 0 1px 0 rgba(192,202,245,.12); }
+.screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,.022) 0 1px, transparent 1px 3px); }
+.lcd { font-family: var(--font-seg); font-weight: 700; font-size: 1.55rem; line-height: 1.1; color: var(--green); text-shadow: 0 0 8px rgba(158,206,106,.4); white-space: nowrap; }
+.lcd small { font-size: .78rem; font-weight: 600; color: var(--fg-dark); text-shadow: none; margin-left: .2em; }
+.lcd.cyan { color: var(--cyan); text-shadow: 0 0 8px rgba(125,207,255,.4); }
+.lcd.teal { color: var(--teal); text-shadow: 0 0 8px rgba(115,218,202,.4); }
+.lcd.orange { color: var(--orange); text-shadow: 0 0 8px rgba(255,158,100,.4); }
+.lcd.blue { color: var(--blue); text-shadow: 0 0 8px rgba(122,162,247,.4); }
+.lcd.nul { color: var(--muted); text-shadow: none; }
+.lcd.lg { font-size: 1.9rem; }
+.seven { display: block; height: 38px; width: auto; max-width: 100%; filter: drop-shadow(0 0 5px rgba(158,206,106,.35)); }
+.seven .on { fill: var(--c, var(--green)); }
+.seven .off { fill: var(--ghost); }
+.seven .slash { stroke: var(--fg-dark); stroke-width: 2.2; fill: none; }
+.seven .tail { stroke: var(--c, var(--green)); stroke-width: 1.8; fill: none; stroke-linecap: round; }
+.seven.cyan { --c: var(--cyan); filter: drop-shadow(0 0 5px rgba(125,207,255,.35)); }
+.seven.orange { --c: var(--orange); filter: drop-shadow(0 0 5px rgba(255,158,100,.35)); }
+.seven.nul .on { fill: var(--ghost); }
+
+/* ---- Hardware controls --------------------------------------------------- */
+.key {
+  position: relative; cursor: pointer; padding: 10px 16px 8px; min-width: 64px; text-align: center;
+  background: var(--panel-hi); color: var(--fg); font-weight: 800; font-size: .82rem; letter-spacing: .08em;
+  border: 2px solid var(--outline); border-radius: 9px;
+  box-shadow: 0 4px 0 var(--outline), inset 0 2px 0 rgba(192,202,245,.18);
+  transition: transform .08s, box-shadow .08s;
+}
+.key::before { content: ""; display: block; height: 4px; margin: -2px auto 7px; width: 70%; border-radius: 3px; background: var(--ghost); border: 1px solid var(--outline); }
+.key[aria-pressed="true"], .key.is-open { transform: translateY(3px); box-shadow: 0 1px 0 var(--outline), inset 0 3px 6px rgba(0,0,0,.35); background: #34405f; }
+.key[aria-pressed="true"]::before, .key.is-open::before { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.key:hover { background: #454e72; }
+.key[aria-pressed="true"]:hover { background: #3a4768; }
+.key.apply { min-width: 0; }
+.keybank { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+
+.rocker { display: inline-flex; border: 2px solid var(--outline); border-radius: 9px; overflow: hidden; background: var(--outline); box-shadow: 0 3px 0 var(--outline); cursor: default; padding: 0; }
+.rocker span { padding: 6px 12px; font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; background: var(--ghost); color: var(--muted); }
+.rocker span:first-child { background: var(--panel-hi); color: var(--fg); box-shadow: inset 0 3px 5px rgba(0,0,0,.35); }
+.rocker[aria-disabled="true"] { opacity: .85; }
+
+.field-label { font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.rotary { display: inline-flex; align-items: center; gap: 8px; }
+.rotary .knob { width: 38px; height: 38px; flex: none; }
+.rotary .knob g { transition: transform .35s cubic-bezier(.3,1.5,.5,1); transform-origin: 20px 20px; }
+select.series-picker, input[type=date] {
+  appearance: none; background-color: var(--screen); color: var(--fg); border: 2px solid var(--outline); border-radius: 8px;
+  padding: 7px 34px 7px 12px; font-size: .86rem; box-shadow: inset 0 2px 4px rgba(0,0,0,.5);
+}
+select.series-picker {
+  background-image: linear-gradient(45deg, transparent 50%, var(--cyan) 50%), linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
+  background-position: calc(100% - 17px) 55%, calc(100% - 12px) 55%; background-size: 5px 5px; background-repeat: no-repeat; cursor: pointer;
+}
+input[type=date] { padding-right: 10px; color-scheme: dark; }
+
+/* ---- Header ---------------------------------------------------------------- */
+.app-header { display: grid; grid-template-columns: minmax(0, 1.3fr) auto auto; gap: 16px 26px; align-items: center; padding: 16px 28px; }
+.app-header h1 { font-size: 1.3rem; letter-spacing: .04em; font-weight: 800; text-shadow: 0 2px 0 #000; }
+.series-line { margin-top: 8px; padding: 7px 12px; font-family: var(--font-seg); font-size: .95rem; color: var(--cyan); display: inline-block; max-width: 100%; text-shadow: 0 0 8px rgba(125,207,255,.35); }
+.hdr-status { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.last-update { font-size: .82rem; color: var(--fg-dark); }
+.hdr-controls { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; justify-content: flex-end; }
+.hdr-controls .ctl { display: flex; flex-direction: column; gap: 4px; }
+.mock-plate { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; background: var(--yellow); color: var(--ink); font-weight: 900; font-size: .72rem; letter-spacing: .18em; border: 2px solid var(--outline); border-radius: 5px; box-shadow: 0 2px 0 var(--outline); }
+.mock-plate::before, .mock-plate::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #8a6a3a; border: 1px solid var(--outline); }
+
+/* ---- Banners ---------------------------------------------------------------- */
+.banner { display: flex; align-items: center; gap: 14px; padding: 12px 18px 12px 16px; border: var(--ow) solid var(--outline); border-radius: 12px; font-weight: 600; box-shadow: 0 4px 0 #0e0f16; }
+.banner .lamp { width: 18px; height: 18px; }
+.banner p + p { margin-top: 2px; font-weight: 500; }
+.banner-warn { background: repeating-linear-gradient(-45deg, #2c2a24 0 14px, #34301f 14px 28px); border-color: #4b3b1a; color: var(--yellow); }
+.banner-error { background: repeating-linear-gradient(-45deg, #33262f 0 14px, #3b2430 14px 28px); border-color: #5a2432; color: var(--red); }
+.banner-warn, .banner-error { outline: 2px solid var(--outline); outline-offset: -5px; }
+.banner .txt { color: var(--fg); }
+.banner .txt b { color: inherit; }
+
+/* ---- Live panel --------------------------------------------------------------- */
+.live-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.module { min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--module); border: 2px solid var(--outline); border-radius: 12px; box-shadow: inset 0 2px 0 rgba(192,202,245,.07), inset 0 -3px 0 rgba(0,0,0,.2); }
+.module h3 { font-size: .74rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--fg); text-shadow: 0 1px 0 #000; }
+.module .slots { font-size: .74rem; color: var(--muted); }
+.module .screen { padding: 8px 10px; }
+.gauge { display: block; width: 100%; height: auto; }
+.gauge .needle, .vu .needle { transition: transform .9s cubic-bezier(.25,1.55,.45,1); transform-box: view-box; }
+.gauge .needle { transform-origin: 100px 98px; transform: rotate(-90deg); }
+.vu .needle { transform-origin: 120px 196px; transform: rotate(-40deg); }
+.is-null .needle { opacity: .35; }
+.gauge-read { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: -2px; }
+.spark { display: block; width: 100%; height: 30px; margin-top: 6px; }
+.spark .area { opacity: .18; }
+.spark .line { fill: none; stroke-width: 1.8; vector-effect: non-scaling-stroke; }
+.spark .base { stroke: var(--comment); stroke-width: 1; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+.spark-cap { display: flex; justify-content: space-between; font-size: .66rem; color: var(--muted); letter-spacing: .04em; }
+.bank { display: flex; align-items: center; gap: 8px; }
+.bank .bl { width: 34px; font-size: .68rem; font-weight: 800; letter-spacing: .1em; color: var(--fg-dark); }
+.bank .lamps { display: flex; gap: 4px; flex-wrap: nowrap; }
+.bank .lamp { width: 12px; height: 12px; border-width: 2px; }
+.req-read { display: flex; align-items: center; gap: 10px; min-height: 46px; }
+.meter-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) 40px; align-items: center; gap: 8px; padding: 3px 0; }
+.meter-row .m-label { font-size: .74rem; font-weight: 700; color: var(--fg-dark); }
+.meter-row .m-val { font-family: var(--font-seg); font-weight: 700; font-size: .92rem; text-align: right; }
+.segbar { display: flex; gap: 2px; }
+.segbar i { flex: 1; height: 16px; border-radius: 2px; background: var(--zc); opacity: .18; border: 1px solid #0d0e14; }
+.segbar i.on { opacity: 1; box-shadow: 0 0 6px -1px var(--zc); }
+.z-r { --zc: var(--red); } .z-y { --zc: var(--yellow); } .z-g { --zc: var(--green); }
+.tx-r { color: var(--red); } .tx-y { color: var(--yellow); } .tx-g { color: var(--green); } .tx-n { color: var(--muted); }
+.legend-line { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .68rem; color: var(--muted); margin-top: 2px; }
+.legend-line .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--outline); }
+
+/* ---- Summary cards --------------------------------------------------------- */
+.summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.card { display: flex; flex-direction: column; gap: 12px; }
+.card .screen { display: flex; flex-direction: column; gap: 4px; }
+.cap { font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.card { container-type: inline-size; }
+.card .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@container (max-width: 400px) { .card .pair { grid-template-columns: 1fr; } }
+.card .pair .screen { padding: 8px 10px; }
+.card .pair .lcd { font-size: 1.1rem; }
+.ratio { display: flex; height: 16px; border: 2px solid var(--outline); border-radius: 5px; overflow: hidden; background: var(--screen); }
+.ratio i { display: block; height: 100%; }
+.ratio i:first-child { background: var(--blue); border-right: 2px solid var(--outline); }
+.ratio i:last-child { background: var(--orange); }
+.ratio-cap { display: flex; justify-content: space-between; font-size: .72rem; color: var(--fg-dark); margin-top: 4px; }
+.ratio-cap .sw { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 2px; vertical-align: -1px; border: 1px solid var(--outline); }
+.stat-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.stat-row .lcd { font-size: 1.15rem; }
+.fill-meter { flex: 1 1 100px; height: 12px; border: 2px solid var(--outline); border-radius: 4px; background: var(--screen); overflow: hidden; min-width: 80px; }
+.fill-meter i { display: block; height: 100%; background: var(--teal); }
+.note { font-size: .8rem; color: var(--muted); }
+.flag { display: flex; align-items: flex-start; gap: 8px; font-size: .8rem; color: var(--fg-dark); }
+.flag .lamp { margin-top: 2px; }
+.lifetime-start { font-size: .8rem; font-weight: 700; color: var(--fg); }
+.footnote { font-size: .8rem; color: var(--muted); padding: 0 6px; }
+.cream-strip { background: var(--cream); color: var(--ink); border: 2px solid var(--outline); border-radius: 5px; padding: 3px 10px; font-size: .74rem; font-weight: 700; letter-spacing: .03em; box-shadow: inset 0 -2px 0 rgba(0,0,0,.15); }
+
+/* ---- Trend + latest rate -------------------------------------------------- */
+.row-2 { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 18px; align-items: stretch; }
+.trend-top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.custom-wrap { position: relative; }
+.custom-range > summary { list-style: none; cursor: pointer; }
+.custom-range > summary::-webkit-details-marker { display: none; }
+.custom-fields { margin-top: 12px; display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; padding: 12px; background: var(--module); border: 2px solid var(--outline); border-radius: 10px; min-width: 300px; }
+.custom-fields label { font-size: .76rem; color: var(--fg-dark); }
+.custom-fields .key { grid-column: 1 / -1; justify-self: start; }
+.scope-bezel { background: var(--module); border: 2px solid var(--outline); border-radius: 14px; padding: 10px; box-shadow: inset 0 2px 0 rgba(192,202,245,.07); }
+.scope-screen { padding: 4px; border-radius: 12px; }
+#scope-wrap { position: relative; cursor: crosshair; border-radius: 8px; touch-action: pan-y; }
+#scope-wrap svg { display: block; width: 100%; height: auto; }
+.scope-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 6px 2px; font-size: .78rem; color: var(--fg-dark); }
+.scope-legend .sw { display: inline-block; width: 14px; height: 10px; margin-right: 6px; border-radius: 2px; border: 1px solid var(--outline); vertical-align: -1px; }
+.hatch-sw { background: repeating-linear-gradient(45deg, var(--blue) 0 2px, transparent 2px 4px); }
+.readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.readout .screen { padding: 8px 12px; }
+.readout .lcd { font-size: 1.25rem; }
+.readout-line { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.readout-line .cream-strip { font-family: var(--font-seg); }
+.trend-notes { display: flex; flex-direction: column; gap: 6px; margin: 0 0 10px; }
+.trend-notes .flag { color: var(--fg); }
+.range-error { margin-top: 10px; font-weight: 600; color: var(--red); }
+details.hatch { margin-top: 14px; border: 2px solid var(--outline); border-radius: 10px; background: var(--module); }
+details.hatch > summary { cursor: pointer; padding: 10px 14px; font-weight: 800; font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; list-style: none; display: flex; align-items: center; gap: 10px; border-radius: 8px; }
+details.hatch > summary::-webkit-details-marker { display: none; }
+details.hatch > summary::before { content: ""; width: 0; height: 0; border-left: 8px solid var(--cyan); border-top: 5px solid transparent; border-bottom: 5px solid transparent; transition: transform .15s; }
+details.hatch[open] > summary::before { transform: rotate(90deg); }
+details.hatch > .body { padding: 0 14px 14px; }
+.table-wrap { max-height: 320px; overflow: auto; border: 2px solid var(--outline); border-radius: 8px; background: var(--screen); }
+.chart-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.chart-table caption { text-align: left; padding: 8px 10px; color: var(--muted); font-size: .76rem; caption-side: top; }
+.chart-table th, .chart-table td { text-align: left; padding: 6px 10px; border-top: 1px solid #2a2f45; vertical-align: top; }
+.chart-table thead th { position: sticky; top: 0; background: var(--page-dark); color: var(--fg-dark); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; z-index: 1; }
+.chart-table tbody th { font-weight: 600; white-space: nowrap; color: var(--fg); }
+.chart-table td { font-family: var(--font-seg); }
+.chart-table td:last-child { font-family: var(--font-ui); color: var(--fg-dark); }
+
+.rate-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.vu-cell { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--module); border: 2px solid var(--outline); border-radius: 12px; }
+.vu-cell h3 { font-size: .74rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; text-shadow: 0 1px 0 #000; }
+.vu-frame { border: var(--ow) solid var(--outline); border-radius: 10px; overflow: hidden; background: var(--cream); box-shadow: inset 0 0 0 2px #8a93bf; }
+.vu { display: block; width: 100%; height: auto; }
+.vu-cell.is-stale .vu-frame, .vu-cell.is-stale .screen { filter: saturate(.25) brightness(.7); }
+.vu-cell .stamp { display: flex; align-items: center; gap: 8px; }
+.stale-notice { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 12px; border: 2px solid var(--outline); border-radius: 8px; background: #3a3426; color: var(--yellow); font-weight: 700; font-size: .86rem; }
+.request-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.request-cell { display: flex; flex-direction: column; gap: 6px; }
+.request-title { font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--fg); }
+.request-meta { font-size: .76rem; color: var(--muted); }
+
+/* ---- Diagnostics ---------------------------------------------------------------- */
+.diag-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 4px; }
+.diag-block { padding: 12px 14px; background: var(--module); border: 2px solid var(--outline); border-radius: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.diag-block.wide { grid-column: 1 / -1; }
+.diag-block h3 { font-size: .74rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.gap-row { display: grid; grid-template-columns: 14px 150px minmax(0, 1fr); align-items: center; gap: 4px 10px; font-size: .86rem; }
+.gap-row .gv { color: var(--fg-dark); }
+.tape { font-family: var(--font-seg); font-size: .8rem; max-height: 220px; overflow: auto; }
+.tape ol { counter-reset: ln; }
+.tape li { counter-increment: ln; display: grid; grid-template-columns: 2.4em minmax(0, 1fr); gap: 6px; padding: 2px 0; color: var(--green); overflow-wrap: anywhere; }
+.tape li::before { content: counter(ln, decimal-leading-zero); color: var(--muted); }
+.tape .kind { color: var(--cyan); }
+.tape .det { color: var(--fg-dark); }
+.tape .cursor { color: var(--green); animation: blink 1.1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.epoch-list li { font-size: .84rem; padding: 3px 0; display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.epoch-list .note { flex-basis: 100%; padding-left: 22px; }
+.timeline { width: 100%; height: auto; display: block; }
+.flag-lamps li { display: flex; align-items: flex-start; gap: 10px; padding: 3px 0; font-size: .84rem; }
+.flag-lamps .lamp { margin-top: 2px; }
+
+/* ---- Skeleton / empty ---------------------------------------------------------- */
+.skeleton { display: flex; flex-direction: column; gap: 18px; }
+.skeleton-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.sk { min-height: 160px; border-radius: var(--radius); border: var(--ow) solid var(--outline); background: var(--panel); position: relative; overflow: hidden; box-shadow: 0 5px 0 #0e0f16; }
+.sk.chart { min-height: 340px; }
+.sk::after { content: ""; position: absolute; inset: 14px; border-radius: 8px; background: var(--screen); border: 2px solid var(--outline); animation: warm 1.6s ease-in-out infinite; }
+@keyframes warm { 50% { opacity: .55; } }
+.empty-state { display: flex; align-items: center; gap: 20px; }
+.empty-state svg { flex: none; width: 150px; height: auto; }
+.empty-state p { font-size: 1rem; font-weight: 600; }
+
+/* ---- Dev switcher --------------------------------------------------------------- */
+.dev { position: fixed; right: 10px; bottom: 10px; z-index: 50; font-size: .8rem; }
+.dev > button { cursor: pointer; padding: 4px 10px; font-size: .66rem; font-weight: 800; letter-spacing: .16em; background: var(--page-dark); color: var(--muted); border: 2px solid var(--outline); border-radius: 6px; opacity: .85; }
+.dev > button:hover, .dev > button[aria-expanded="true"] { opacity: 1; color: var(--fg); }
+.dev-panel { position: absolute; right: 0; bottom: 34px; width: 250px; padding: 12px 14px; background: var(--panel); border: var(--ow) solid var(--outline); border-radius: 12px; box-shadow: 0 10px 24px rgba(0,0,0,.5); }
+.dev-panel[hidden] { display: none; }
+.dev-panel fieldset { border: 0; padding: 0; margin: 0 0 10px; }
+.dev-panel legend { padding: 0; margin-bottom: 6px; font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.dev-panel label { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+.dev-panel input { accent-color: var(--cyan); width: 15px; height: 15px; }
+
+/* ---- Responsive ------------------------------------------------------------------- */
+@media (max-width: 1199px) {
+  .live-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .live-grid > :nth-child(-n+3) { grid-column: span 2; }
+  .live-grid > :nth-child(n+4) { grid-column: span 3; }
+  .row-2 { grid-template-columns: minmax(0, 1fr); }
+  .rate-grid { grid-template-columns: 1fr 1fr; }
+  .app-header { grid-template-columns: minmax(0, 1fr) auto; }
+  .hdr-controls { grid-column: 1 / -1; justify-content: flex-start; }
+  .app-header h1 { font-size: 1.1rem; letter-spacing: .02em; }
+  .series-line { font-size: .86rem; }
+}
+@media (max-width: 1000px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary-grid > :last-child { grid-column: 1 / -1; }
+  .diag-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .live-grid, .summary-grid, .skeleton-row, .rate-grid, .request-grid { grid-template-columns: 1fr; }
+  .live-grid > * { grid-column: auto !important; }
+  .shell { padding-inline: 10px; }
+}
+
+/* ---- Reduced motion: no transitions, no animations ------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <p class="vh" role="status" aria-live="polite" id="live-status"></p>
+  <header class="panel app-header" id="app-header"></header>
+  <div id="banners" style="display:flex;flex-direction:column;gap:12px"></div>
+
+  <main style="display:flex;flex-direction:column;gap:18px">
+    <section class="panel" aria-label="Live engine activity" id="live-panel">
+      <div class="plate" id="live-plate"></div>
+      <div class="live-grid" id="live-grid"></div>
+    </section>
+    <div id="below" style="display:flex;flex-direction:column;gap:18px"></div>
+  </main>
+</div>
+
+<div class="dev" id="dev">
+  <button type="button" id="dev-toggle" aria-expanded="false" aria-controls="dev-panel">DEV</button>
+  <div class="dev-panel" id="dev-panel" hidden role="group" aria-label="Mockup state switcher">
+    <fieldset id="dev-states"><legend>State</legend></fieldset>
+    <fieldset>
+      <legend>Options</legend>
+      <label><input type="checkbox" id="dev-multi" checked> Several series</label>
+      <label><input type="checkbox" id="dev-pause"> Pause live tick</label>
+    </fieldset>
+    <p class="note">Mock data. Live tick 1 s (15 s with reduced motion). URL: #state=stale</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =============================== helpers =============================== */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const nf = new Intl.NumberFormat('en-US');
+const HR = 3600e3, DAY = 86400e3;
+const NO_DATA = 'no data', PH = '-';
+
+/* ---- Ported from frontend/src/lib/format.ts (same wording and shapes) ---- */
+const fmtTokens = (v) => (v == null ? NO_DATA : nf.format(v));
+const fmtRate = (r) => (!r || !r.eligible || r.tokens_per_second == null ? 'N/A' : `${nf.format(Math.round(r.tokens_per_second))} tok/s`);
+const fmtRatio = (v) => (v == null ? PH : `${Math.round(v * 100)}%`);
+const fmtUtc = (ms) => (ms == null ? NO_DATA : `${new Date(ms).toISOString().slice(0, 16).replace('T', ' ')} UTC`);
+const fmtDay = (ms) => (ms == null ? NO_DATA : new Date(ms).toISOString().slice(0, 10));
+function bucketLabel(b) {
+  const iso = new Date(b.start).toISOString();
+  if (b.kind === 'day') return iso.slice(0, 10);
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}–${new Date(b.end).toISOString().slice(11, 16)} UTC`;
+}
+const FLAG_LABELS = {
+  collection_gap: 'Some intervals were not collected; totals cover observed intervals only.',
+  reset_boundary: 'A counter reset boundary sits at the start of this range.',
+  continuity_unverified: 'Continuity across this interval could not be verified.',
+  time_attribution_approximate: 'Work is attributed to this bucket approximately, not exactly.',
+  clock_discontinuity: 'A clock discontinuity was observed in this range.',
+  counter_unavailable: 'This counter was unavailable for part of the range.',
+  metadata_incomplete: 'Quality metadata is incomplete for this total.',
+};
+const flagLabel = (f) => FLAG_LABELS[f] || `Unrecognised quality flag: ${f}.`;
+function humanDuration(seconds) {
+  const total = Math.round(seconds), days = Math.floor(total / 86400), hours = Math.floor((total % 86400) / 3600),
+    minutes = Math.floor((total % 3600) / 60), rest = total % 60, p = [];
+  if (days) p.push(`${days}d`); if (hours) p.push(`${hours}h`); if (minutes) p.push(`${minutes}m`);
+  if (!days && (rest || !minutes)) p.push(`${rest}s`);
+  return p.join(' ');
+}
+const describeGap = (s) => (!Number.isFinite(s) || s <= 0 ? 'no unobserved interval' : `unobserved for ${humanDuration(s)}`);
+const RANGE_ERROR_TEXT = {
+  invalid_range: 'Narrow the range to 366 days or fewer.', invalid_time: 'Choose valid UTC dates for the range.',
+  storage_unavailable: 'Retry — storage is unavailable.', unknown: 'The request failed — retry.',
+};
+const rangeErrorText = (c) => RANGE_ERROR_TEXT[c] || 'The request failed — retry.';
+const COLLECTION_LABELS = { starting: 'Collecting', healthy: 'Healthy', degraded: 'Degraded', offline: 'Offline' };
+const collectionLabel = (s) => (!s ? 'Collecting' : COLLECTION_LABELS[s] || s);
+function groupThousands(d) { return d.replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function fmtMoney(amount) {
+  if (amount == null) return NO_DATA;
+  const micros = Math.round(Number(amount) * 1e6);
+  if (micros > 0 && micros < 5000) return '< $0.01';
+  const cents = Math.floor((micros + 500) / 1000);
+  return `$${groupThousands(String(Math.floor(cents / 100)))}.${String(cents % 100).padStart(2, '0')}`;
+}
+const fmtAmount = (a) => (a == null ? NO_DATA : `≈ ${fmtMoney(a)}`);
+const fmtCacheShare = (r) => (r == null ? NO_DATA : `${Math.round(r * 100)}% of input`);
+function fmtCoverage(c) {
+  if (!c || !c.partial) return '';
+  if (c.expected_hours >= 48) { const d = (h) => (h / 24).toFixed(1); return `partial · covers ${d(c.priced_hours)} of ${d(c.expected_hours)} days`; }
+  return `partial · covers ${c.priced_hours} of ${c.expected_hours} h`;
+}
+const CACHE_SKEW_NOTE = 'approximate — cache count ahead of request count';
+const fmtCostFlags = (c) => (c && c.flags.includes('cache_exceeds_input') ? [CACHE_SKEW_NOTE] : []);
+const RATES = { currency: 'USD', input: '3', cached: '0.3', output: '15' };
+const unitPrice = (v) => { const [w, f = ''] = v.split('.'); return `$${groupThousands(w)}.${f.length < 2 ? f.padEnd(2, '0') : f}`; };
+const ratesFootnote = () => `Approximate API-equivalent at ${unitPrice(RATES.input)} input / ${unitPrice(RATES.cached)} cached / ${unitPrice(RATES.output)} output per M tokens (${RATES.currency}). Priced only where cache tracking exists.`;
+function compact(v) {
+  const t = (x) => String(Number(x.toFixed(1)));
+  if (v >= 1e9) return `${t(v / 1e9)}B`; if (v >= 1e6) return `${t(v / 1e6)}M`; if (v >= 1e3) return `${t(v / 1e3)}k`; return String(Math.round(v));
+}
+
+/* =============================== mock data ================================ */
+function hash(n) { n = Math.imul(n ^ (n >>> 15), 2246822507); n = Math.imul(n ^ (n >>> 13), 3266489909); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; }
+const rnd = (seed, k) => hash(Math.imul(seed, 7919) + Math.imul(k, 104729) + 13);
+const T = (s) => Date.parse(s);
+const SIM0 = T('2026-10-27T11:42:08Z'); // fixed "now" so the mockup is stable across reloads
+const SERIES = [
+  { id: 's-7c1e', model: 'Qwen3-Next-80B-A3B', engine: '0', scale: 1, seed: 11, first: T('2026-08-14T07:31:12Z') },
+  { id: 's-b94a', model: 'gpt-oss-120b', engine: '1', scale: 0.62, seed: 29, first: T('2026-09-21T14:02:40Z') },
+];
+const CACHE_START = T('2026-10-09T12:00:00Z');
+const GAPS = [[T('2026-10-03T00:00:00Z'), T('2026-10-04T00:00:00Z')], [T('2026-10-09T14:00:00Z'), T('2026-10-10T03:00:00Z')], [T('2026-10-26T15:00:00Z'), T('2026-10-26T20:00:00Z')]];
+const RESET_TS = T('2026-10-18T09:50:00Z');
+const inGap = (h) => GAPS.some(([a, b]) => h >= a && h < b);
+
+function hourData(h, s) {
+  const idx = Math.floor(h / HR), hod = new Date(h).getUTCHours();
+  const diurnal = 0.35 + 0.65 * Math.max(0, Math.sin((Math.PI * (hod - 5)) / 15));
+  const noise = 0.65 + 0.7 * rnd(s.seed, idx);
+  const input = Math.round(4.2e6 * s.scale * diurnal * noise);
+  return {
+    input,
+    out: Math.round(input * (0.085 + 0.05 * rnd(s.seed + 1, idx))),
+    cached: Math.round(input * 1.63 * (0.9 + 0.2 * rnd(s.seed + 2, idx))),
+  };
+}
+
+/** Aggregate [from,to) like a Range/Bucket of the API. Tokens are null when nothing was observed. */
+function agg(s, from, to, now) {
+  const A = { in: 0, out: 0, obs: 0, gapH: 0, expH: 0, pricedH: 0, pIn: 0, pC: 0, pOut: 0, reset: false };
+  const curH = Math.floor(now / HR) * HR, end = Math.min(to, curH + HR), firstH = Math.floor(s.first / HR) * HR;
+  for (let h = from; h < end; h += HR) {
+    if (h < firstH) continue;
+    A.expH++;
+    if (inGap(h)) { A.gapH++; continue; }
+    const d = hourData(h, s), f = h === curH ? (now - h) / HR : 1;
+    A.obs += f; A.in += d.input * f; A.out += d.out * f;
+    if (h >= CACHE_START) { A.pricedH++; A.pIn += d.input * f; A.pC += d.cached * f; A.pOut += d.out * f; }
+    if (RESET_TS >= h && RESET_TS < h + HR) A.reset = true;
+  }
+  const seen = A.obs > 0;
+  const flags = [];
+  if (A.gapH > 0) flags.push('collection_gap');
+  if (A.reset) flags.push('reset_boundary');
+  const hasCache = A.pIn + A.pC > 0;
+  const aeFlags = to - from > 2 * DAY && from <= T('2026-10-21T00:00:00Z') && end > T('2026-10-22T00:00:00Z') ? ['cache_exceeds_input'] : [];
+  return {
+    start: from, end: to, ci: seen ? Math.round(A.in) : null, go: seen ? Math.round(A.out) : null,
+    total: seen ? Math.round(A.in) + Math.round(A.out) : null, intervals: Math.round(A.obs * 240),
+    partial: A.gapH > 0, incomplete: to > now, flags, gapH: A.gapH, obsH: A.obs,
+    ae: {
+      amount: A.pricedH > 0 ? ((A.pIn * 3 + A.pC * 0.3 + A.pOut * 15) / 1e6).toFixed(6) : null,
+      ratio: hasCache ? A.pC / (A.pC + A.pIn) : null, expected_hours: A.expH, priced_hours: A.pricedH,
+      partial: A.pricedH < A.expH, flags: aeFlags,
+    },
+  };
+}
+
+/** Mirror of paramsForRange() in dashboard.ts. */
+function paramsForRange(preset, now, cf, ct) {
+  if (preset === '24h') { const h = Math.floor(now / HR) * HR; return { from: h - 23 * HR, to: h + HR, kind: 'hour' }; }
+  if (preset === '7d' || preset === '30d') { const d = preset === '7d' ? 6 : 29, m = Math.floor(now / DAY) * DAY; return { from: m - d * DAY, to: m + DAY, kind: 'day' }; }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cf) || !/^\d{4}-\d{2}-\d{2}$/.test(ct)) return { code: 'invalid_time' };
+  const a = Date.parse(`${cf}T00:00:00Z`), b = Date.parse(`${ct}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return { code: 'invalid_time' };
+  const to = b + DAY;
+  if (a >= to || (to - a) / DAY > 366) return { code: 'invalid_range' };
+  return { from: a, to, kind: 'day' };
+}
+
+function buildHistory(s, p, now) {
+  const step = p.kind === 'hour' ? HR : DAY, buckets = [];
+  for (let t = p.from; t < p.to; t += step) buckets.push({ ...agg(s, t, t + step, now), kind: p.kind });
+  return { ...p, buckets, range: agg(s, p.from, p.to, now) };
+}
+
+/* Live (1 Hz) snapshot: deterministic smooth walk so sparklines and gauges look real. */
+function liveSample(k) {
+  const r = (i) => rnd(97, k * 5 + i) - 0.5;
+  const active = Math.max(0, Math.round(5.5 + 1.6 * Math.sin(k / 11) + r(0) * 1.5));
+  const queued = Math.max(0, Math.round(0.8 + 1.2 * Math.sin(k / 6 + 1) + r(1)));
+  const decode = 140 + 22 * Math.sin(k / 9) + 12 * r(2);
+  const prefill = Math.max(0, 4400 + 1100 * Math.sin(k / 7) + 900 * r(3) + (((k % 23) + 23) % 23 === 0 ? 2200 : 0));
+  const b = 0.74 + 0.05 * Math.sin(k / 13), m = 0.88 + 0.03 * Math.sin(k / 17);
+  const c = (v) => Math.min(1, Math.max(0, v));
+  return {
+    requests: { active, queued }, prefill, decode, perReq: active > 0 ? decode / active : null,
+    mtp: { w5: c(b + 0.06 * r(4)), w1: c(b + 0.012 * r(2)), w30: 0.72, life: 0.71 },
+    moe: { w5: c(m + 0.05 * r(3)), w1: c(m - 0.008), w30: 0.86 },
+  };
+}
+function startingSample(k) {
+  const s = liveSample(k);
+  return { ...s, requests: { active: 2, queued: 0 }, prefill: 1204 + 260 * Math.sin(k / 5), decode: 88 + 6 * Math.sin(k / 4), perReq: (88 + 6 * Math.sin(k / 4)) / 2,
+    mtp: { w5: s.mtp.w5, w1: 0.71, w30: null, life: 0.7 }, moe: { w5: s.moe.w5, w1: 0.87, w30: null } };
+}
+
+/* ---- Dashboard states (the real UI's states) ---- */
+const SCEN = {
+  live:      { label: 'Live',                collection: 'healthy',  live: 'live',     sum: 'active' },
+  starting:  { label: 'Starting',            collection: 'starting', live: 'starting', sum: 'active' },
+  stale:     { label: 'Stale',               collection: 'degraded', live: 'stale',    sum: 'stale', err: 'connect_timeout', lastOk: -6 * 60e3 },
+  offline:   { label: 'Offline banner',      collection: 'offline',  live: 'stale',    sum: 'stale', err: 'connect_timeout', lastOk: -18 * 60e3 },
+  apierror:  { label: 'API error',           collection: 'healthy',  live: 'live',     sum: 'active', storage: 'unavailable', apiError: 'storage_unavailable', lastOk: -60e3 },
+  skeleton:  { label: 'First-load skeleton', collection: 'starting', first: true },
+  empty:     { label: 'Empty',               collection: 'starting', empty: true },
+  baseline:  { label: 'Baseline only',       collection: 'starting', live: 'live', sum: 'active', baseline: true },
+};
+
+const ui = { scen: 'live', series: 0, multi: true, preset: '24h', customFrom: '2026-10-01', customTo: '2026-10-20', rangeErr: null, cursor: null,
+  elapsed: 0, k: 0, paused: false, open: { req: false, diag: false, table: false, custom: false }, devOpen: false };
+
+function view() {
+  const sc = SCEN[ui.scen], now = SIM0 + ui.elapsed;
+  const s = { ...SERIES[ui.series] };
+  if (sc.baseline) s.first = now - 3 * 60e3;
+  const v = { sc, now, s, seriesList: sc.empty || sc.first ? [] : (ui.multi ? SERIES : SERIES.slice(0, 1)), sum: null, hist: null };
+  v.lastOk = sc.empty || sc.first ? null : now + (sc.lastOk ?? -20e3);
+  v.apiErrCode = sc.apiError || ui.rangeErr;
+  if (sc.empty || sc.first) return v;
+  const midnight = Math.floor(now / DAY) * DAY, d = new Date(now);
+  const monthStart = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1), monthEnd = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+  const hrs = Math.floor(now / HR) * HR;
+  const ranges = { today: agg(s, midnight, midnight + DAY, now), month: agg(s, monthStart, monthEnd, now), lifetime: agg(s, Math.floor(s.first / HR) * HR, hrs + HR, now) };
+  ranges.lifetime.incomplete = false;
+  ranges.lifetime.end = now;
+  const l = ranges.lifetime, gapPrimary = l.gapH * 3600;
+  l.gaps = { primary: gapPrimary, request_input: gapPrimary + (l.obsH > 0 ? 5400 : 0), request_output: gapPrimary + (l.obsH > 0 ? 5400 : 0),
+    cached_input: Math.max(0, Math.round((CACHE_START - s.first) / 1000)) + GAPS.reduce((a, [x, y]) => a + (x >= CACHE_START ? (y - x) / 1000 : 0), 0) * (l.obsH > 0 ? 1 : 0) };
+  if (l.obsH === 0) l.gaps.cached_input = 0;
+  l.req_in = l.ci == null ? null : Math.round(l.ci * 1.07);
+  l.req_out = l.go == null ? null : Math.round(l.go * 0.998);
+  const stale = sc.sum === 'stale';
+  const jitter = Math.sin(ui.elapsed / 15000);
+  v.sum = {
+    ranges, state: stale ? 'stale' : 'active',
+    rates: sc.baseline ? {} : {
+      computed_input: { eligible: !stale, tokens_per_second: stale ? null : 4400 + 600 * jitter, observed_at: now - (stale ? 6 * 60e3 : 9e3) },
+      generated_output: { eligible: !stale, tokens_per_second: stale ? null : 139 + 14 * jitter, observed_at: now - (stale ? 6 * 60e3 : 9e3) },
+    },
+    epochs: sc.baseline ? [{ id: 1, reason: 'new_series', start: s.first, oi: '0', oo: '0' }] : [
+      { id: 1, reason: 'new_series', start: s.first, oi: 3104552, oo: 188421 },
+      { id: 2, reason: 'restart_evidence', start: T('2026-09-02T02:14:00Z'), oi: 1022, oo: 77 },
+      { id: 3, reason: 'counter_reset', start: RESET_TS, oi: 14912, oo: 903 },
+    ].filter((e) => e.start >= s.first),
+  };
+  if (sc.baseline) { v.sum.epochs[0].oi = 0; v.sum.epochs[0].oo = 0; }
+  v.events = sc.baseline ? [] : [
+    { id: 4, kind: 'counter_reset', at: RESET_TS, details: { reason: 'primary_decrease' } },
+    { id: 3, kind: 'optional_rebaselined', at: T('2026-10-09T15:20:00Z'), details: { counter: 'cached_input', reason: 'restart_evidence' } },
+    { id: 2, kind: 'restart_detected', at: T('2026-09-02T02:14:00Z'), details: { evidence: 'disjoint_uptime_intervals' } },
+    { id: 1, kind: 'optional_reset', at: T('2026-08-29T21:05:00Z'), details: { counter: 'request_output', reason: 'counter_reset' } },
+  ].filter((e) => e.at >= s.first);
+  v.retention = { days: 30, from: now - 30 * DAY, until: now - 15e3, note: 'Older raw samples are pruned; hourly and daily aggregates are kept.' };
+  const flagSet = new Set();
+  [ranges.today, ranges.month, ranges.lifetime].forEach((r) => r.flags.forEach((f) => flagSet.add(f)));
+  v.flags = [...flagSet];
+  const cur = paramsForRange(ui.preset, now, ui.customFrom, ui.customTo);
+  v.hist = buildHistory(s, 'code' in cur ? paramsForRange(ui.histPreset || '24h', now, ui.customFrom, ui.customTo) : cur, now);
+  v.errCode = sc.err || null;
+  return v;
+}
+
+/* =============================== SVG builders ============================= */
+const DMAP = { 0: 'abcdef', 1: 'bc', 2: 'abged', 3: 'abgcd', 4: 'fgbc', 5: 'afgcd', 6: 'afgedc', 7: 'abc', 8: 'abcdefg', 9: 'abcdfg', '-': 'g' };
+const hexH = (x0, x1, y) => `${x0},${y} ${x0 + 1.7},${y - 1.7} ${x1 - 1.7},${y - 1.7} ${x1},${y} ${x1 - 1.7},${y + 1.7} ${x0 + 1.7},${y + 1.7}`;
+const hexV = (x, y0, y1) => `${x},${y0} ${x + 1.7},${y0 + 1.7} ${x + 1.7},${y1 - 1.7} ${x},${y1} ${x - 1.7},${y1 - 1.7} ${x - 1.7},${y0 + 1.7}`;
+const SEGP = { a: hexH(2.4, 13.6, 2), g: hexH(2.4, 13.6, 15), d: hexH(2.4, 13.6, 28), f: hexV(2, 2.8, 14.2), b: hexV(14, 2.8, 14.2), e: hexV(2, 15.8, 27.2), c: hexV(14, 15.8, 27.2) };
+/** Seven-segment readout, drawn in SVG. The real value is always supplied as text next to it. */
+function sevenSeg(text, { pad = 0, cls = '' } = {}) {
+  let s = String(text); if (pad) s = s.padStart(pad, ' ');
+  let x = 0, out = '';
+  for (const ch of s) {
+    if (ch === ',' || ch === '.') { out += `<circle cx="${x + 3.4}" cy="27.2" r="2.2" class="on"/><path d="M${x + 3.4} 28.5 L${x + 1.2} 33.2" class="tail"/>`; x += 8; continue; }
+    if (ch === '/') { out += `<path d="M${x + 2} 29 L${x + 10} 1" class="slash"/>`; x += 12; continue; }
+    const on = DMAP[ch] || '';
+    for (const k of 'abcdefg') out += `<polygon transform="translate(${x} 0)" points="${SEGP[k]}" class="${on.includes(k) ? 'on' : 'off'}"/>`;
+    x += 20;
+  }
+  return `<svg class="seven ${cls}" viewBox="0 0 ${x - 2} 34" aria-hidden="true" focusable="false">${out}</svg>`;
+}
+
+function sparkSvg(vals, color, max) {
+  const w = 120, h = 30;
+  if (!vals || vals.length < 2) return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" x2="${w}" y1="${h - 1}" y2="${h - 1}"/></svg>`;
+  const mx = max || Math.max(...vals, 1), pts = vals.map((v, i) => [(i / (vals.length - 1)) * w, h - 2 - (Math.min(v, mx) / mx) * (h - 6)]);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><line class="base" x1="0" x2="${w}" y1="${h - 1}" y2="${h - 1}"/><path class="area" d="${d} L${w} ${h} L0 ${h} Z" fill="${color}"/><path class="line" d="${d}" stroke="${color}"/></svg>`;
+}
+
+/** Semicircular needle gauge with zoned arc and tick ruler. */
+function gaugeSvg(id, max, zones, labelFmt) {
+  const cx = 100, cy = 98, R = 74;
+  const pt = (f, r) => [cx - r * Math.cos(Math.PI * f), cy - r * Math.sin(Math.PI * f)];
+  const arc = (f0, f1, r) => { const a = pt(f0, r), b = pt(f1, r); return `M${a[0].toFixed(2)} ${a[1].toFixed(2)} A${r} ${r} 0 0 1 ${b[0].toFixed(2)} ${b[1].toFixed(2)}`; };
+  let g = `<path d="${arc(0, 1, R)}" fill="none" stroke="#0d0e14" stroke-width="19" stroke-linecap="butt"/>`;
+  zones.forEach(([a, b, c]) => { g += `<path d="${arc(a, b, R)}" fill="none" stroke="var(--${c})" stroke-width="12"/>`; });
+  for (let i = 0; i <= 20; i++) {
+    const f = i / 20, major = i % 5 === 0, p1 = pt(f, major ? 59 : 62), p2 = pt(f, 66);
+    g += `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="${major ? 'var(--fg)' : 'var(--muted)'}" stroke-width="${major ? 1.8 : 1}"/>`;
+    if (major) { const t = pt(f, 47); g += `<text x="${t[0].toFixed(1)}" y="${(t[1] + 3).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--fg-dark)">${labelFmt((max * i) / 20)}</text>`; }
+  }
+  g += `<g class="needle" id="${id}"><polygon points="97.4,98 102.6,98 100.6,26 99.4,26" fill="var(--needle)" stroke="#0d0e14" stroke-width="1.2" stroke-linejoin="round"/></g>`;
+  g += `<circle cx="100" cy="98" r="8" fill="${'#3b4261'}" stroke="#0d0e14" stroke-width="2.5"/><circle cx="100" cy="98" r="2.6" fill="var(--needle)"/>`;
+  return `<svg class="gauge" viewBox="0 0 200 112" aria-hidden="true" focusable="false">${g}</svg>`;
+}
+
+/** Cream-faced VU meter with needle swinging from a pivot below the face. */
+function vuSvg(id, max, label) {
+  const px = 120, py = 196, R = 150, span = 38;
+  const pt = (deg, r) => { const a = (deg * Math.PI) / 180; return [px + r * Math.sin(a), py - r * Math.cos(a)]; };
+  const arc = (d0, d1, r) => { const a = pt(d0, r), b = pt(d1, r); return `M${a[0].toFixed(1)} ${a[1].toFixed(1)} A${r} ${r} 0 0 1 ${b[0].toFixed(1)} ${b[1].toFixed(1)}`; };
+  let g = `<rect x="0" y="34" width="240" height="116" fill="var(--cream)"/>`;
+  g += `<path d="${arc(-span, span, R - 8)}" fill="none" stroke="var(--ink)" stroke-width="1.6"/>`;
+  g += `<path d="${arc(-span, span * 0.4, R - 4)}" fill="none" stroke="#2a8f80" stroke-width="5"/>`;
+  g += `<path d="${arc(span * 0.4, span * 0.72, R - 4)}" fill="none" stroke="#b07a22" stroke-width="5"/>`;
+  g += `<path d="${arc(span * 0.72, span, R - 4)}" fill="none" stroke="#c23a56" stroke-width="5"/>`;
+  for (let i = 0; i <= 20; i++) {
+    const deg = -span + (2 * span * i) / 20, major = i % 5 === 0, a = pt(deg, R - 8), b = pt(deg, R - (major ? 22 : 16));
+    g += `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="var(--ink)" stroke-width="${major ? 2 : 1}"/>`;
+    if (major) { const t = pt(deg, R - 30); g += `<text x="${t[0].toFixed(1)}" y="${(t[1] + 3).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">${compact((max * i) / 20)}</text>`; }
+  }
+  g += `<text x="226" y="117" text-anchor="end" font-size="9.5" font-weight="800" letter-spacing="1.4" fill="var(--ink)">TOK/S</text>`;
+  g += `<g class="needle" id="${id}"><line x1="120" y1="${py}" x2="120" y2="${py - 142}" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/></g>`;
+  g += `<rect x="0" y="124" width="240" height="26" fill="#2f3550"/><rect x="0" y="122" width="240" height="3" fill="#13141c"/>`;
+  g += `<circle cx="14" cy="137" r="4" fill="#414868" stroke="#13141c" stroke-width="1.5"/><circle cx="226" cy="137" r="4" fill="#414868" stroke="#13141c" stroke-width="1.5"/>`;
+  return `<svg class="vu" viewBox="0 34 240 116" aria-hidden="true" focusable="false">${g}</svg>`;
+}
+
+/** 20-segment LED bar. Zone colours are by position (assumed thresholds), lit count is the value. */
+function segbar(th) {
+  let h = '';
+  for (let i = 0; i < 20; i++) { const f = (i + 0.5) / 20; h += `<i class="${f < th[0] ? 'z-r' : f < th[1] ? 'z-y' : 'z-g'}"></i>`; }
+  return `<div class="segbar" aria-hidden="true">${h}</div>`;
+}
+
+/* =============================== static shells ============================ */
+const MTP_TH = [0.5, 0.7], MOE_TH = [0.65, 0.85];
+const MTP_ROWS = [['5s', 'w5'], ['1m', 'w1'], ['30m', 'w30'], ['lifetime', 'life']], MOE_ROWS = [['5s', 'w5'], ['1m', 'w1'], ['30m', 'w30']];
+function meterRows(prefix, rows, th, name) {
+  return rows.map(([lbl, key]) => `<div class="meter-row" id="${prefix}-${key}" role="meter" aria-label="${name} ${lbl}" aria-valuemin="0" aria-valuemax="100"><span class="m-label">${lbl === 'lifetime' ? 'life' : lbl}</span>${segbar(th)}<span class="m-val"></span></div>`).join('');
+}
+const bank = (id, label) => `<div class="bank"><span class="bl">${label}</span><span class="lamps" id="${id}">${'<i class="lamp"></i>'.repeat(10)}</span></div>`;
+
+function buildLiveGrid() {
+  $('#live-grid').innerHTML = `
+  <article class="module" aria-labelledby="h-req">
+    <h3 id="h-req">Requests</h3>
+    <div class="screen req-read"><span class="vh" id="t-req"></span><span id="seg-req"></span></div>
+    <div class="screen" style="display:flex;flex-direction:column;gap:7px">${bank('bank-run', 'RUN')}${bank('bank-wait', 'WAIT')}</div>
+    <p class="slots">running / waiting</p>
+    <p class="legend-line"><span><i class="sw" style="background:var(--green)"></i>running</span><span><i class="sw" style="background:var(--yellow)"></i>waiting</span><span>10 lamps per bank (assumed)</span></p>
+  </article>
+  <article class="module" aria-labelledby="h-pre">
+    <h3 id="h-pre">Prefill</h3>
+    <div class="screen">${gaugeSvg('n-pre', 12000, [[0, 0.62, 'teal'], [0.62, 0.85, 'yellow'], [0.85, 1, 'red']], (v) => compact(v))}
+      <div class="gauge-read"><span class="lcd cyan" id="v-pre"></span></div>${'<div id="s-pre"></div>'}<div class="spark-cap"><span>-60 s</span><span>now</span></div></div>
+    <p class="slots">instantaneous</p>
+  </article>
+  <article class="module" aria-labelledby="h-dec">
+    <h3 id="h-dec">Decode</h3>
+    <div class="screen">${gaugeSvg('n-dec', 300, [[0, 0.62, 'teal'], [0.62, 0.85, 'yellow'], [0.85, 1, 'red']], (v) => String(Math.round(v)))}
+      <div class="gauge-read"><span class="lcd teal" id="v-dec"></span><span class="lcd teal" id="v-decreq" style="font-size:1.05rem"></span></div>${'<div id="s-dec"></div>'}<div class="spark-cap"><span>-60 s</span><span>now</span></div></div>
+    <p class="slots">instantaneous · per running request</p>
+  </article>
+  <article class="module" aria-labelledby="h-mtp">
+    <h3 id="h-mtp">MTP accept</h3>
+    <div class="screen">${meterRows('mtp', MTP_ROWS, MTP_TH, 'MTP accept')}</div>
+    <p class="slots">5s · 1m · 30m · lifetime</p>
+    <p class="legend-line"><span><i class="sw" style="background:var(--red)"></i>&lt;50%</span><span><i class="sw" style="background:var(--yellow)"></i>50–70%</span><span><i class="sw" style="background:var(--green)"></i>≥70%</span><span>(assumed)</span></p>
+  </article>
+  <article class="module" aria-labelledby="h-moe">
+    <h3 id="h-moe">MoE GPU hit</h3>
+    <div class="screen">${meterRows('moe', MOE_ROWS, MOE_TH, 'MoE GPU hit')}</div>
+    <p class="slots">5s · 1m · 30m</p>
+    <p class="legend-line"><span><i class="sw" style="background:var(--red)"></i>&lt;65%</span><span><i class="sw" style="background:var(--yellow)"></i>65–85%</span><span><i class="sw" style="background:var(--green)"></i>≥85%</span><span>(assumed)</span></p>
+  </article>`;
+}
+
+/* =============================== live update ============================== */
+const needle = (id, f, null_) => { const el = $(`#${id}`); el.style.transform = `rotate(${-90 + 180 * Math.min(1, Math.max(0, f || 0))}deg)`; el.closest('.screen').classList.toggle('is-null', !!null_); };
+function setMeter(id, v, th) {
+  const row = $(`#${id}`), segs = row.querySelectorAll('.segbar i'), lit = v == null ? 0 : Math.round(v * 20);
+  segs.forEach((s, i) => s.classList.toggle('on', i < lit));
+  const val = row.querySelector('.m-val');
+  val.textContent = fmtRatio(v);
+  val.className = 'm-val ' + (v == null ? 'tx-n' : v < th[0] ? 'tx-r' : v < th[1] ? 'tx-y' : 'tx-g');
+  if (v == null) row.removeAttribute('aria-valuenow'); else row.setAttribute('aria-valuenow', String(Math.round(v * 100)));
+}
+const lcdNum = (v, unit) => (v == null ? PH : `${nf.format(Math.round(v))}<small>${unit}</small>`);
+
+function chipState(v) {
+  const st = v.sc.live;
+  if (!st || st === 'stale') return st === 'stale' ? { label: 'Stale', color: 'red' } : { label: 'Starting', color: 'amber' };
+  return st === 'live' ? { label: 'Live', color: 'green' } : { label: 'Starting', color: 'amber' };
+}
+
+function updateLive(v) {
+  const st = v.sc.live, snap = st === 'live' ? liveSample(ui.k) : st === 'starting' ? startingSample(ui.k) : null;
+  const c = chipState(v);
+  $('#live-plate').innerHTML = `<h2>Live</h2><span class="chip" data-testid="live-state"><i class="lamp on ${c.color} ${c.color === 'green' ? 'pulse' : ''}"></i>${c.label}</span><span class="grow"></span><span class="plate-note" id="live-observed">${snap ? fmtUtc(v.now - 1000) : NO_DATA}</span>`;
+  $('#live-panel').classList.toggle('is-stale', st === 'stale');
+  const req = snap ? snap.requests : { active: null, queued: null };
+  const rt = `${req.active ?? PH} / ${req.queued ?? PH}`;
+  $('#t-req').textContent = rt;
+  $('#seg-req').innerHTML = snap ? sevenSeg(String(req.active), { pad: 2 }) + '<span style="display:inline-block;width:8px"></span>' + sevenSeg('/') + '<span style="display:inline-block;width:8px"></span>' + sevenSeg(String(req.queued), { pad: 2, cls: 'orange' })
+    : sevenSeg('--', { cls: 'nul' }) + '<span style="display:inline-block;width:14px"></span>' + sevenSeg('--', { cls: 'nul' });
+  $('#seg-req').style.display = 'flex'; $('#seg-req').style.alignItems = 'center';
+  const lamps = (id, n, color) => $(`#${id}`).querySelectorAll('.lamp').forEach((l, i) => { l.className = 'lamp' + (n != null && i < n ? ` on ${color}` : ''); });
+  lamps('bank-run', req.active, 'green'); lamps('bank-wait', req.queued, 'amber');
+  // Prefill
+  const hist = (fn) => { const n = st === 'starting' ? 8 : 60, a = []; for (let i = n - 1; i >= 0; i--) a.push(fn(ui.k - i)); return a; };
+  const smp = st === 'starting' ? startingSample : liveSample;
+  $('#v-pre').innerHTML = snap ? lcdNum(snap.prefill, 'tok/s') : PH; $('#v-pre').classList.toggle('nul', !snap);
+  needle('n-pre', snap ? snap.prefill / 12000 : 0, !snap);
+  $('#s-pre').innerHTML = snap ? sparkSvg(hist((k) => smp(k).prefill), 'var(--cyan)', 12000) : sparkSvg(null);
+  $('#v-dec').innerHTML = snap ? lcdNum(snap.decode, 'tok/s') : PH; $('#v-dec').classList.toggle('nul', !snap);
+  $('#v-decreq').innerHTML = snap && snap.perReq != null ? `${nf.format(Math.round(snap.perReq))}<small>/req</small>` : PH; $('#v-decreq').classList.toggle('nul', !snap);
+  needle('n-dec', snap ? snap.decode / 300 : 0, !snap);
+  $('#s-dec').innerHTML = snap ? sparkSvg(hist((k) => smp(k).decode), 'var(--teal)', 300) : sparkSvg(null);
+  const m = snap ? snap.mtp : {}, e = snap ? snap.moe : {};
+  MTP_ROWS.forEach(([, k]) => setMeter(`mtp-${k}`, m[k], MTP_TH));
+  MOE_ROWS.forEach(([, k]) => setMeter(`moe-${k}`, e[k], MOE_TH));
+  $('#live-grid').classList.toggle('is-null', !snap);
+}
+
+/* =============================== header + banners ========================= */
+function renderHeader(v) {
+  const sc = v.sc, sel = v.sum ? v.s : null;
+  const seriesName = sel ? `${sel.model} · engine ${sel.engine}` : 'No series yet';
+  const storage = sc.storage || 'ok';
+  const badge = storage === 'unavailable' ? { t: 'Storage unavailable', c: 'red' } : sc.collection === 'offline' ? { t: collectionLabel('offline'), c: 'red' } : sc.collection === 'healthy' ? { t: collectionLabel('healthy'), c: 'green' } : { t: collectionLabel(sc.collection), c: 'amber' };
+  const last = v.lastOk ? `Last successful update ${fmtUtc(v.lastOk)}` : 'Last successful update no data';
+  const picker = v.seriesList.length > 1 ? `
+    <div class="ctl"><label class="field-label" for="series-picker">Series</label>
+      <div class="rotary"><svg class="knob" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17" fill="#3b4261" stroke="#13141c" stroke-width="3"/><circle cx="20" cy="20" r="11" fill="#2f3550" stroke="#13141c" stroke-width="2"/><g style="transform:rotate(${ui.series * 70 - 35}deg)"><path d="M20 5 V16" stroke="#f7768e" stroke-width="4" stroke-linecap="round"/></g></svg>
+      <select id="series-picker" class="series-picker" data-fid="series-picker">${v.seriesList.map((x, i) => `<option value="${i}" ${i === ui.series ? 'selected' : ''}>${esc(x.model)} · engine ${x.engine}</option>`).join('')}</select></div></div>` : '';
+  $('#app-header').innerHTML = `
+    <div><h1 data-testid="product-name">Jarvis Token Dashboard</h1><p class="screen series-line" data-testid="series-name">${esc(seriesName)}</p></div>
+    <div class="hdr-status"><span class="chip" data-testid="status-badge"><i class="lamp on ${badge.c} ${badge.c === 'green' ? 'pulse' : ''}"></i>${esc(badge.t)}</span><p class="last-update" data-testid="last-update">${last}</p></div>
+    <div class="hdr-controls">${picker}
+      <div class="ctl"><span class="field-label" id="theme-lbl">Theme</span>
+        <button type="button" class="rocker" aria-disabled="true" aria-labelledby="theme-lbl" title="Light theme is outside this mockup (dark only)"><span>Dark</span><span>Light</span></button></div>
+      <span class="mock-plate" role="note">MOCK DATA</span></div>`;
+  const status = `${collectionLabel(sc.collection)}. ${v.lastOk ? `Last successful update ${fmtUtc(v.lastOk)}.` : 'No successful update yet.'}`;
+  if ($('#live-status').textContent !== status) $('#live-status').textContent = status;
+}
+
+function renderBanners(v) {
+  const out = [];
+  if (v.sc.collection === 'offline') out.push(`<p class="banner banner-warn" data-testid="offline-banner" role="status"><i class="lamp on amber pulse"></i><span class="txt"><b>Collection is offline:</b> no successful sample for more than two poll intervals. Values below are the last observed history.</span></p>`);
+  if (v.apiErrCode) out.push(`<div class="banner banner-error" data-testid="api-error" role="alert"><i class="lamp on red pulse"></i><div class="txt"><p>${esc(rangeErrorText(v.apiErrCode))}</p>${v.sc.apiError ? `<p class="stale-notice-inline" data-testid="stale-notice">Showing data from ${fmtUtc(v.now - 45e3)}</p>` : ''}</div></div>`);
+  $('#banners').innerHTML = out.join('');
+}
+
+/* =============================== summary cards ============================ */
+function renderSummary(v) {
+  const baseline = v.sc.baseline;
+  const CARDS = [['today', 'Observed today', 'hour'], ['month', 'Observed this month', 'day'], ['lifetime', 'Observed since collection began', 'week']];
+  const spark = (key) => {
+    if (baseline) return sparkSvg(null);
+    const r = v.sum.ranges[key], step = key === 'today' ? HR : DAY, vals = [], from = key === 'lifetime' ? Math.floor(r.start / DAY) * DAY : r.start;
+    for (let t = from; t < Math.min(r.end, v.now + 1); t += step) { const a = agg(v.s, t, t + step, v.now); vals.push(a.total ?? 0); }
+    return sparkSvg(vals, 'var(--blue)');
+  };
+  const cap = { today: 'hourly since 00:00 UTC', month: 'daily this UTC month', lifetime: 'daily since collection began' };
+  const html = CARDS.map(([key, title]) => {
+    const r = v.sum.ranges[key], ci = baseline ? null : r.ci, go = baseline ? null : r.go, total = baseline ? null : r.total;
+    const ae = r.ae, aeShow = !baseline, share = ci != null && go != null ? [ci / (ci + go), go / (ci + go)] : null;
+    const flags = [];
+    if (!baseline) {
+      if (r.partial) flags.push('Partial — some intervals are unobserved');
+      if (r.incomplete) flags.push('Current period is incomplete');
+      r.flags.forEach((f) => flags.push(flagLabel(f)));
+    }
+    const lcdOrNo = (n, cls) => (n == null ? `<span class="lcd nul" style="font-size:1rem">${NO_DATA}</span>` : `<span class="lcd ${cls}">${fmtTokens(n)}</span>`);
+    return `<section class="panel card" data-testid="card-${key}" aria-label="${title}">
+      <div class="plate card-plate"><h2>${title}</h2><span class="grow"></span><span class="tag">UTC</span></div>
+      <div class="screen"><span class="cap">Processed total</span>
+        ${total == null ? `<span class="lcd nul lg" data-testid="${key}-total">${NO_DATA}</span>` : `<span class="vh" data-testid="${key}-total">${fmtTokens(total)}</span>${sevenSeg(fmtTokens(total))}`}
+        ${spark(key)}<div class="spark-cap"><span>${cap[key]}</span><span>${baseline ? '' : 'processed total / bucket'}</span></div></div>
+      <div class="pair"><div class="screen"><span class="cap">Computed input</span>${lcdOrNo(ci, 'blue')}</div>
+        <div class="screen"><span class="cap">Generated output</span>${lcdOrNo(go, 'orange')}</div></div>
+      ${share ? `<div><div class="ratio" role="img" aria-label="Input ${(share[0] * 100).toFixed(1)}% and output ${(share[1] * 100).toFixed(1)}% of processed tokens"><i style="width:${(share[0] * 100).toFixed(2)}%"></i><i style="width:${(share[1] * 100).toFixed(2)}%"></i></div>
+        <div class="ratio-cap"><span><i class="sw" style="background:var(--blue)"></i>input ${(share[0] * 100).toFixed(1)}%</span><span><i class="sw" style="background:var(--orange)"></i>output ${(share[1] * 100).toFixed(1)}%</span></div></div>` : ''}
+      <div class="stat-row"><span class="cap">API-equivalent</span><span class="lcd teal" data-testid="${key}-cost">${aeShow ? fmtAmount(ae.amount) : NO_DATA}</span></div>
+      <div class="stat-row"><span class="cap">Cache hits</span>${aeShow && ae.ratio != null ? `<span class="fill-meter" aria-hidden="true"><i style="width:${(ae.ratio * 100).toFixed(1)}%"></i></span>` : ''}<span class="lcd cyan" data-testid="${key}-cache" style="font-size:1rem">${aeShow ? fmtCacheShare(ae.ratio) : NO_DATA}</span></div>
+      ${aeShow && fmtCoverage(ae) ? `<p class="note" data-testid="${key}-cost-coverage">${fmtCoverage(ae)}</p>` : ''}
+      ${aeShow ? fmtCostFlags(ae).map((l) => `<p class="flag" data-testid="${key}-cost-flag"><i class="lamp sm on amber"></i>${l}</p>`).join('') : ''}
+      ${key === 'lifetime' ? `<p class="lifetime-start" data-testid="lifetime-start">Collecting since ${fmtDay(v.s.first)}</p>` : ''}
+      ${key === 'lifetime' && baseline ? `<p class="note" data-testid="baseline-note">Collecting a first baseline — no observed work yet</p>` : ''}
+      ${flags.map((l) => `<p class="flag" data-testid="${key}-flag"><i class="lamp sm on amber"></i>${l}</p>`).join('')}
+    </section>`;
+  }).join('');
+  $('#summary').innerHTML = `<div class="summary-grid">${html}</div><p class="footnote" style="margin-top:12px" data-testid="cost-rates-footnote">${ratesFootnote()}</p>`;
+}
+
+/* =============================== trend / scope ============================ */
+function bucketQuality(b) {
+  const l = b.flags.map(flagLabel);
+  if (b.partial) l.push('partial'); if (b.incomplete) l.push('incomplete');
+  return l.length ? l.join(' · ') : 'complete';
+}
+function niceCeil(v) { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
+const scopeState = { n: 0, L: 0, slot: 0, W: 0 };
+function chartAria(v) {
+  const h = v.hist;
+  return `Stacked bar chart of computed input and generated output tokens for ${v.s.model}, ${ui.preset} range, ${new Date(h.from).toISOString().slice(0, 19)}Z to ${new Date(h.to).toISOString().slice(0, 19)}Z`;
+}
+function renderScope(v) {
+  const wrap = $('#scope-wrap'); if (!wrap || !v.hist) return;
+  const h = v.hist, W = Math.max(320, Math.floor(wrap.clientWidth)), H = W < 560 ? 270 : 320;
+  const L = 52, Rm = 12, Tm = 14, Bm = 30, pw = W - L - Rm, ph = H - Tm - Bm, n = h.buckets.length, slot = pw / n, bw = Math.max(1, slot * 0.72);
+  const maxV = Math.max(1, ...h.buckets.map((b) => (b.total == null ? 0 : b.total))), top = niceCeil(maxV * 1.05);
+  const y = (val) => Tm + ph * (1 - val / top);
+  scopeState.n = n; scopeState.L = L; scopeState.slot = slot; scopeState.W = W;
+  let g = `<defs>
+    <pattern id="hIn" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(122,162,247,.18)"/><line x1="0" y1="0" x2="0" y2="6" stroke="#7aa2f7" stroke-width="2.6"/></pattern>
+    <pattern id="hOut" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(255,158,100,.18)"/><line x1="0" y1="0" x2="0" y2="6" stroke="#ff9e64" stroke-width="2.6"/></pattern></defs>`;
+  g += `<rect x="${L}" y="${Tm}" width="${pw}" height="${ph}" fill="#101119" stroke="#2f3550" stroke-width="1.5"/>`;
+  for (let i = 0; i <= 4; i++) { const val = (top * i) / 4, yy = y(val); g += `<line x1="${L}" x2="${L + pw}" y1="${yy}" y2="${yy}" stroke="rgba(115,218,202,${i === 0 ? 0.5 : 0.16})" stroke-width="1"/><text x="${L - 7}" y="${yy + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${compact(val)}</text>`; }
+  for (let i = 0; i <= 10; i++) { const xx = L + (pw * i) / 10; g += `<line x1="${xx}" x2="${xx}" y1="${Tm}" y2="${Tm + ph}" stroke="rgba(115,218,202,${i === 5 ? 0.3 : 0.12})" stroke-width="1"/>`; }
+  for (let i = 0; i <= 50; i++) { const xx = L + (pw * i) / 50, yy = Tm + ph / 2; g += `<line x1="${xx}" x2="${xx}" y1="${yy - 2}" y2="${yy + 2}" stroke="rgba(115,218,202,.35)"/>`; }
+  const step = Math.max(1, Math.ceil((h.kind === 'hour' ? 44 : 50) / slot));
+  const idx = ui.cursor == null ? n - 1 : Math.min(ui.cursor, n - 1);
+  let bars = '', marks = '', xl = '';
+  h.buckets.forEach((b, i) => {
+    const x = L + slot * i + (slot - bw) / 2, base = Tm + ph;
+    if (b.ci == null && b.go == null) {
+      bars += `<rect x="${x}" y="${base - 12}" width="${bw}" height="12" fill="none" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="2 2"/>`;
+      if (bw >= 6) bars += `<path d="M${x + 2} ${base - 9} L${x + bw - 2} ${base - 3} M${x + bw - 2} ${base - 9} L${x + 2} ${base - 3}" stroke="var(--muted)" stroke-width="1.3"/>`;
+    } else {
+      const yi = y(b.ci), yo = y(b.ci + b.go), inc = b.incomplete;
+      bars += `<rect x="${x}" y="${yi}" width="${bw}" height="${base - yi}" fill="${inc ? 'url(#hIn)' : '#7aa2f7'}" ${inc ? 'stroke="#7aa2f7" stroke-width="1.5" stroke-dasharray="3 2"' : ''}/>`;
+      bars += `<rect x="${x}" y="${yo}" width="${bw}" height="${Math.max(0.5, yi - yo)}" fill="${inc ? 'url(#hOut)' : '#ff9e64'}" ${inc ? 'stroke="#ff9e64" stroke-width="1.5" stroke-dasharray="3 2"' : ''}/>`;
+      if (b.partial && bw >= 5) marks += `<path d="M${x + bw / 2} ${yo - 9} l4 7 h-8 z" fill="var(--yellow)" stroke="#13141c" stroke-width=".8"/>`;
+    }
+    if (i % step === 0 || i === n - 1 && step === 1) {
+      const d = new Date(b.start), mm = String(d.getUTCMonth() + 1).padStart(2, '0'), dd = String(d.getUTCDate()).padStart(2, '0'), hh = String(d.getUTCHours()).padStart(2, '0');
+      const txt = h.kind === 'hour' ? (d.getUTCHours() === 0 ? `${mm}-${dd}` : `${hh}:00`) : `${mm}-${dd}`;
+      xl += `<line x1="${x + bw / 2}" x2="${x + bw / 2}" y1="${Tm + ph}" y2="${Tm + ph + 4}" stroke="var(--muted)"/><text x="${x + bw / 2}" y="${Tm + ph + 17}" text-anchor="middle" font-size="11" fill="var(--muted)">${txt}</text>`;
+    }
+  });
+  const cx = L + slot * idx;
+  g += `<g class="phosphor" style="filter:drop-shadow(0 0 3px rgba(125,207,255,.35))">${bars}</g>${marks}${xl}`;
+  g += `<rect x="${cx}" y="${Tm}" width="${slot}" height="${ph}" fill="rgba(125,207,255,.10)"/><line x1="${cx + slot / 2}" x2="${cx + slot / 2}" y1="${Tm}" y2="${Tm + ph}" stroke="var(--cyan)" stroke-dasharray="4 3" stroke-width="1.2"/>`;
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(chartAria(v))}" focusable="false">${g}</svg>`;
+  renderReadout(v, idx);
+}
+function renderReadout(v, idx) {
+  const b = v.hist.buckets[idx], el = $('#readout'); if (!el || !b) return;
+  const bar = (cap, val, cls) => `<div class="screen"><span class="cap">${cap}</span><div class="lcd ${val == null ? 'nul' : cls}">${val == null ? NO_DATA : fmtTokens(val)}</div></div>`;
+  el.innerHTML = `${bar('Computed input', b.ci, 'blue')}${bar('Generated output', b.go, 'orange')}${bar('Processed total', b.total, 'green')}
+    <div class="readout-line"><span class="cream-strip">${bucketLabel(b)}</span><span class="note">${esc(bucketQuality(b))}</span></div>`;
+  el.setAttribute('data-idx', idx);
+}
+function setCursor(v, i) { if (i === ui.cursor) return; ui.cursor = i; renderScope(v); }
+
+function renderTrendControls(v) {
+  const keys = [['24h', '24h'], ['7d', '7d'], ['30d', '30d']].map(([p, l]) => `<button type="button" class="key" data-range="${p}" data-testid="range-${p}" aria-pressed="${ui.preset === p}" data-fid="range-${p}">${l}</button>`).join('');
+  $('#trend-controls').innerHTML = `<div class="keybank" role="group" aria-label="Trend range">${keys}
+    <details class="custom-range" data-key="custom" data-testid="range-custom" ${ui.open.custom ? 'open' : ''}>
+      <summary class="key ${ui.preset === 'custom' ? 'is-open' : ''}" data-fid="range-custom" aria-pressed="${ui.preset === 'custom'}">Custom range</summary>
+      <div class="custom-fields"><label for="custom-from">UTC start (inclusive)</label><input id="custom-from" type="date" value="${ui.customFrom}" data-testid="custom-from">
+        <label for="custom-to">UTC end (exclusive)</label><input id="custom-to" type="date" value="${ui.customTo}" data-testid="custom-to">
+        <button type="button" class="key apply" id="custom-apply" data-testid="custom-apply">Apply</button></div></details></div>`;
+}
+function renderTrendData(v) {
+  const h = v.hist, r = h.range, ae = r.ae, newestIncomplete = h.buckets.at(-1)?.incomplete === true;
+  const parts = [];
+  if (RATES) parts.push(`API-equivalent ${fmtAmount(ae.amount)}`);
+  parts.push(`Cache hits ${fmtCacheShare(ae.ratio)}`);
+  const cov = fmtCoverage(ae); if (cov) parts.push(cov);
+  parts.push(...fmtCostFlags(ae));
+  const errText = v.apiErrCode ? rangeErrorText(v.apiErrCode) : '';
+  $('#trend-data').innerHTML = `
+    <div class="trend-notes">
+      ${newestIncomplete ? `<p class="flag" data-testid="incomplete-note"><i class="lamp sm on amber"></i>Last bucket is incomplete (current UTC ${h.kind})</p>` : ''}
+      <p class="note" data-testid="trend-cost">${parts.join(' · ')}</p>
+    </div>
+    <div class="scope-bezel"><div class="screen scope-screen">
+      <div id="scope-wrap" tabindex="0" role="group" aria-label="Trend scope. Use the left and right arrow keys to inspect buckets." aria-describedby="readout" data-fid="scope" data-testid="chart-canvas"></div></div>
+      <div class="scope-legend"><span><i class="sw" style="background:var(--blue)"></i>CH1 Computed input</span><span><i class="sw" style="background:var(--orange)"></i>CH2 Generated output</span><span><i class="sw hatch-sw"></i>incomplete bucket</span><span>× no data (never a zero bar)</span><span><i class="lamp sm on amber" style="vertical-align:-1px"></i> partial</span></div>
+    </div>
+    <div class="readout" id="readout" aria-live="off"></div>
+    ${errText ? `<p class="range-error" data-testid="range-error" role="status">${esc(errText)}</p>` : ''}
+    <details class="hatch" data-key="table" data-testid="chart-disclosure" ${ui.open.table ? 'open' : ''}><summary>Show as table</summary><div class="body"><div class="table-wrap">
+      <table class="chart-table" data-testid="chart-table"><caption>Token totals per UTC bucket</caption>
+        <thead><tr><th scope="col">UTC bucket</th><th scope="col">Computed input</th><th scope="col">Generated output</th><th scope="col">Processed total</th><th scope="col">Quality</th></tr></thead>
+        <tbody>${h.buckets.map((b) => `<tr><th scope="row">${bucketLabel(b)}</th><td>${fmtTokens(b.ci)}</td><td>${fmtTokens(b.go)}</td><td>${fmtTokens(b.total)}</td><td>${esc(bucketQuality(b))}</td></tr>`).join('') || '<tr><td colspan="5">no data</td></tr>'}</tbody></table></div></div></details>`;
+  renderScope(v);
+}
+
+/* =============================== latest rate ============================== */
+function renderRates(v) {
+  const sum = v.sum, stale = sum.state === 'stale', rt = sum.rates, l = sum.ranges.lifetime;
+  const cell = (key, label, max, vuId) => {
+    const r = rt[key], val = fmtRate(r), at = r ? fmtUtc(r.observed_at) : NO_DATA;
+    return `<figure class="vu-cell ${stale ? 'is-stale' : ''}" data-testid="rate-${key}">
+      <h3>${label}</h3>
+      <div class="vu-frame" role="img" aria-label="${label} rate meter, ${val}, full scale ${nf.format(max)} tok/s (assumed)">${vuSvg(vuId, max, label.toUpperCase())}</div>
+      <div class="screen stamp" style="justify-content:space-between"><span class="lcd ${key === 'computed_input' ? 'blue' : 'orange'}${r && r.eligible ? '' : ' nul'}" data-testid="${key === 'computed_input' ? 'rate-input-value' : 'rate-output-value'}">${val}</span>${stale ? '<span class="chip"><i class="lamp on amber"></i>Stale</span>' : ''}</div>
+      <p class="cream-strip">over the last accepted interval · ${at}</p></figure>`;
+  };
+  const gap = (k) => describeGap(l.gaps[k]);
+  const rq = (key, title, tokens) => `<div class="request-cell"><p class="request-title">${title}</p>${tokens == null ? '<p class="note" data-testid="unavailable-note">unavailable</p>' : `<div class="screen"><span class="lcd cyan" style="font-size:1.15rem">${fmtTokens(tokens)}</span></div><p class="request-meta">${nf.format(l.intervals)} observed intervals · ${gap(key)}</p>`}</div>`;
+  $('#rates').innerHTML = `<section class="panel rates-panel" data-testid="rates-panel" style="height:100%">
+    <div class="plate"><h2>Latest rate</h2></div>
+    ${stale ? `<p class="stale-notice" data-testid="stale-notice" role="status"><i class="lamp on amber pulse"></i>Rates are unavailable while the series is stale</p>` : ''}
+    <div class="rate-grid">${cell('computed_input', 'Computed input', 8000, 'n-rin')}${cell('generated_output', 'Generated output', 300, 'n-rout')}</div>
+    <details class="hatch" data-key="req" data-testid="requests-disclosure" ${ui.open.req ? 'open' : ''}><summary>Request-accounted usage</summary><div class="body" data-testid="requests-summary">
+      <p class="note">Request-accounted usage counts tokens recorded per request and can include cache-served tokens; it is not added to engine totals.</p>
+      <div class="request-grid">${rq('request_input', 'Request input', l.req_in)}${rq('request_output', 'Request output', l.req_out)}</div></div></details></section>`;
+  const set = (id, val, max) => { const el = $(`#${id}`); if (!el) return; const f = val == null ? 0 : Math.min(1, val / max); el.style.transform = `rotate(${-40 + 80 * f}deg)`; };
+  set('n-rin', rt.computed_input?.eligible ? rt.computed_input.tokens_per_second : null, 8000);
+  set('n-rout', rt.generated_output?.eligible ? rt.generated_output.tokens_per_second : null, 300);
+}
+
+/* =============================== diagnostics ============================== */
+const EPOCH_REASON = { new_series: 'New series', endpoint_change: 'Endpoint change', counter_reset: 'Counter reset', restart_evidence: 'Restart evidence', clock_regression: 'Clock regression' };
+function timelineSvg(v) {
+  const a = v.s.first, b = v.now, X = (t) => 30 + ((t - a) / (b - a)) * 740, W = 800;
+  let g = `<defs><pattern id="hGap" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(224,175,104,.2)"/><line y2="6" stroke="#e0af68" stroke-width="2.4"/></pattern></defs>`;
+  g += `<rect x="30" y="38" width="740" height="14" rx="3" fill="#101119" stroke="#13141c" stroke-width="2"/>`;
+  GAPS.forEach(([x, y]) => { if (y > a && x < b) { const x0 = X(Math.max(x, a)), x1 = Math.max(x0 + 3, X(Math.min(y, b))); g += `<rect x="${x0}" y="39" width="${x1 - x0}" height="12" fill="url(#hGap)"/>`; } });
+  for (let i = 0; i <= 8; i++) { const t = a + ((b - a) * i) / 8, x = X(t); g += `<line x1="${x}" x2="${x}" y1="52" y2="58" stroke="var(--muted)"/><text x="${x}" y="70" text-anchor="middle" font-size="10" fill="var(--muted)">${fmtDay(t).slice(5)}</text>`; }
+  v.sum.epochs.forEach((e, i) => {
+    const x = X(e.start), up = i % 2 === 0, ty = up ? 14 : 102;
+    g += `<line x1="${x}" x2="${x}" y1="${up ? 22 : 52}" y2="${up ? 38 : 86}" stroke="var(--cyan)" stroke-width="2"/><circle cx="${x}" cy="45" r="5" fill="var(--cyan)" stroke="#13141c" stroke-width="2"/>`;
+    g += `<text x="${Math.min(Math.max(x, 70), W - 70)}" y="${ty}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--fg)">#${e.id} ${EPOCH_REASON[e.reason] || e.reason}</text>`;
+  });
+  return `<svg class="timeline" viewBox="0 0 ${W} 110" role="img" aria-label="Epoch timeline from ${fmtDay(a)} to ${fmtDay(b)}: ${v.sum.epochs.map((e) => `epoch ${e.id} ${EPOCH_REASON[e.reason]} ${fmtDay(e.start)}`).join(', ')}. Hatched spans are collection gaps.">${g}</svg>`;
+}
+function renderDiag(v) {
+  const l = v.sum.ranges.lifetime, ev = v.events, err = v.errCode;
+  const GAPROWS = [['primary', 'Engine counters'], ['request_input', 'Request input'], ['request_output', 'Request output'], ['cached_input', 'Cached input']];
+  $('#diag').innerHTML = `<details class="panel" data-key="diag" data-testid="diagnostics-disclosure" ${ui.open.diag ? 'open' : ''}>
+    <summary class="plate" style="cursor:pointer;list-style:none;margin-bottom:${ui.open.diag ? 14 : 0}px" data-fid="diag"><h2>Diagnostics</h2><span class="grow"></span><span class="plate-note">fold-out panel</span></summary>
+    <div class="diag-grid">
+      <section class="diag-block" data-testid="diagnostics-gaps"><h3>Unobserved intervals</h3>
+        ${GAPROWS.map(([k, t]) => `<div class="gap-row"><i class="lamp sm on ${l.gaps[k] > 0 ? 'amber' : 'green'}"></i><span>${t}</span><span class="gv">${describeGap(l.gaps[k])}</span></div>`).join('')}</section>
+      <section class="diag-block" data-testid="diagnostics-flags"><h3>Quality flags</h3>
+        ${v.flags.length ? `<ul class="flag-lamps">${v.flags.map((f) => `<li><i class="lamp sm on amber"></i><span>${flagLabel(f)}</span></li>`).join('')}</ul>` : '<p class="note">No quality flags on the current payload.</p>'}</section>
+      <section class="diag-block wide" data-testid="diagnostics-events"><h3>Collection events</h3>
+        <div class="screen tape">${ev.length ? `<ol>${ev.map((e) => `<li><span><span class="kind">${e.kind}</span> · ${fmtUtc(e.at)}${e.details ? ` · <span class="det">${esc(JSON.stringify(e.details))}</span>` : ''}</span></li>`).join('')}</ol>` : '<p class="note">No collection events recorded.</p>'}<span class="cursor" aria-hidden="true">█</span></div></section>
+      <section class="diag-block wide" data-testid="diagnostics-epochs"><h3>Epochs</h3>
+        ${v.sum.epochs.length ? `<div class="screen" style="padding:8px 10px">${timelineSvg(v)}</div><ul class="epoch-list">${v.sum.epochs.map((e) => `<li><i class="lamp sm on cyan"></i><span>${EPOCH_REASON[e.reason] || e.reason} · ${fmtUtc(e.start)}</span><span class="note">· Opening balance — excluded from totals: ${fmtTokens(+e.oi)} in, ${fmtTokens(+e.oo)} out</span></li>`).join('')}</ul>` : '<p class="note">No epoch boundaries recorded.</p>'}</section>
+      <section class="diag-block" data-testid="diagnostics-retention"><h3>Raw retention</h3>
+        <p class="note">Raw samples are kept for ${v.retention.days} days.</p>
+        <p class="note">Raw samples available ${fmtUtc(v.retention.from)} – ${fmtUtc(v.retention.until)}</p>
+        <p class="note">${v.retention.note}</p></section>
+      <section class="diag-block" data-testid="diagnostics-error"><h3>Last error</h3>
+        <div class="gap-row" style="grid-template-columns:14px 1fr"><i class="lamp sm on ${err ? 'red' : 'green'}"></i>
+        ${err ? `<p class="note">Last collection error: <span class="lcd" style="font-size:.85rem;color:var(--red);text-shadow:none">${err}</span>. The collector retries on its own; the values shown are from the last successful sample.</p>` : '<p class="note">No collection error recorded.</p>'}</div></section>
+    </div></details>`;
+}
+
+/* =============================== layout + orchestration =================== */
+let layoutMode = null;
+function renderBelow(v) {
+  const mode = v.sc.first ? 'skeleton' : v.sc.empty ? 'empty' : 'data';
+  if (mode !== layoutMode) {
+    layoutMode = mode;
+    $('#below').innerHTML = mode === 'skeleton' ? `<div class="skeleton" data-testid="skeleton"><span class="vh" role="status">Loading dashboard</span><div class="skeleton-row" aria-hidden="true"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><div class="sk chart" aria-hidden="true"></div></div>`
+      : mode === 'empty' ? `<section class="panel"><div class="plate"><h2>No data</h2></div><div class="empty-state" data-testid="empty-state" role="status">
+          <svg viewBox="0 0 150 100" aria-hidden="true"><rect x="4" y="4" width="142" height="92" rx="12" fill="#16161e" stroke="#13141c" stroke-width="4"/><g stroke="rgba(115,218,202,.2)"><path d="M4 30H146M4 50H146M4 70H146M40 4V96M75 4V96M110 4V96"/></g><path d="M12 50H138" stroke="#73daca" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 5"/></svg>
+          <p>No series collected yet. Collection starts after the first successful sample.</p></div></section>`
+      : `<div id="summary"></div><div class="row-2"><section class="panel trend-panel" data-testid="trend-panel"><div class="plate"><h2>Trend</h2><span class="grow"></span><span class="tag">UTC</span></div><div id="trend-controls" class="trend-top"></div><div id="trend-data"></div></section><div id="rates"></div></div><div id="diag"></div>`;
+    if (mode === 'data') renderTrendControls(v);
+  }
+  if (mode !== 'data') return;
+  renderSummary(v); renderTrendData(v); renderRates(v); renderDiag(v);
+}
+function renderAll() {
+  const v = view();
+  renderHeader(v); renderBanners(v); updateLive(v); renderBelow(v);
+  window.__v = v;
+}
+function slowRefresh() { const v = view(); renderHeader(v); renderBanners(v); renderBelow(v); }
+
+/* ---- Events ---- */
+document.addEventListener('click', (e) => {
+  const key = e.target.closest('[data-range]');
+  if (key) { ui.preset = key.dataset.range; ui.histPreset = ui.preset; ui.rangeErr = null; ui.cursor = null; const v = view(); renderTrendControls(v); renderBanners(v); renderTrendData(v); $(`[data-range="${ui.preset}"]`)?.focus(); return; }
+  if (e.target.closest('#custom-apply')) {
+    ui.customFrom = $('#custom-from').value; ui.customTo = $('#custom-to').value;
+    const p = paramsForRange('custom', view().now, ui.customFrom, ui.customTo);
+    if ('code' in p) { ui.rangeErr = p.code; } else { ui.rangeErr = null; ui.preset = 'custom'; ui.histPreset = 'custom'; ui.cursor = null; }
+    const v = view(); renderTrendControls(v); renderBanners(v); renderTrendData(v); $('#custom-apply')?.focus(); return;
+  }
+  const sc = e.target.closest('#scope-wrap');
+  if (sc && window.__v?.hist) { const i = idxAt(e); if (i != null) setCursor(view(), i); }
+});
+function idxAt(e) {
+  const svg = $('#scope-wrap svg'); if (!svg) return null;
+  const r = svg.getBoundingClientRect(), x = ((e.clientX - r.left) * scopeState.W) / r.width, i = Math.floor((x - scopeState.L) / scopeState.slot);
+  return i < 0 || i >= scopeState.n ? null : i;
+}
+document.addEventListener('pointermove', (e) => { if (e.pointerType === 'touch' || !e.target.closest?.('#scope-wrap')) return; const i = idxAt(e); if (i != null) setCursor(view(), i); });
+document.addEventListener('keydown', (e) => {
+  const sc = e.target.closest?.('#scope-wrap'); if (!sc) return;
+  const v = view(), n = v.hist.buckets.length, cur = ui.cursor == null ? n - 1 : ui.cursor;
+  const next = e.key === 'ArrowLeft' ? cur - 1 : e.key === 'ArrowRight' ? cur + 1 : e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : null;
+  if (next == null) return; e.preventDefault(); ui.cursor = Math.max(0, Math.min(n - 1, next)); renderScope(v);
+  $('#readout').setAttribute('aria-live', 'polite');
+});
+document.addEventListener('focusout', (e) => { if (e.target.closest?.('#scope-wrap')) $('#readout')?.setAttribute('aria-live', 'off'); });
+document.addEventListener('toggle', (e) => { const d = e.target; if (d.dataset && d.dataset.key) { ui.open[d.dataset.key] = d.open; if (d.dataset.key === 'diag') { const s = d.querySelector(':scope > summary'); if (s) s.style.marginBottom = d.open ? '14px' : '0'; } } }, true);
+document.addEventListener('change', (e) => { if (e.target.id === 'series-picker') { ui.series = +e.target.value; ui.cursor = null; renderAll(); $('#series-picker')?.focus(); } });
+document.addEventListener('input', (e) => { if (e.target.id === 'custom-from') ui.customFrom = e.target.value; if (e.target.id === 'custom-to') ui.customTo = e.target.value; });
+let rz = 0; new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(() => { if (window.__v?.hist) renderScope(view()); }); }).observe(document.body);
+
+/* ---- Dev switcher ---- */
+$('#dev-states').insertAdjacentHTML('beforeend', Object.entries(SCEN).map(([k, s]) => `<label><input type="radio" name="scen" value="${k}" ${k === ui.scen ? 'checked' : ''}> ${s.label}</label>`).join(''));
+$('#dev-toggle').addEventListener('click', () => { ui.devOpen = !ui.devOpen; $('#dev-panel').hidden = !ui.devOpen; $('#dev-toggle').setAttribute('aria-expanded', String(ui.devOpen)); });
+$('#dev-panel').addEventListener('change', (e) => {
+  if (e.target.name === 'scen') setScen(e.target.value);
+  if (e.target.id === 'dev-multi') { ui.multi = e.target.checked; if (!ui.multi) ui.series = 0; renderAll(); }
+  if (e.target.id === 'dev-pause') { ui.paused = e.target.checked; schedule(); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ui.devOpen) { $('#dev-toggle').click(); $('#dev-toggle').focus(); } });
+function setScen(k) { if (!SCEN[k]) return; ui.scen = k; ui.rangeErr = null; layoutMode = null; ui.cursor = null; const r = $(`input[name=scen][value=${k}]`); if (r) r.checked = true; renderAll(); }
+function readHash() { const q = new URLSearchParams(location.hash.slice(1)); if (q.get('state')) setScen(q.get('state')); if (q.has('pause')) { ui.paused = true; $('#dev-pause').checked = true; schedule(); } if (q.has('series')) { ui.series = +q.get('series') || 0; renderAll(); } if (q.get('range')) { ui.preset = ui.histPreset = q.get('range'); layoutMode = null; renderAll(); } if (q.has('open')) { q.get('open').split(',').forEach((k) => { ui.open[k] = true; }); layoutMode = null; renderAll(); } }
+window.addEventListener('hashchange', readHash);
+
+/* ---- Simulated live tick: 1 s (as the real 1 Hz live poll), 15 s under reduced motion ---- */
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+let timer = null;
+function tick(stepMs) {
+  const before = Math.floor(ui.elapsed / 15000);
+  ui.elapsed += stepMs; ui.k += Math.round(stepMs / 1000);
+  const v = view(); updateLive(v);
+  if (Math.floor(ui.elapsed / 15000) !== before) slowRefresh();
+}
+function schedule() { clearInterval(timer); if (ui.paused) return; const step = RM.matches ? 15000 : 1000; timer = setInterval(() => tick(step), step); }
+RM.addEventListener('change', schedule);
+
+buildLiveGrid();
+renderAll();
+readHash();
+schedule();
+</script>
+</body>
+</html>

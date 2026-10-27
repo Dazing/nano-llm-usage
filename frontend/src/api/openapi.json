@@ -1,6 +1,69 @@
 {
   "components": {
     "schemas": {
+      "ApiEquivalent": {
+        "description": "Read-time API-equivalent estimate for a range (spec D4).\n\n``amount`` is null when rates are unset or no hour has every priced counter\nobserved; ``partial`` is true when priced hours are fewer than expected.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "cache_hit_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Hit Ratio"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expected_hours": {
+            "title": "Expected Hours",
+            "type": "integer"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "priced_hours": {
+            "title": "Priced Hours",
+            "type": "integer"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/CostTokens"
+          }
+        },
+        "required": [
+          "currency",
+          "tokens",
+          "priced_hours",
+          "expected_hours",
+          "partial",
+          "flags"
+        ],
+        "title": "ApiEquivalent",
+        "type": "object"
+      },
       "Bucket": {
         "properties": {
           "bucket": {
@@ -64,6 +127,59 @@
           "ended_at"
         ],
         "title": "Bucket",
+        "type": "object"
+      },
+      "CostRateConfig": {
+        "description": "Operator-configured prices per million tokens (null when unset).",
+        "properties": {
+          "cached_input_per_mtok": {
+            "title": "Cached Input Per Mtok",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "input_per_mtok": {
+            "title": "Input Per Mtok",
+            "type": "string"
+          },
+          "output_per_mtok": {
+            "title": "Output Per Mtok",
+            "type": "string"
+          }
+        },
+        "required": [
+          "currency",
+          "input_per_mtok",
+          "cached_input_per_mtok",
+          "output_per_mtok"
+        ],
+        "title": "CostRateConfig",
+        "type": "object"
+      },
+      "CostTokens": {
+        "description": "Token totals over the priced hours only.",
+        "properties": {
+          "cached_input": {
+            "title": "Cached Input",
+            "type": "string"
+          },
+          "output": {
+            "title": "Output",
+            "type": "string"
+          },
+          "uncached_input": {
+            "title": "Uncached Input",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uncached_input",
+          "cached_input",
+          "output"
+        ],
+        "title": "CostTokens",
         "type": "object"
       },
       "CounterBlock": {
@@ -133,6 +249,9 @@
       },
       "CounterBlocks": {
         "properties": {
+          "cached_input": {
+            "$ref": "#/components/schemas/CounterBlock"
+          },
           "computed_input": {
             "$ref": "#/components/schemas/CounterBlock"
           },
@@ -150,7 +269,8 @@
           "computed_input",
           "generated_output",
           "request_input",
-          "request_output"
+          "request_output",
+          "cached_input"
         ],
         "title": "CounterBlocks",
         "type": "object"
@@ -363,6 +483,10 @@
       "GapScopes": {
         "description": "Unobserved seconds per collection scope inside a bucket or range.",
         "properties": {
+          "cached_input": {
+            "title": "Cached Input",
+            "type": "number"
+          },
           "primary": {
             "title": "Primary",
             "type": "number"
@@ -379,7 +503,8 @@
         "required": [
           "primary",
           "request_input",
-          "request_output"
+          "request_output",
+          "cached_input"
         ],
         "title": "GapScopes",
         "type": "object"
@@ -693,6 +818,9 @@
       },
       "Range": {
         "properties": {
+          "api_equivalent": {
+            "$ref": "#/components/schemas/ApiEquivalent"
+          },
           "counters": {
             "$ref": "#/components/schemas/CounterBlocks"
           },
@@ -757,7 +885,8 @@
           "partial",
           "incomplete",
           "ended_at",
-          "observed"
+          "observed",
+          "api_equivalent"
         ],
         "title": "Range",
         "type": "object"
@@ -1123,6 +1252,16 @@
           "collector_status": {
             "title": "Collector Status",
             "type": "string"
+          },
+          "cost_rates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostRateConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "first_observation_at": {
             "anyOf": [

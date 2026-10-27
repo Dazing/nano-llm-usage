@@ -3,7 +3,16 @@ import { computed, ref, toRef } from "vue";
 import type { Bucket } from "../api/client";
 import { dashboard } from "../lib/dashboard";
 import { useTrendChart } from "../lib/chart";
-import { bucketLabel, flagLabel, formatTokens, rangeErrorText } from "../lib/format";
+import {
+  bucketLabel,
+  flagLabel,
+  formatAmount,
+  formatCacheShare,
+  formatCoverage,
+  formatCostFlags,
+  formatTokens,
+  rangeErrorText,
+} from "../lib/format";
 import ControlRow from "./ControlRow.vue";
 
 const state = dashboard.state;
@@ -22,6 +31,20 @@ const customTo = ref(state.customTo);
 
 const newestIncomplete = computed(() => historyRef.value?.buckets.at(-1)?.incomplete === true);
 const errorText = computed(() => (state.apiError ? rangeErrorText(state.apiError.code) : ""));
+
+/** One line for the selected range: the API prices the range, never a bucket. */
+const costLine = computed(() => {
+  const range = historyRef.value?.range;
+  if (!range) return "";
+  const cost = range.api_equivalent;
+  const parts: string[] = [];
+  if (state.status?.cost_rates) parts.push(`API-equivalent ${formatAmount(cost.amount)}`);
+  parts.push(`Cache hits ${formatCacheShare(cost.cache_hit_ratio)}`);
+  const coverage = formatCoverage(cost);
+  if (coverage) parts.push(coverage);
+  parts.push(...formatCostFlags(cost));
+  return parts.join(" · ");
+});
 
 const chartAria = computed(() => {
   const series = state.summary?.model_name ?? "the selected series";
@@ -76,6 +99,8 @@ function quality(row: Bucket): string {
     <p v-if="newestIncomplete" class="note" data-testid="incomplete-note">
       Last bucket is incomplete (current UTC hour/day)
     </p>
+
+    <p v-if="costLine" class="note" data-testid="trend-cost">{{ costLine }}</p>
 
     <div class="chart-shell">
       <canvas ref="canvas" data-testid="chart-canvas" role="img" :aria-label="chartAria"></canvas>

@@ -173,6 +173,18 @@ def test_migration_snapshots_and_preserves_rows(tmp_path: Path, monkeypatch):
     conn.close()
 
 
+def test_new_database_migrates_to_current_version(tmp_path: Path):
+    """A fresh volume lands on the current schema, cached-input columns included."""
+    db = tmp_path / "d.sqlite3"
+    conn = storage.open_storage(db)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == storage.CURRENT_SCHEMA_VERSION
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(samples)")}
+    assert {"cached_input", "delta_cached_input"} <= columns
+    # A database this build created needs no pre-migration snapshot.
+    assert not list(tmp_path.glob("d.sqlite3.pre-migration-*.sqlite3"))
+    conn.close()
+
+
 def test_failed_migration_leaves_database_intact(tmp_path: Path, monkeypatch):
     db = tmp_path / "d.sqlite3"
     _v1_database(tmp_path, monkeypatch, db)

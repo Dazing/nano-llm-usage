@@ -13,10 +13,14 @@ const EPOCH_REASON: Record<string, string> = {
   clock_regression: "Clock regression",
 };
 
-const GAPS: { key: "primary" | "request_input" | "request_output"; label: string }[] = [
+const GAPS: {
+  key: "primary" | "request_input" | "request_output" | "cached_input";
+  label: string;
+}[] = [
   { key: "primary", label: "Engine counters" },
   { key: "request_input", label: "Request input" },
   { key: "request_output", label: "Request output" },
+  { key: "cached_input", label: "Cached input" },
 ];
 
 const lifetime = computed(() => state.summary?.ranges.lifetime ?? null);

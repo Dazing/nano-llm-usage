@@ -16,6 +16,7 @@ import sys
 import tempfile
 import threading
 import time
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -28,6 +29,7 @@ from fixture_server import FixtureServer, install_fixture  # noqa: E402
 from smoke import (  # noqa: E402
     L,
     POLL,
+    RATE_ENV,
     TWO_POLLS,
     ServeProc,
     UptimeTicker,
@@ -46,6 +48,7 @@ from smoke import (  # noqa: E402
 STATIC = ROOT / "src" / "jarvis_dashboard" / "static"
 SHOTS = ROOT / "docs" / "receipts" / "delivery-3"
 LIVE_SHOTS = ROOT / "docs" / "receipts" / "live-panel"
+COST_SHOTS = ROOT / "docs" / "receipts" / "cost-estimate"
 SECOND = {"model_name": "second-model", "engine": "0"}
 FOCUS_EXPECTED = ["theme-toggle", "range-24h", "range-7d", "range-30d", "range-custom",
                   "chart-disclosure"]
@@ -160,6 +163,11 @@ def live_shot(page, name: str) -> None:
     receipt(f"screenshot {name}", f"{path} ({path.stat().st_size} bytes)")
 
 
+def cost_shot(page, name: str) -> None:
+    path = page.screenshot(COST_SHOTS / name)
+    receipt(f"screenshot {name}", f"{path} ({path.stat().st_size} bytes)")
+
+
 def day(offset: int) -> str:
     return (dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=offset)).strftime("%Y-%m-%d")
 
@@ -194,18 +202,21 @@ def preflight() -> None:
     check("chromium present", shutil.which("chromium") is not None, True)
 
 
-def start_stack(server: FixtureServer, db: Path, source: str = "smoke") -> ServeProc:
+def start_stack(server: FixtureServer, db: Path, source: str = "smoke",
+                rates: dict[str, str] | None = None) -> ServeProc:
     port = free_port()
     serve = ServeProc(db, server.base_url, port)
     serve.env["SOURCE_ID"] = source
     serve.env["STATIC_DIR"] = str(STATIC)
+    if rates:
+        serve.env.update(rates)
     serve.start()
     ok = wait_for(lambda: get_path(port, "/health/ready")[0] == 200, 30)
     check(f"serve ready on port {port}", ok, True)
     return serve
 
 
-def publish(server: FixtureServer, ci, go, ri=None, ro=None) -> None:
+def publish(server: FixtureServer, ci, go, ri=None, ro=None, ca=None) -> None:
     """Publish one metric set and keep republishing it every 20 s.
 
     `smoke.set_counts` chains its own keeper timers, and several chains flapping on the
@@ -221,7 +232,8 @@ def publish(server: FixtureServer, ci, go, ri=None, ro=None) -> None:
         st.uptime_s = 100.0 + (time.monotonic() - START)
         st.drop_series(L)
         install_fixture(st, L, str(ci), str(go),
-                        None if ri is None else str(ri), None if ro is None else str(ro))
+                        None if ri is None else str(ri), None if ro is None else str(ro),
+                        None if ca is None else str(ca))
 
     def keeper() -> None:
         apply()
@@ -642,6 +654,187 @@ def selection_race(page, server: FixtureServer, port: int) -> None:
           text_of(page, "lifetime-total"), dom_number(life.get("processed_total")))
 
 
+def select_series(page, port: int, labels: dict) -> str:
+    """Drive the header picker to one series and return its id."""
+    wanted = next(i["series_id"] for i in series_items(port)
+                  if i["model_name"] == labels["model_name"])
+    expect(page, lambda: count_of(page, '[data-testid="series-picker"]') == 1, "series picker", 60)
+    page.evaluate(
+        f"(() => {{ const el = document.querySelector('[data-testid=\"series-picker\"]');"
+        f" el.value = {json.dumps(wanted)};"
+        " el.dispatchEvent(new Event('change', {bubbles: true})); })()"
+    )
+    return wanted
+
+
+def cost_of(port: int, series_id: str, key: str = "lifetime") -> dict:
+    """The `api_equivalent` object the API reports for one range of one series."""
+    return (summary_of(port, series_id).get("ranges", {}) or {}).get(key, {}) \
+        .get("api_equivalent", {})
+
+
+def money_text(amount: object) -> str:
+    """Mirror the bundle's `formatMoney` so the DOM can be compared to the API.
+
+    Amounts are exact 6-decimal strings; 10_000 of those units are one cent.
+    """
+    if not isinstance(amount, str):
+        return "no data"
+    micros = int(Decimal(amount) * 1_000_000)
+    if 0 < micros < 5_000:
+        return "< $0.01"
+    cents = (micros + 5_000) // 10_000
+    return f"${cents // 100:,}.{cents % 100:02d}"
+
+
+def share_text(ratio: object) -> str:
+    if not isinstance(ratio, (int, float)):
+        return "no data"
+    return f"{round(ratio * 100)}% of input"
+
+
+def amount_text(amount: object) -> str:
+    """The card's money line: an approximate sign in front of the rounded amount."""
+    money = money_text(amount)
+    return money if money == "no data" else f"\u2248 {money}"
+
+
+def cost_estimate(page, server: FixtureServer, serve: ServeProc) -> None:
+    """Cost plan AC1-AC8 at the presentation layer.
+
+    The exact arithmetic is pinned by the query tests, the API tests and smoke.py
+    scenario 9, which publishes a known priced volume against a real `serve`. This
+    phase owns the presentation contract: the card renders a money line in the
+    documented shape, the rates footnote quotes the configured prices, the
+    coverage note follows the documented format, a series with no cache tracking
+    reads "no data" and names its own diagnostics scope, and removing the prices
+    at startup hides the money line while the price-independent lines stay.
+
+    The rendered money and share are compared to the API's own `api_equivalent` for
+    the same range, read at the same moment, so a formatter that disagrees with the
+    contract (the 6-decimal amount string is micro-dollars, not mills) fails here and
+    not only in the query tests.
+    """
+    print("--- phase 12: the API-equivalent estimate, cache share and coverage")
+    # The first publish changes nothing (the request counters return at their last
+    # observed value, so every delta is zero) and only baselines the cached counter.
+    publish(server, 1905, 162, 100, 100, 600_000)
+    time.sleep(TWO_POLLS)
+    # One priced interval: +1,000,000 request input, +100,000 request output,
+    # +600,000 cached input.
+    publish(server, 2000, 170, 1_000_100, 100_100, 1_200_000)
+    # Earlier phases leave the page on the second series, so point the page at the
+    # priced one before reading any money.
+    page.navigate(f"http://127.0.0.1:{serve.port}/")
+    priced = select_series(page, serve.port, L)
+    # Deltas land on the collector's next poll, which is after the publish returns.
+    time.sleep(TWO_POLLS)
+    cost = cost_of(serve.port, priced)
+    receipt("cost_api_lifetime", json.dumps(cost))
+    receipt("cost_dom_rendered", {
+        "cost": text_of(page, "lifetime-cost"),
+        "cache": text_of(page, "lifetime-cache"),
+        "footnote": (text_of(page, "cost-rates-footnote") or "")[:40],
+    })
+    # The card updates on the dashboard's own refresh cycle; reload so the fresh
+    # totals are read immediately instead of waiting out a stall in the 15 s timer.
+    page.navigate(f"http://127.0.0.1:{serve.port}/")
+    select_series(page, serve.port, L)
+    expect(page, lambda: visible(page, "cost-rates-footnote"), "rates footnote", 60)
+    # The API's own answer for this range is the expectation; the card reads it on
+    # its refresh cycle, so the rendered line must converge on it exactly.
+    api_cost = cost_of(serve.port, priced)
+    expected_money = amount_text(api_cost.get("amount"))
+    expected_share = share_text(api_cost.get("cache_hit_ratio"))
+    receipt("cost_api_expectation", f"{expected_money} | {expected_share}")
+    expect(page, lambda: text_of(page, "lifetime-cost") == expected_money,
+           f"priced money line {expected_money}", 90)
+    money = text_of(page, "lifetime-cost") or ""
+    receipt("cost_money_line", money)
+    check("cost_money_line_ac1", money, expected_money)
+    # Money renders in the documented shape: a rounded, grouped dollar figure,
+    # the sub-cent floor, or the explicit no-data reading. A raw decimal string
+    # reaching the DOM (the schema's 6-dp form) is the defect this rejects.
+    check("cost_money_line_shape_ac1", bool(re.fullmatch(
+        r"\u2248 \$[\d,]+\.\d{2}|< \$0\.01|no data", money)), True)
+    share = text_of(page, "lifetime-cache") or ""
+    receipt("cost_share_line", share)
+    check("cost_share_line_ac1", share, expected_share)
+    footnote = text_of(page, "cost-rates-footnote") or ""
+    check("cost_footnote_ac4", footnote.startswith(
+        "Approximate API-equivalent at $3.00 input / $0.30 cached / $15.00 output per M tokens (USD)."),
+        True)
+    receipt("cost_footnote", footnote)
+    # The month range is the one that must be partial: it expects every hour since
+    # the first of the month and prices only the hours the cache counter exists in.
+    coverage = text_of(page, "month-cost-coverage") or ""
+    receipt("cost_coverage_note", coverage)
+    check("cost_coverage_note_shape_ac2", coverage == "" or bool(re.fullmatch(
+        r"partial \u00b7 covers [\d.]+ of [\d.]+ (days|h)", coverage)), True)
+    receipt("cost_amount_api", cost.get("amount"))
+    check("cost_no_skew_flag", visible(page, "lifetime-cost-flag"), False)
+    # The trend panel prices the selected range, so the 24 h line carries the same
+    # money and share as the cards.
+    page.click('[data-testid="range-24h"]')
+    trend_prefix = f"API-equivalent {expected_money} \u00b7 Cache hits {expected_share}"
+    # The panel prices its own range request, which lands after the cards' refresh.
+    expect(page, lambda: (text_of(page, "trend-cost") or "").startswith(trend_prefix),
+           f"trend cost line {trend_prefix}", 90)
+    trend = text_of(page, "trend-cost") or ""
+    receipt("cost_trend_line", trend)
+    check("cost_trend_line_ac1", trend.startswith(trend_prefix), True)
+    cost_shot(page, "cost-1440-estimate.png")
+    page.set_viewport(*MOBILE)
+    expect(page, lambda: visible(page, "lifetime-cost"), "mobile money line", 30)
+    receipt("cost_mobile_money_line", text_of(page, "lifetime-cost"))
+    cost_shot(page, "cost-390-estimate.png")
+    page.set_viewport(*DESKTOP)
+
+    # AC8: a series whose engine publishes no cached counter prices nothing, and
+    # the diagnostics gap list names the cached-input scope as its own line.
+    install_fixture(server.state, SECOND, 500, 50, 1_000, 100)
+    assert wait_for(lambda: len(series_ids(serve.port)) >= 2, 60), "second series never appeared"
+    page.navigate(f"http://127.0.0.1:{serve.port}/")
+    select_series(page, serve.port, SECOND)
+    expect(page, lambda: text_of(page, "lifetime-cost") == "no data", "unpriced series cost", 60)
+    check("cost_unpriced_is_no_data_ac8", text_of(page, "lifetime-cost"), "no data")
+    check("cost_unpriced_share_ac8", text_of(page, "lifetime-cache"), "no data")
+    unpriced = text_of(page, "lifetime-cost-coverage") or ""
+    # A series created minutes ago has no complete hour yet, so coverage is
+    # legitimately empty; once it has one, nothing is priced without cache tracking.
+    check("cost_unpriced_coverage_ac8", unpriced == "" or unpriced.startswith("partial · covers 0"), True)
+    receipt("cost_unpriced_coverage", unpriced)
+    open_details(page, "diagnostics-disclosure")
+    diagnostics = page.evaluate(
+        "(() => document.querySelector('[data-testid=\"diagnostics-disclosure\"]').innerText)()"
+    )
+    check("cost_diagnostics_names_cached_input", "Cached input" in diagnostics, True)
+    cost_shot(page, "cost-1440-no-cached-counter.png")
+
+    # AC4/AC6: rates are startup-only. The same volume without prices hides the
+    # money line and the footnote, and keeps the cache share and coverage notes.
+    publish(server, 2000, 170, 1_000_100, 100_100, 1_200_000)
+    rc, _, _ = serve.stop()
+    check("cost serve exits cleanly", rc, 0)
+    serve.env.pop("COST_RATE_INPUT_PER_MTOK")
+    serve.env.pop("COST_RATE_CACHED_INPUT_PER_MTOK")
+    serve.env.pop("COST_RATE_OUTPUT_PER_MTOK")
+    serve.start()
+    assert wait_for(lambda: get_path(serve.port, "/health/ready")[0] == 200, 40), "restart not ready"
+    page.navigate(f"http://127.0.0.1:{serve.port}/")
+    expect(page, lambda: text_of(page, "lifetime-total") != "no data", "republished total", 60)
+    if count_of(page, '[data-testid="series-picker"]') == 1:
+        select_series(page, serve.port, L)
+    expect(page, lambda: visible(page, "lifetime-cache"), "share line renders", 60)
+    check("rates_free_hides_money_ac4", visible(page, "lifetime-cost"), False)
+    check("rates_free_hides_footnote_ac4", visible(page, "cost-rates-footnote"), False)
+    check("rates_free_keeps_share_ac4", bool(re.fullmatch(
+        r"\d+% of input|no data", text_of(page, "lifetime-cache") or "")), True)
+    check("rates_free_keeps_coverage_ac4",
+          (text_of(page, "month-cost-coverage") or "").startswith("partial · covers "), True)
+    cost_shot(page, "cost-1440-rates-unset.png")
+
+
 def network(page, server: FixtureServer, port: int) -> None:
     print("--- phase 11: same-origin traffic only, clean console, fixture untouched")
     page.drain()
@@ -691,6 +884,7 @@ def network(page, server: FixtureServer, port: int) -> None:
 def main() -> int:
     SHOTS.mkdir(parents=True, exist_ok=True)
     LIVE_SHOTS.mkdir(parents=True, exist_ok=True)
+    COST_SHOTS.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="jarvis-frontend-smoke-"))
     receipt("workdir", tmp)
     server = FixtureServer()
@@ -704,7 +898,8 @@ def main() -> int:
         reset_state(server)
         install_fixture(server.state, L, 1000, 100)
         ticker = UptimeTicker(server)
-        serve = start_stack(server, tmp / "front.sqlite3")
+        serve = start_stack(server, tmp / "front.sqlite3", rates=RATE_ENV)
+        receipt("cost rate env", sorted(serve.env[k] for k in RATE_ENV))
 
         accounting(server, serve.port)
 
@@ -728,11 +923,13 @@ def main() -> int:
         theme_and_a11y(page, serve.port)
         selection_race(page, server, serve.port)
         network(page, server, serve.port)
+        cost_estimate(page, server, serve)
 
         page.set_viewport(*MOBILE)
         shot(page, "mobile-390-normal.png")
         page.set_viewport(*DESKTOP)
         receipt("screenshots_written", len(list(SHOTS.glob("*.png"))))
+        receipt("cost_screenshots_written", len(list(COST_SHOTS.glob("*.png"))))
         receipt("browser_requests", len(page.requests))
         return 0
     finally:

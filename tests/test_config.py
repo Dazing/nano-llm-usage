@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 
-from jarvis_dashboard.config import Config, ConfigError
+from jarvis_dashboard.config import Config, ConfigError, CostRates
 
 BASE = {
     "RADIANCE_BASE_URL": "http://192.168.1.228:8000",
     "SOURCE_ID": "jarvis",
     "DATABASE_PATH": "/tmp/x.db",
+}
+RATES = {
+    "COST_RATE_INPUT_PER_MTOK": "3",
+    "COST_RATE_CACHED_INPUT_PER_MTOK": "0.30",
+    "COST_RATE_OUTPUT_PER_MTOK": "15",
 }
 
 
@@ -127,3 +134,79 @@ def test_blank_static_dir_rejected_with_actionable_message():
     # operator's mount, so it is a configuration error, not a default.
     with pytest.raises(ConfigError, match="STATIC_DIR"):
         Config.from_env(env(STATIC_DIR="   "))
+
+
+def test_cost_rates_unset_by_default():
+    # AC4: no rates means no estimate, and it is not an error.
+    assert Config.from_env(env()).cost_rates is None
+
+
+def test_blank_cost_rates_mean_unset():
+    # Compose passes `:-` empty defaults through, so empty is the unset case.
+    c = Config.from_env(
+        env(COST_RATE_INPUT_PER_MTOK="", COST_RATE_CACHED_INPUT_PER_MTOK="  ", COST_RATE_OUTPUT_PER_MTOK="")
+    )
+    assert c.cost_rates is None
+
+
+def test_all_three_cost_rates_enable_the_estimate():
+    rates = Config.from_env(env(**RATES)).cost_rates
+    assert rates == CostRates(
+        input_per_mtok=Decimal("3"),
+        cached_input_per_mtok=Decimal("0.30"),
+        output_per_mtok=Decimal("15"),
+    )
+    # Decimal text survives verbatim: no 0.3 -> 0.30000000000000004 float drift.
+    assert rates.as_wire() == {
+        "currency": "USD",
+        "input_per_mtok": "3",
+        "cached_input_per_mtok": "0.30",
+        "output_per_mtok": "15",
+    }
+
+
+def test_zero_prices_are_valid():
+    rates = Config.from_env(
+        env(
+            COST_RATE_INPUT_PER_MTOK="0",
+            COST_RATE_CACHED_INPUT_PER_MTOK="0",
+            COST_RATE_OUTPUT_PER_MTOK="0",
+        )
+    ).cost_rates
+    assert rates is not None and rates.output_per_mtok == Decimal("0")
+
+
+@pytest.mark.parametrize("missing", [
+    ["COST_RATE_INPUT_PER_MTOK"],
+    ["COST_RATE_CACHED_INPUT_PER_MTOK"],
+    ["COST_RATE_OUTPUT_PER_MTOK"],
+    ["COST_RATE_INPUT_PER_MTOK", "COST_RATE_OUTPUT_PER_MTOK"],
+])
+def test_partial_cost_rates_name_every_missing_variable(missing):
+    overrides = dict(RATES)
+    for name in missing:
+        overrides[name] = None
+    with pytest.raises(ConfigError) as exc:
+        Config.from_env(env(**overrides))
+    for name in missing:
+        assert name in str(exc.value)
+
+
+@pytest.mark.parametrize("bad", ["-1", "abc", "NaN", "Infinity", "10001", "0.1234567", "1e999", "1.2.3", "  "])
+def test_invalid_cost_rate_values_rejected(bad):
+    for name in RATES:
+        with pytest.raises(ConfigError, match=name):
+            Config.from_env(env(**{**RATES, name: bad}))
+
+
+def test_cost_rate_bounds_are_inclusive():
+    rates = Config.from_env(
+        env(
+            COST_RATE_INPUT_PER_MTOK="10000",
+            COST_RATE_CACHED_INPUT_PER_MTOK="0.000001",
+            COST_RATE_OUTPUT_PER_MTOK="0.5",
+        )
+    ).cost_rates
+    assert rates is not None
+    assert rates.input_per_mtok == Decimal("10000")
+    assert rates.cached_input_per_mtok == Decimal("0.000001")

@@ -12,6 +12,7 @@ import math
 import os
 import re
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit
 
 DEFAULT_BASE_URL = "http://192.168.1.228:8000"
@@ -24,13 +25,49 @@ DEFAULT_PORT = 8080
 DEFAULT_BIND_ADDRESS = "127.0.0.1"
 DEFAULT_LOG_LEVEL = "INFO"
 
+# API-equivalent cost estimate (cost plan D3): one server-wide price set, all
+# three variables or none, validated at startup and never stored in the database.
+COST_RATE_ENV_NAMES = (
+    "COST_RATE_INPUT_PER_MTOK",
+    "COST_RATE_CACHED_INPUT_PER_MTOK",
+    "COST_RATE_OUTPUT_PER_MTOK",
+)
+MAX_COST_RATE = Decimal(10000)
+MAX_COST_RATE_DECIMAL_PLACES = 6
+_COST_CURRENCY = "USD"
+
 _ALLOWED_SCHEMES = ("http", "https")
 _LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 _SOURCE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_DECIMAL_RE = re.compile(r"[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$")
 
 
 class ConfigError(ValueError):
     """Actionable startup configuration failure."""
+
+
+@dataclass(frozen=True)
+class CostRates:
+    """Per-million-token API list prices (cost plan D3).
+
+    ``Decimal`` end to end: a float would silently round money, and the estimate
+    is only trustworthy if the arithmetic matches the operator's typed price.
+    ``str(Decimal)`` reproduces the typed lexeme (``0.30`` stays ``0.30``), so
+    the wire form never shows a binary-rounded value.
+    """
+
+    input_per_mtok: Decimal
+    cached_input_per_mtok: Decimal
+    output_per_mtok: Decimal
+    currency: str = _COST_CURRENCY
+
+    def as_wire(self) -> dict[str, str]:
+        return {
+            "currency": self.currency,
+            "input_per_mtok": str(self.input_per_mtok),
+            "cached_input_per_mtok": str(self.cached_input_per_mtok),
+            "output_per_mtok": str(self.output_per_mtok),
+        }
 
 
 @dataclass(frozen=True)
@@ -45,6 +82,7 @@ class Config:
     log_level: str
     bind_address: str = DEFAULT_BIND_ADDRESS
     static_dir: str | None = None
+    cost_rates: CostRates | None = None
 
     @property
     def metrics_url(self) -> str:
@@ -138,6 +176,59 @@ def _parse_timeout(raw: str, poll_interval_seconds: int) -> float:
     return value
 
 
+def _parse_cost_rate(name: str, raw: str) -> Decimal:
+    """One price: finite decimal, 0..10000, at most 6 decimal places, never float."""
+    if not _DECIMAL_RE.fullmatch(raw):
+        raise ConfigError(
+            f"{name} must be a decimal price per million tokens (e.g. 0.30), got {raw!r}"
+        )
+    try:
+        value = Decimal(raw)
+    except InvalidOperation as exc:  # pragma: no cover - the regex above rejects these
+        raise ConfigError(f"{name} must be a decimal price, got {raw!r}") from exc
+    if not value.is_finite():
+        raise ConfigError(f"{name} must be a finite decimal price, got {raw!r}")
+    if value < 0:
+        raise ConfigError(f"{name} must not be negative, got {raw!r}")
+    if value > MAX_COST_RATE:
+        raise ConfigError(f"{name} must be at most {MAX_COST_RATE}, got {raw!r}")
+    places = max(0, -value.as_tuple().exponent)
+    if places > MAX_COST_RATE_DECIMAL_PLACES:
+        raise ConfigError(
+            f"{name} must have at most {MAX_COST_RATE_DECIMAL_PLACES} decimal places, got {raw!r}"
+        )
+    return value
+
+
+def _parse_cost_rates(env: dict[str, str]) -> CostRates | None:
+    """All three prices, or none: a partial set is a startup failure (cost plan D3).
+
+    A half-configured price set would silently mis-price every range, so missing
+    variables are named explicitly and the operator fixes the set, not the math.
+    """
+    raw: dict[str, str | None] = {}
+    for name in COST_RATE_ENV_NAMES:
+        value = (env.get(name) or "").strip()
+        raw[name] = value or None
+    present = [name for name in COST_RATE_ENV_NAMES if raw[name] is not None]
+    if not present:
+        return None
+    if len(present) != len(COST_RATE_ENV_NAMES):
+        missing = [name for name in COST_RATE_ENV_NAMES if raw[name] is None]
+        raise ConfigError(
+            "cost rates must be set together; missing "
+            f"{', '.join(missing)} (set all of {', '.join(COST_RATE_ENV_NAMES)}, "
+            "or none of them to disable the API-equivalent estimate)"
+        )
+    return CostRates(
+        input_per_mtok=_parse_cost_rate(COST_RATE_ENV_NAMES[0], raw[COST_RATE_ENV_NAMES[0]] or ""),
+        cached_input_per_mtok=_parse_cost_rate(
+            COST_RATE_ENV_NAMES[1], raw[COST_RATE_ENV_NAMES[1]] or ""
+        ),
+        output_per_mtok=_parse_cost_rate(COST_RATE_ENV_NAMES[2], raw[COST_RATE_ENV_NAMES[2]] or ""),
+    )
+
+
 def from_env(environ: dict[str, str] | None = None) -> Config:
     """Build a validated Config from the environment (defaults per specification D2)."""
     env = os.environ if environ is None else environ
@@ -174,4 +265,5 @@ def from_env(environ: dict[str, str] | None = None) -> Config:
         log_level=log_level,
         bind_address=bind_address,
         static_dir=static_dir,
+        cost_rates=_parse_cost_rates(env),
     )

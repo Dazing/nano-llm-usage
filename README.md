@@ -6,7 +6,9 @@ Delivery 3 dashboard: the production image builds the Vue bundle and serves it f
 as the API, so one container is the whole product. Delivery 4 is release qualification: the harness
 and the measured evidence live in [`docs/receipts/delivery-4/`](docs/receipts/delivery-4/) and
 [`docs/delivery-4-status.md`](docs/delivery-4-status.md), which states plainly which gates ran and
-which the qualification host could not run. No verified live deployment is claimed. Keep the
+which the qualification host could not run. The cache-aware API-equivalent cost estimate adds an
+optional `cached_input` counter, read-time pricing at operator-supplied rates, and cache-share and
+coverage lines in the dashboard. No verified live deployment is claimed. Keep the
 specification packet together and preserve its relative links.
 
 ## Files and authority
@@ -32,6 +34,8 @@ The user chose a DIY application after considering VictoriaMetrics/Grafana becau
 - **[Delivery 4 status](docs/delivery-4-status.md)** — qualification results: executed host gates (durable-recovery smoke, Compose/configuration contract, the seeded 367-day year verified through the real API, documentation consistency, AC7 growth math), the image and resource gates recorded NOT EXECUTED with their exact missing prerequisites, the `READ_CAPACITY` documentation correction, and the open items.
 - **[Live panel implementation plan](docs/live-panel-implementation-plan.md)** — the 1 Hz live usage row (requests, prefill/decode TPS, MTP acceptance, MoE GPU hit), its in-memory window contracts, and the 256 MiB → 512 MiB memory-limit change.
 - **[Live panel status](docs/live-panel-status.md)** — executed evidence for that plan: commands with exit codes, the live browser smoke transcript and screenshots, fixture payload sizes, and the gates this host could not execute.
+- **[Cost estimate implementation plan](docs/cost-estimate-implementation-plan.md)** — the cache-aware API-equivalent estimate: the optional `cached_input` counter, schema version 3, the three rate variables, the priced-hour and coverage rules, and the UI lines they drive.
+- **[Cost estimate status](docs/cost-estimate-status.md)** — executed evidence for that plan: commands with exit codes, numeric cost receipts and screenshots.
 - **[Deployment](docs/deployment.md)** — build, run, serve, backup, restore and upgrade operations for the self-contained image (collector, API and bundled dashboard; operator-supplied paths, UID/GID and bind address).
 
 The specification and acceptance scenarios remain authoritative. The plans sequence the complete

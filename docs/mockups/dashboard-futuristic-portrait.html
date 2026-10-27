@@ -1,0 +1,2226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis Token Dashboard · futuristic portrait mockup (Tokyo Night Storm)</title>
+<style>
+/* ==========================================================================
+   Jarvis Token Dashboard — "mission console" mockup. Tokyo Night Storm,
+   portrait 1080x1920 target, Grafana-style panels, restrained HUD framing.
+   Static design mockup: ALL DATA IS MOCK DATA, no network requests, no CDN.
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* --- Tokyo Night Storm, stock values (folke/tokyonight.nvim storm.lua) --- */
+  --bg: #24283b;
+  --bg-dark: #1f2335;
+  --bg-dark1: #1b1e2d;
+  --bg-highlight: #292e42;
+  --terminal-black: #414868;
+  --fg: #c0caf5;
+  --fg-dark: #a9b1d6;
+  --comment: #565f89;        /* decorative only: grid, ticks, ghost bars (2.5:1) */
+  --fg-gutter: #3b4261;      /* decorative hairlines */
+  --dark3: #545c7e;          /* decorative: off-scale bar track */
+  --dark5: #737aa2;          /* non-text AA only (3.7:1): hairlines, svg axis */
+  --blue: #7aa2f7;
+  --cyan: #7dcfff;
+  --teal: #73daca;
+  --green: #9ece6a;
+  --yellow: #e0af68;
+  --orange: #ff9e64;
+  --red: #f7768e;
+  --magenta: #bb9af7;
+
+  /* --- Tweaks (each justified in the notes file) --- */
+  --muted: #9aa5ce;          /* stock comment lifted for text: 6.41:1 on --panel */
+  --panel: #1f2335;          /* = bg_dark, the panel face */
+  --panel-hi: #292e42;       /* nested cell face */
+  --deep: #1b1e2d;           /* recessed chart bed = bg_dark1 */
+  --line: #3b4261;           /* hairline border: 1px, non-text */
+  --line-soft: #292e42;
+  --bracket: #414868;        /* HUD corner brackets = terminal_black */
+  --ghost: #2c3350;          /* unfilled bar track (decorative) */
+  --ink: #1b1e2d;            /* text on accent fills: 11.9:1 on --blue */
+  --focus: #7dcfff;
+
+  /* --- Threshold ramp (assumption: saturation bands, high = hotter) --- */
+  --ok: var(--teal);
+  --warn: var(--yellow);
+  --bad: var(--red);
+  --series-input: var(--blue);
+  --series-output: var(--orange);
+
+  /* --- Type scale, sized for a portrait glance from a short distance --- */
+  --fs-hero: 40px;
+  --fs-stat: 29px;
+  --fs-value: 17px;
+  --fs-label: 12px;
+  --fs-note: 12.5px;
+  --gap: 14px;
+  --pad: 14px;
+
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* { box-sizing: border-box; }
+html {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-ui); line-height: 1.42; -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0; min-height: 100vh;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  overflow-x: hidden;
+}
+/* HUD grid + scanline texture: fixed, decorative, never interactive. */
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    repeating-linear-gradient(0deg, rgba(87,96,135,.055) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(90deg, rgba(87,96,135,.055) 0 1px, transparent 1px 34px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.10) 0 1px, transparent 1px 3px);
+}
+/* Faint horizon glow so the top of the portrait stack reads as the "bridge". */
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(120% 42% at 50% -8%, rgba(122,162,247,.10), transparent 70%);
+}
+.shell { position: relative; z-index: 1; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+
+/* ---------------------------------------------------------------- shell */
+.shell {
+  display: flex; flex-direction: column; gap: var(--gap);
+  padding: 16px; min-height: 100vh;
+}
+#below { display: flex; flex-direction: column; gap: var(--gap); }
+
+@media (min-width: 1200px) and (orientation: landscape) {
+  .shell { max-width: 1560px; margin: 0 auto; }
+  .chart-wrap { height: 380px; }
+}
+
+/* ---------------------------------------------------------------- panel */
+.panel {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: var(--pad) 16px;
+  box-shadow: inset 0 1px 0 rgba(192,202,245,.05);
+}
+/* Thin-line HUD framing: corner brackets drawn with 8 hairline gradients. */
+.framed::before, .framed::after {
+  content: ""; position: absolute; inset: -1px; pointer-events: none;
+  --b: var(--bracket);
+  background:
+    linear-gradient(var(--b), var(--b)) 0 0 / 14px 1px no-repeat,
+    linear-gradient(var(--b), var(--b)) 0 0 / 1px 14px no-repeat,
+    linear-gradient(var(--b), var(--b)) 100% 0 / 14px 1px no-repeat,
+    linear-gradient(var(--b), var(--b)) 100% 0 / 1px 14px no-repeat,
+    linear-gradient(var(--b), var(--b)) 0 100% / 14px 1px no-repeat,
+    linear-gradient(var(--b), var(--b)) 0 100% / 1px 14px no-repeat,
+    linear-gradient(var(--b), var(--b)) 100% 100% / 14px 1px no-repeat,
+    linear-gradient(var(--b), var(--b)) 100% 100% / 1px 14px no-repeat;
+}
+.framed::after { display: none; }           /* one pseudo is enough for 4 corners */
+.framed.is-live::before { --b: #5a7bb5; }   /* accent bracket on the 1 Hz panel only */
+
+.panel-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+h2.panel-label, .panel-label {
+  margin: 0; font-size: var(--fs-label); font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase; color: var(--fg-dark);
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-label .idx {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0;
+  color: var(--bg); background: var(--fg-dark);
+  padding: 1px 5px; border-radius: 3px;
+}
+.panel-label .tick { width: 3px; height: 13px; background: var(--blue); border-radius: 1px; }
+.head-spacer { flex: 1 1 auto; }
+.observed, .note, .sub {
+  font-size: var(--fs-note); color: var(--muted);
+}
+.sub { font-family: var(--font-mono); }
+.utc-tag {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em;
+  color: var(--fg-dark); border: 1px solid var(--line);
+  border-radius: 4px; padding: 0 5px;
+}
+.mock-tag {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .14em;
+  color: var(--bg-dark); background: var(--yellow);
+  border-radius: 4px; padding: 2px 7px; font-weight: 700;
+}
+
+/* ------------------------------------------------------------- typography */
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.stat-value {
+  margin: 0;
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-weight: 600; line-height: 1.05; letter-spacing: -.01em;
+  font-size: var(--fs-stat); color: var(--fg);
+}
+.stat-value.hero { font-size: var(--fs-hero); }
+.stat-value .unit { font-size: .48em; font-weight: 500; color: var(--muted); letter-spacing: .02em; }
+.stat-value.glow { text-shadow: 0 0 18px var(--glow-c, rgba(122,162,247,.32)); }
+.value-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.lv-label { font-size: var(--fs-label); color: var(--muted); letter-spacing: .04em; }
+.lv-value { font-family: var(--font-mono); font-size: var(--fs-value); font-weight: 600; }
+.lv-value.is-muted { font-size: 15.5px; font-weight: 500; color: var(--fg-dark); }
+.flag {
+  margin: 7px 0 0; padding: 5px 8px; font-size: var(--fs-note);
+  border-left: 3px solid var(--warn); background: rgba(224,175,104,.07);
+  color: var(--fg); border-radius: 0 6px 6px 0;
+}
+.note { margin: 6px 0 0; }
+.note.strong { color: var(--fg-dark); }
+
+/* ---------------------------------------------------------------- badges */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-dark1);
+  font-size: 12.5px; font-weight: 700; letter-spacing: .04em;
+  color: var(--fg-dark); white-space: nowrap;
+}
+.badge.is-ok { color: var(--teal); border-color: rgba(115,218,202,.5); }
+.badge.is-warn { color: var(--yellow); border-color: rgba(224,175,104,.5); }
+.badge.is-bad { color: var(--red); border-color: rgba(247,118,142,.5); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.dot.pulse { animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(115,218,202,.45); opacity: 1; }
+  50% { box-shadow: 0 0 0 6px rgba(115,218,202,0); opacity: .68; }
+}
+.badge.is-warn .dot.pulse { animation-name: pulse-warn; }
+@keyframes pulse-warn {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224,175,104,.45); opacity: 1; }
+  50% { box-shadow: 0 0 0 6px rgba(224,175,104,0); opacity: .68; }
+}
+.badge.is-bad .dot.pulse { animation-name: pulse-bad; }
+@keyframes pulse-bad {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(247,118,142,.5); opacity: 1; }
+  50% { box-shadow: 0 0 0 7px rgba(247,118,142,0); opacity: .6; }
+}
+
+/* ---------------------------------------------------------------- header */
+.app-header { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-start; }
+.header-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.app-header h1 {
+  margin: 0; font-size: 21px; letter-spacing: .12em; text-transform: uppercase;
+  font-weight: 700; color: var(--fg);
+}
+.app-header h1 .sub-title { color: var(--blue); }
+.series-name {
+  margin: 0; font-family: var(--font-mono); font-size: 15px; color: var(--cyan);
+  overflow-wrap: anywhere;
+}
+.header-side {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  margin-left: auto;
+}
+.header-meta { display: flex; flex-direction: column; gap: 2px; align-items: flex-end; }
+.last-update { margin: 0; font-size: var(--fs-note); color: var(--muted); font-family: var(--font-mono); }
+.header-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.theme-toggle, .chip, .series-picker, .ghost-btn {
+  padding: 5px 12px; background: var(--bg-dark1); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 7px;
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.chip:hover, .theme-toggle:hover, .ghost-btn:hover { border-color: var(--dark5); background: var(--bg-highlight); }
+.chip.is-active { background: var(--blue); border-color: var(--blue); color: var(--ink); font-weight: 700; }
+.chip .kbd { font-family: var(--font-mono); font-size: 10px; opacity: .8; }
+.series-picker-label { font-size: 11.5px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+.series-picker { min-width: 210px; }
+.theme-toggle[aria-disabled="true"] { cursor: help; }
+
+/* ---------------------------------------------------------------- banners */
+.banner {
+  position: relative; margin: 0; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: 9px;
+  font-size: 13.5px; background: var(--panel);
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.banner .glyph { font-family: var(--font-mono); font-weight: 700; }
+.banner p { margin: 0; }
+.banner p + p { margin-top: 3px; }
+.banner-warn { border-color: rgba(224,175,104,.55); background: rgba(224,175,104,.07); }
+.banner-warn .glyph { color: var(--yellow); }
+.banner-error { border-color: rgba(247,118,142,.55); background: rgba(247,118,142,.07); }
+.banner-error .glyph { color: var(--red); }
+#banners { display: flex; flex-direction: column; gap: var(--gap); }
+#banners:empty { display: none; }
+.stale-notice { color: var(--yellow); font-size: var(--fs-note); }
+
+/* ------------------------------------------------------------------- live */
+.live-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.cell {
+  border: 1px solid var(--line-soft); border-radius: 8px;
+  background: var(--panel-hi); padding: 10px 11px;
+  display: flex; flex-direction: column; gap: 7px; min-width: 0;
+}
+.cell-title {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+.cell-slots { margin: 0; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.cell-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.spark { display: block; width: 100%; height: 34px; }
+.spark .line { fill: none; stroke-width: 1.6; }
+.spark .area { stroke: none; }
+.spark .axis { stroke: var(--line-soft); stroke-width: 1; }
+.gauge-svg { display: block; width: 100%; height: auto; }
+.gauge-svg .track { stroke: var(--ghost); fill: none; stroke-width: 9; stroke-linecap: round; }
+.gauge-svg .band { fill: none; stroke-width: 2.5; opacity: .85; }
+.gauge-svg .value { fill: none; stroke-width: 9; stroke-linecap: round; }
+.gauge-svg .knob { stroke: var(--panel); stroke-width: 2; }
+.gauge-svg .tick { stroke: var(--dark5); stroke-width: 1; }
+.gauge-svg .glabel { fill: var(--muted); font: 500 9.5px var(--font-mono); }
+.gauge-wrap { position: relative; }
+.gauge-read {
+  position: absolute; left: 0; right: 0; bottom: 6%;
+  text-align: center; pointer-events: none;
+}
+.gauge-read .stat-value { font-size: 21px; }
+.gauge-read .sec { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.glow-arc { filter: drop-shadow(0 0 5px var(--glow-c, rgba(122,162,247,.4))); }
+
+/* bar gauge rows (Grafana bar-gauge: one row per window) */
+.bars { display: flex; flex-direction: column; gap: 6px; }
+.bar-row { display: grid; grid-template-columns: 46px minmax(0,1fr) 46px; align-items: center; gap: 8px; }
+.bar-row .w { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.bar-row .v { font-family: var(--font-mono); font-size: 13px; text-align: right; color: var(--fg); }
+.bar { display: flex; gap: 2px; height: 13px; }
+.bar .seg { flex: 1 1 auto; border-radius: 1px; background: var(--ghost); }
+.bar .seg.on { background: currentColor; }
+.bar .seg.on.top { box-shadow: 0 0 7px currentColor; }
+.bar.is-null .seg { background: transparent; border-top: 1px dashed var(--ghost); height: 1px; align-self: center; }
+
+/* requests segmented bar */
+.seg-stack { display: flex; gap: 3px; height: 16px; align-items: flex-end; }
+.seg-stack .slot { flex: 1 1 auto; height: 100%; border-radius: 1px; background: var(--ghost); }
+.seg-stack .slot.run { background: var(--blue); box-shadow: 0 0 6px rgba(122,162,247,.45); }
+.seg-stack .slot.queue { background: var(--yellow); box-shadow: 0 0 6px rgba(224,175,104,.4); }
+.legend-inline { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.legend-inline .key { display: inline-flex; align-items: center; gap: 5px; }
+.sw { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+/* --------------------------------------------------------------- summary */
+.summary-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card { position: relative; overflow: hidden; }
+.card .bg-spark { position: absolute; inset: auto 0 0 0; height: 96px; opacity: .5; pointer-events: none; }
+.card-body { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.ratio { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--ghost); }
+.ratio .in { background: var(--series-input); }
+.ratio .out { background: var(--series-output); }
+.ratio-legend { display: flex; justify-content: space-between; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.meter { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--ghost); margin-top: 3px; }
+.meter .fill { background: var(--cyan); }
+.rows { display: flex; flex-direction: column; gap: 3px; }
+.card .rows .value-row { border-bottom: 1px dotted var(--line-soft); padding-bottom: 3px; }
+
+/* ----------------------------------------------------------------- trend */
+.control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.custom-range { position: relative; }
+.custom-range > summary, .chart-disclosure > summary, .requests-disclosure > summary, .diagnostics > summary {
+  cursor: pointer; font-size: 12.5px; color: var(--muted);
+  list-style: none; padding: 5px 10px; border: 1px solid var(--line);
+  border-radius: 7px; background: var(--bg-dark1);
+}
+.custom-range > summary::-webkit-details-marker, .chart-disclosure > summary::-webkit-details-marker,
+.requests-disclosure > summary::-webkit-details-marker, .diagnostics > summary::-webkit-details-marker { display: none; }
+.custom-range > summary::before, .chart-disclosure > summary::before,
+.requests-disclosure > summary::before, .diagnostics > summary::before {
+  content: "▸ "; color: var(--blue); font-family: var(--font-mono);
+}
+details[open] > summary::before { content: "▾ "; }
+.custom-fields {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 8px; padding: 10px; border: 1px solid var(--line-soft);
+  border-radius: 8px; background: var(--bg-dark1);
+}
+.custom-fields label { font-size: 12px; color: var(--muted); }
+.custom-fields input {
+  padding: 4px 8px; background: var(--panel); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 13px;
+  color-scheme: dark;
+}
+.chart-wrap {
+  position: relative; margin-top: 6px; background: var(--deep);
+  border: 1px solid var(--line-soft); border-radius: 8px; padding: 6px;
+  min-height: 300px;
+}
+.chart-svg { display: block; width: 100%; height: 100%; }
+.chart-svg .grid { stroke: rgba(87,96,135,.28); stroke-width: 1; }
+.chart-svg .grid.zero { stroke: var(--dark5); }
+.chart-svg .axis-text { fill: var(--muted); font: 500 10.5px var(--font-mono); }
+.chart-svg .bar-in { fill: var(--series-input); }
+.chart-svg .bar-out { fill: var(--series-output); }
+.chart-svg .bar-null { stroke: var(--red); stroke-width: 1.4; }
+/* .partial keeps its fill attribute (url(#hatch) for the open bucket, none otherwise) */
+.chart-svg .partial { stroke: var(--yellow); stroke-width: 1.2; stroke-dasharray: 3 2; }
+.chart-svg .partial.hatch { stroke-dasharray: none; }
+.chart-svg .crosshair { stroke: var(--cyan); stroke-width: 1; stroke-dasharray: 4 3; }
+.chart-svg .cursor-slot { fill: rgba(125,207,255,.09); }
+.chart-svg .focus-ring { fill: none; stroke: var(--focus); stroke-width: 1.5; }
+.tooltip {
+  position: absolute; z-index: 3; min-width: 226px; max-width: 320px;
+  background: var(--bg-dark1); border: 1px solid var(--dark5); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; pointer-events: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.tooltip .t-title { font-family: var(--font-mono); font-size: 11.5px; color: var(--cyan); margin-bottom: 5px; }
+.tooltip .t-row { display: flex; justify-content: space-between; gap: 12px; font-family: var(--font-mono); }
+.tooltip .t-row span:first-child { color: var(--muted); }
+.tooltip .t-q { margin-top: 5px; color: var(--yellow); font-size: 11.5px; }
+.range-error { margin: 8px 0 0; color: var(--red); font-size: 13px; }
+.chart-disclosure { margin-top: 8px; }
+.chart-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.chart-table caption { text-align: left; color: var(--muted); padding-bottom: 6px; font-size: 12px; }
+.chart-table th, .chart-table td {
+  text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line-soft); font-weight: 500;
+}
+.chart-table thead th { color: var(--fg-dark); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; }
+.chart-table td { font-family: var(--font-mono); }
+.chart-table tbody th { font-family: var(--font-mono); font-weight: 500; color: var(--fg-dark); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.readout {
+  margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line-soft);
+  border-radius: 8px; background: var(--bg-dark1); font-family: var(--font-mono); font-size: 12px;
+  display: flex; flex-wrap: wrap; gap: 4px 16px;
+}
+.readout .k { color: var(--muted); }
+
+/* ----------------------------------------------------------------- rates */
+.rate-grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rate-cell.is-stale { opacity: .55; }
+.delta { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 12px; }
+.delta.up { color: var(--teal); }
+.delta.down { color: var(--orange); }
+.delta.flat { color: var(--muted); }
+.warn-glyph { color: var(--yellow); font-family: var(--font-mono); }
+.requests-disclosure { margin-top: 10px; }
+.request-grid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 8px; }
+.request-cell { border: 1px solid var(--line-soft); border-radius: 8px; padding: 10px; background: var(--bg-dark1); }
+.request-title { margin: 0 0 6px; font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.request-meta { margin: 5px 0 0; font-size: var(--fs-note); color: var(--muted); font-family: var(--font-mono); }
+
+/* ------------------------------------------------------------ diagnostics */
+.diagnostics { padding: var(--pad) 16px; }
+.diag-body { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.diag-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.diagnostics-block h3 {
+  margin: 0 0 8px; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--fg-dark); display: flex; align-items: center; gap: 7px;
+}
+.gap-rows { display: flex; flex-direction: column; gap: 7px; }
+.logs { border: 1px solid var(--line-soft); border-radius: 8px; overflow: hidden; }
+.log-row {
+  display: grid; grid-template-columns: 8px 168px 190px minmax(0, 1fr);
+  gap: 8px; align-items: center; padding: 5px 10px 5px 0;
+  font-family: var(--font-mono); font-size: 11.5px; border-bottom: 1px solid var(--line-soft);
+}
+.log-row:nth-child(even) { background: rgba(41,46,66,.5); }
+.log-row:last-child { border-bottom: 0; }
+.log-row .sev { align-self: stretch; background: var(--dark5); }
+.log-row.warn .sev { background: var(--yellow); }
+.log-row.bad .sev { background: var(--red); }
+.log-row.info .sev { background: var(--blue); }
+.log-row .t { color: var(--muted); }
+.log-row .kind { color: var(--fg); }
+.log-row .det { color: var(--fg-dark); overflow-wrap: anywhere; }
+.timeline-wrap { border: 1px solid var(--line-soft); border-radius: 8px; background: var(--deep); padding: 8px; }
+.timeline { display: block; width: 100%; height: 92px; }
+.timeline .axis { stroke: var(--dark5); stroke-width: 1; }
+.timeline .span { fill: rgba(122,162,247,.30); }
+.timeline .gapfill { fill: rgba(247,118,142,.26); stroke: var(--red); stroke-width: .8; stroke-dasharray: 3 2; }
+.timeline .epoch { stroke: var(--magenta); stroke-width: 1.5; }
+.timeline .txt { fill: var(--muted); font: 500 9.5px var(--font-mono); }
+.timeline .etxt { fill: var(--magenta); font: 600 9.5px var(--font-mono); }
+.flag-chips { display: flex; flex-direction: column; gap: 6px; }
+.chip-flag {
+  display: flex; gap: 8px; align-items: flex-start; font-size: 12px;
+  border: 1px solid rgba(224,175,104,.4); border-radius: 7px;
+  background: rgba(224,175,104,.06); padding: 6px 9px;
+}
+.chip-flag .glyph { color: var(--yellow); font-family: var(--font-mono); }
+.epoch-list { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.epoch-list li { font-size: 12px; }
+.epoch-list .e-reason { color: var(--magenta); font-weight: 600; }
+.epoch-list .e-meta, .epoch-list .note { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; }
+.diag-list { margin: 0; padding-left: 18px; font-size: 12.5px; }
+.diag-list li + li { margin-top: 4px; }
+.status-line { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; }
+.status-line .dot { margin-top: 5px; }
+
+/* ------------------------------------------------------------ state views */
+.empty-state {
+  margin: 0; padding: 40px 24px; text-align: center;
+  background: var(--panel); border: 1px dashed var(--line); border-radius: 10px;
+  color: var(--fg-dark); font-size: 15px;
+}
+.empty-state .glyph { display: block; font-family: var(--font-mono); color: var(--dark5); font-size: 26px; margin-bottom: 8px; }
+.skeleton { display: flex; flex-direction: column; gap: var(--gap); }
+.skeleton-row { display: grid; gap: var(--gap); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.skeleton-block, .skeleton-chart {
+  position: relative; overflow: hidden; background: var(--panel);
+  border: 1px solid var(--line-soft); border-radius: 10px; min-height: 130px;
+}
+.skeleton-chart { min-height: 340px; }
+.skeleton-block::after, .skeleton-chart::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(122,162,247,.12), transparent);
+  animation: sweep 1.8s ease-in-out infinite;
+}
+@keyframes sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+/* ------------------------------------------------------- dev state switcher */
+.dev {
+  position: fixed; right: 12px; bottom: 12px; z-index: 20;
+  background: var(--bg-dark1); border: 1px solid var(--dark5); border-radius: 10px;
+  padding: 8px; display: flex; flex-direction: column; gap: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.55); max-width: min(420px, 92vw);
+}
+.dev summary {
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .1em;
+  color: var(--cyan); cursor: pointer; list-style: none; padding: 2px 4px;
+}
+.dev summary::-webkit-details-marker { display: none; }
+.dev-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.dev .chip { font-size: 12px; padding: 4px 9px; }
+.dev .dev-label { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); width: 100%; }
+.footnote { font-size: 11.5px; color: var(--muted); font-family: var(--font-mono); text-align: center; }
+
+/* ------------------------------------------------------------ responsive
+   Container queries on the shell, not viewport media queries: the portrait
+   target is 1080 CSS px wide, and a 1100px viewport breakpoint collapses it
+   into fewer columns, doubling every glance row. */
+.shell { container-type: inline-size; container-name: shell; }
+@container shell (max-width: 1000px) {
+  .live-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diag-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@container shell (max-width: 700px) {
+  .shell { padding: 12px; gap: 12px; }
+  .live-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary-grid, .rate-grid, .request-grid, .skeleton-row { grid-template-columns: minmax(0, 1fr); }
+  .chart-wrap { min-height: 260px; height: 320px; }
+  .app-header { flex-direction: column; }
+  .header-side { margin-left: 0; }
+  .header-meta { align-items: flex-start; }
+  .log-row { grid-template-columns: 8px 150px minmax(0, 1fr); }
+  .log-row .det { grid-column: 2 / -1; }
+  :root { --fs-hero: 32px; --fs-stat: 23px; }
+}
+@container shell (max-width: 520px) {
+  .live-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 1200px) and (orientation: landscape) {
+  .shell { max-width: 1560px; margin: 0 auto; }
+  .chart-wrap { height: 380px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0s !important; animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
+  .dot.pulse { box-shadow: none; opacity: 1; }
+}
+
+/* --------------------------------------------------- added component styles */
+#state-view { display: contents; }
+.summary-sec { display: flex; flex-direction: column; gap: 10px; }
+.sec-head { margin-bottom: 0; }
+.trend-panel, .summary-sec { display: flex; flex-direction: column; }
+.summary-sec > .summary-grid { flex: 0 0 auto; }
+.trend-panel > :not(.chart-wrap) { flex: 0 0 auto; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.card.is-baseline { border-style: dashed; }
+.card.is-partial::before { --b: #7a6a3f; }
+.gap-row { display: flex; flex-direction: column; gap: 3px; }
+.chart-wrap.is-empty { display: flex; align-items: center; justify-content: center; }
+.rate-cell { gap: 6px; }
+.custom-fields label { display: flex; flex-direction: column; gap: 4px; }
+.diagnostics > summary { display: block; }
+.diagnostics[open] > summary { margin-bottom: 4px; }
+.timeline + .epoch-list { margin-top: 10px; }
+.bg-spark { pointer-events: none; }
+.log-row .sev { min-height: 20px; }
+.dev-grid .chip.is-active { border-color: var(--cyan); }
+/* threshold ticks on the mini bar gauge */
+.bar-th { position: relative; }
+.bar-th::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 calc(var(--th1) - 1px), rgba(224,175,104,.85) calc(var(--th1) - 1px) var(--th1), transparent var(--th1) 100%),
+    linear-gradient(90deg, transparent 0 calc(var(--th2) - 1px), rgba(247,118,142,.85) calc(var(--th2) - 1px) var(--th2), transparent var(--th2) 100%);
+}
+
+/* ---- Portrait fit mode. Placed last so these equal-specificity rules win the
+   cascade over the component rules above (the media query only gates when
+   they apply). A portrait display at least 1500 px tall shows the header,
+   Live, Summary, Trend and Rates rows with no page scroll; expanded
+   disclosures scroll inside the shell, and the trend chart absorbs slack. */
+@media (min-width: 900px) and (min-height: 1500px) and (orientation: portrait) {
+  /* structure */
+  html, body { height: 100%; }
+  .shell {
+    height: 100dvh; overflow-y: auto; overflow-x: hidden;
+    display: grid; grid-template-columns: none;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+  #below { min-height: 0; flex: 1 1 auto; }
+  #app-header, #banners, .live-panel, .summary-sec, .rates-panel, .diagnostics {
+    flex: 0 0 auto;
+  }
+  .trend-panel { flex: 1 1 auto; min-height: 470px; display: flex; flex-direction: column; }
+  .chart-wrap { flex: 1 1 auto; min-height: 260px; max-height: none; }
+
+  /* type + spacing: compact the glance rows so the chart gets the remainder */
+  :root { --fs-hero: 36px; --fs-stat: 27px; --gap: 11px; }
+  .banner { padding: 7px 12px; font-size: 12.5px; }
+  .app-header { padding: 10px 14px; }
+  .app-header h1 { font-size: 19px; }
+  .panel { padding: 12px 14px; }
+  .panel-head { margin-bottom: 6px; }
+  .cell { padding: 8px 10px; gap: 4px; }
+  .cell-slots { line-height: 1.25; }
+  .gauge-svg { max-height: 74px; }
+  .gauge-read .stat-value { font-size: 20px; }
+  .spark { height: 24px; }
+  .bars { gap: 4px; }
+  .bar { height: 12px; }
+  .card { padding: 9px 11px; }
+  .card-body { gap: 4px; }
+  .card-body .lv-label { margin-top: 2px; }
+  .card .rows { gap: 2px; }
+  .card .rows .value-row { padding-bottom: 2px; }
+  .lv-value { font-size: 15.5px; line-height: 1.3; }
+  .card .note { margin-top: 3px; font-size: 11px; line-height: 1.28; }
+  .card .flag { margin-top: 3px; padding: 2px 8px; font-size: 11px; line-height: 1.28; }
+  .summary-grid, .live-grid, .rate-grid { gap: 8px; }
+  .rate-cell { gap: 4px; }
+  .diagnostics > summary { padding: 10px 14px; }
+  .diagnostics { padding: 10px 14px; }
+}
+
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+
+  <header class="panel framed app-header" id="app-header" data-testid="app-header"></header>
+
+  <div id="banners"></div>
+
+  <section class="panel framed live-panel" id="live-panel" data-testid="live-panel" aria-label="Live engine activity">
+    <div class="panel-head">
+      <h2 class="panel-label"><span class="idx">01</span> Live engine activity</h2>
+      <span class="badge" id="live-state" data-testid="live-state"><span class="dot"></span>Live</span>
+      <span class="head-spacer"></span>
+      <span class="observed" id="live-observed" data-testid="live-observed"></span>
+    </div>
+    <div class="live-grid" id="live-grid" data-testid="live-grid"></div>
+  </section>
+
+  <div id="below">
+    <div id="state-view"></div>
+  </div>
+
+  <p class="visually-hidden" role="status" aria-live="polite" id="sr-live"></p>
+</div>
+
+<details class="dev" id="dev" open>
+  <summary>DEV · states &amp; ranges (mock)</summary>
+  <div class="dev-grid" id="dev-grid"></div>
+</details>
+
+<script>
+
+/* ==========================================================================
+   MOCK DATA + FORMATTERS
+   Formatters are ported from frontend/src/lib/format.ts so the numbers read
+   exactly as the real dashboard renders them. Shapes mirror
+   frontend/src/api/openapi.json. NOTHING HERE IS READ FROM AN API.
+   ========================================================================== */
+"use strict";
+
+const NOW = Date.parse("2026-10-27T11:42:08Z"); // fixed mock "now" (UTC)
+const HOUR = 3_600_000, DAY = 86_400_000;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/* ------------------------------------------------------------- formatters */
+const NO_DATA = "no data";
+const LIVE_PLACEHOLDER = "-";
+
+function formatTokens(value) {
+  if (value === null || value === undefined) return NO_DATA;
+  try { return BigInt(value).toLocaleString("en-US"); } catch { return String(value); }
+}
+function formatRate(rate) {
+  if (!rate || !rate.eligible || rate.tokens_per_second === null || rate.tokens_per_second === undefined) return "N/A";
+  return `${Math.round(rate.tokens_per_second).toLocaleString("en-US")} tok/s`;
+}
+function formatTps(v) { return v === null || v === undefined ? LIVE_PLACEHOLDER : `${Math.round(v).toLocaleString("en-US")} tok/s`; }
+function formatPerRequest(v) { return v === null || v === undefined ? LIVE_PLACEHOLDER : `${Math.round(v).toLocaleString("en-US")}/req`; }
+function formatRatio(v) { return v === null || v === undefined ? LIVE_PLACEHOLDER : `${Math.round(v * 100)}%`; }
+function joinSlots(slots) { return slots.join(" / "); }
+function formatUtc(value) {
+  if (!value) return NO_DATA;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return NO_DATA;
+  return `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+function formatClock(value) {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? NO_DATA : d.toISOString().slice(11, 19);
+}
+function formatDay(value) {
+  if (!value) return NO_DATA;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? NO_DATA : d.toISOString().slice(0, 10);
+}
+function bucketLabel(bucket) {
+  const start = new Date(bucket.started_at);
+  if (Number.isNaN(start.getTime())) return NO_DATA;
+  const iso = start.toISOString();
+  if (bucket.bucket === "day") return iso.slice(0, 10);
+  const end = new Date(bucket.ended_at);
+  const endLabel = Number.isNaN(end.getTime()) ? "" : `–${end.toISOString().slice(11, 16)}`;
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)}${endLabel} UTC`;
+}
+function humanDuration(seconds) {
+  const total = Math.round(seconds);
+  const days = Math.floor(total / 86400), hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60), rest = total % 60;
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  if (minutes) parts.push(`${minutes}m`);
+  if (!days && (rest || !minutes)) parts.push(`${rest}s`);
+  return parts.join(" ") || "0s";
+}
+function describeGap(seconds) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "no unobserved interval";
+  return `unobserved for ${humanDuration(seconds)}`;
+}
+const FLAG_LABELS = {
+  collection_gap: "Some intervals were not collected; totals cover observed intervals only.",
+  reset_boundary: "A counter reset boundary sits at the start of this range.",
+  continuity_unverified: "Continuity across this interval could not be verified.",
+  time_attribution_approximate: "Work is attributed to this bucket approximately, not exactly.",
+  clock_discontinuity: "A clock discontinuity was observed in this range.",
+  counter_unavailable: "This counter was unavailable for part of the range.",
+  metadata_incomplete: "Quality metadata is incomplete for this total.",
+};
+function flagLabel(flag) { return FLAG_LABELS[flag] ?? `Unrecognised quality flag: ${flag}.`; }
+const RANGE_ERROR_TEXT = {
+  invalid_range: "Narrow the range to 366 days or fewer.",
+  range_too_large: "Narrow the range to 366 days or fewer.",
+  unaligned_range: "Choose range bounds aligned to the selected UTC hour or day.",
+  invalid_bucket: "Choose a supported bucket: hourly or daily.",
+  invalid_time: "Choose valid UTC dates for the range.",
+  invalid_series_id: "Select a series from the list; the previous selection is no longer valid.",
+  invalid_cursor: "The page cursor expired — reload the page.",
+  series_not_found: "This series is no longer collected — pick another series.",
+  storage_unavailable: "Retry — storage is unavailable.",
+  read_capacity_exceeded: "Retry — too many reads are in flight.",
+  schema_mismatch: "The dashboard and API versions differ — reload after redeploying.",
+  network_error: "Retry — the dashboard API could not be reached.",
+  unknown: "The request failed — retry.",
+};
+function rangeErrorText(code) { return RANGE_ERROR_TEXT[code] ?? "The request failed — retry."; }
+const COLLECTION_LABELS = { starting: "Collecting", healthy: "Healthy", degraded: "Degraded", offline: "Offline" };
+function collectionLabel(status) { return !status ? "Collecting" : (COLLECTION_LABELS[status] ?? status); }
+
+function scaledUnits(value, places) {
+  const m = /^(\d+)(?:\.(\d+))?$/.exec(String(value).trim());
+  if (!m) return null;
+  const frac = (m[2] ?? "").padEnd(places, "0").slice(0, places);
+  return BigInt(m[1]) * 10n ** BigInt(places) + BigInt(frac || "0");
+}
+function groupThousands(d) { return d.replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+function formatMoney(amount) {
+  if (amount === null || amount === undefined) return NO_DATA;
+  const micros = scaledUnits(amount, 6);
+  if (micros === null) return String(amount);
+  if (micros > 0n && micros < 5_000n) return "< $0.01";
+  const cents = (micros + 5_000n) / 10_000n;
+  return `$${groupThousands((cents / 100n).toString())}.${(cents % 100n).toString().padStart(2, "0")}`;
+}
+function formatUnitPrice(value) {
+  const [whole = "0", fraction = ""] = String(value).trim().split(".");
+  return `$${groupThousands(whole)}.${fraction.length < 2 ? fraction.padEnd(2, "0") : fraction}`;
+}
+function formatAmount(amount) { return amount === null || amount === undefined ? NO_DATA : `≈ ${formatMoney(amount)}`; }
+function formatCacheShare(r) { return r === null || r === undefined ? NO_DATA : `${Math.round(r * 100)}% of input`; }
+function formatCoverage(cost) {
+  if (!cost || !cost.partial) return "";
+  if (cost.expected_hours >= 48) {
+    const days = (h) => (h / 24).toFixed(1);
+    return `partial · covers ${days(cost.priced_hours)} of ${days(cost.expected_hours)} days`;
+  }
+  return `partial · covers ${cost.priced_hours} of ${cost.expected_hours} h`;
+}
+const CACHE_SKEW_NOTE = "approximate — cache count ahead of request count";
+function formatCostFlags(cost) { return !cost ? [] : (cost.flags.includes("cache_exceeds_input") ? [CACHE_SKEW_NOTE] : []); }
+function formatRatesFootnote(rates) {
+  if (!rates) return "";
+  return `Approximate API-equivalent at ${formatUnitPrice(rates.input_per_mtok)} input / `
+    + `${formatUnitPrice(rates.cached_input_per_mtok)} cached / ${formatUnitPrice(rates.output_per_mtok)} output `
+    + `per M tokens (${rates.currency}). Priced only where cache tracking exists.`;
+}
+/** Compact axis labels for the trend chart (the real Chart.js axis shows raw numbers). */
+function compact(v) {
+  if (v === null || v === undefined) return NO_DATA;
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return `${(v / 1e9).toFixed(abs >= 1e10 ? 0 : 1)}B`;
+  if (abs >= 1e6) return `${(v / 1e6).toFixed(abs >= 1e7 ? 0 : 1)}M`;
+  if (abs >= 1e3) return `${(v / 1e3).toFixed(abs >= 1e4 ? 0 : 1)}k`;
+  return String(Math.round(v));
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ------------------------------------------------------- mock series/data */
+function rng(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const hourAt = (ms) => Math.floor(ms / HOUR) * HOUR;
+const dayAt = (ms) => Math.floor(ms / DAY) * DAY;
+
+const COST_RATES = { input_per_mtok: "1.25", cached_input_per_mtok: "0.25", output_per_mtok: "6.00", currency: "USD" };
+const SERIES = [
+  {
+    series_id: "srv_qwen3_coder_480b_engine0", model_name: "Qwen3-Coder-480B-A35B", engine: "0",
+    first_seen_at: "2026-10-06T09:15:00Z", last_seen_at: "2026-10-27T11:42:00Z",
+    first_valid_at: "2026-10-06T09:15:00Z", last_valid_at: "2026-10-27T11:42:00Z",
+    state: "healthy", stale_since: null, labels: { source: "vllm", zone: "lab-a" },
+  },
+  {
+    series_id: "srv_qwen3_coder_480b_engine1", model_name: "Qwen3-Coder-480B-A35B", engine: "1",
+    first_seen_at: "2026-10-18T06:00:00Z", last_seen_at: "2026-10-27T11:42:00Z",
+    first_valid_at: "2026-10-18T06:00:00Z", last_valid_at: "2026-10-27T11:41:45Z",
+    state: "degraded", stale_since: "2026-10-27T09:58:00Z", labels: { source: "vllm", zone: "lab-b" },
+  },
+];
+const FIRST_OBSERVATION = { 0: "2026-10-06T09:15:00Z", 1: "2026-10-18T06:00:00Z" };
+const START_HOUR = { 0: hourAt(Date.parse(FIRST_OBSERVATION[0])), 1: hourAt(Date.parse(FIRST_OBSERVATION[1])) };
+
+/* One synthetic hour of engine counters. Deterministic per (index, series). */
+const GAP_HOURS = new Set(["2026-10-19T11", "2026-10-19T12", "2026-10-26T03", "2026-10-27T04"]);
+const NO_DATA_HOURS = new Set(["2026-10-26T03"]);           // whole hour unobserved -> "no data"
+function hourMetrics(hourMs, s) {
+  const key = new Date(hourMs).toISOString().slice(0, 13);
+  const r = rng((Math.round(hourMs / HOUR) * 2654435761 + s * 40503) % 4294967296);
+  const d = new Date(hourMs);
+  const dow = d.getUTCDay(), hod = d.getUTCHours();
+  const daily = 0.55 + 0.45 * Math.sin(((hod - 3) / 24) * 2 * Math.PI);
+  const weekend = dow === 0 || dow === 6 ? 0.58 : 1;
+  if (NO_DATA_HOURS.has(key)) return { noData: true, gaps: { primary: 3600, request_input: 3600, request_output: 3600, cached_input: 3600 } };
+  const base = 4_200_000 * daily * weekend * (0.82 + 0.36 * r()) * (s === 1 ? 0.62 : 1);
+  const input = Math.round(base);
+  const output = Math.round(base * (0.15 + 0.09 * r()));
+  const cached = Math.round(input * (0.55 + 0.13 * r()));
+  const reqIn = Math.round(input * (1.04 + 0.12 * r()));
+  const reqOut = Math.round(output * (1.01 + 0.07 * r()));
+  const gapPrimary = GAP_HOURS.has(key) ? Math.round(900 + 1500 * r()) : 0;
+  const flags = [];
+  if (gapPrimary) flags.push("collection_gap");
+  if (key === "2026-10-27T04") flags.push("continuity_unverified");
+  if (key === "2026-10-19T12") flags.push("clock_discontinuity");
+  if (key === "2026-10-26T04") flags.push("time_attribution_approximate");
+  return {
+    input, output, cached, reqIn, reqOut,
+    gaps: {
+      primary: gapPrimary,
+      request_input: key === "2026-10-12T22" ? 1800 : 0,
+      request_output: key === "2026-10-26T02" ? 2400 : 0,
+      cached_input: key === "2026-10-12T22" ? 1800 : (gapPrimary ? 0 : 0),
+    },
+    flags,
+    partial: gapPrimary > 0,
+    priced: gapPrimary === 0,
+  };
+}
+
+function block(tokens, intervals, gapSeconds, flags, firstObserved, lastObserved, metadataComplete = true) {
+  return {
+    tokens: tokens === null ? null : String(tokens),
+    observed_intervals: intervals,
+    gap_seconds: gapSeconds,
+    quality_flags: flags,
+    metadata_complete: metadataComplete,
+    first_observed_at: firstObserved,
+    last_observed_at: lastObserved,
+  };
+}
+function countersFor(hours, s) {
+  const sum = (key) => {
+    let total = 0, seen = 0;
+    for (const h of hours) { if (!h.m.noData && h.m[key] !== undefined) { total += h.m[key]; seen++; } }
+    return seen ? total : null;
+  };
+  const intervals = hours.reduce((a, h) => a + (h.m.noData ? 0 : 240), 0);
+  const gaps = { primary: 0, request_input: 0, request_output: 0, cached_input: 0 };
+  const flags = new Set();
+  for (const h of hours) {
+    for (const k of Object.keys(gaps)) gaps[k] += (h.m.gaps && h.m.gaps[k]) || 0;
+    (h.m.flags || []).forEach((f) => flags.add(f));
+  }
+  const input = sum("input"), output = sum("output"), cached = sum("cached");
+  const reqIn = sum("reqIn"), reqOut = sum("reqOut");
+  const firstObserved = hours.length ? hours[0].start : null;
+  const lastObserved = hours.length ? hours[hours.length - 1].end : null;
+  const flagList = [...flags];
+  return {
+    computed_input: block(input, intervals, gaps.primary, flagList, firstObserved, lastObserved),
+    generated_output: block(output, intervals, gaps.primary, flagList, firstObserved, lastObserved),
+    cached_input: block(cached, intervals, gaps.cached_input, cached === null ? flagList : flagList.filter((f) => f === "collection_gap" || f === "clock_discontinuity"), firstObserved, lastObserved),
+    request_input: block(reqIn, intervals, gaps.request_input, flagList.filter((f) => f === "collection_gap"), firstObserved, lastObserved),
+    request_output: block(reqOut, intervals, gaps.request_output, flagList.filter((f) => f !== "clock_discontinuity"), firstObserved, lastObserved, false),
+    _gaps: gaps,
+    _intervals: intervals,
+  };
+}
+
+function apiEquivalentFor(hours, s, opts = {}) {
+  const priced = hours.filter((h) => !h.m.noData && h.m.priced);
+  const sum = (key) => priced.reduce((a, h) => a + (h.m[key] || 0), 0);
+  const input = sum("input"), output = sum("output"), cached = sum("cached");
+  const expected = hours.filter((h) => !h.m.noData).length;
+  if (!priced.length) {
+    return { amount: null, cache_hit_ratio: null, currency: COST_RATES.currency, flags: [], partial: true, priced_hours: 0, expected_hours: expected, tokens: { cached_input: "0", uncached_input: "0", output: "0" } };
+  }
+  const uncached = input - cached;
+  const amount = (uncached / 1e6) * Number(COST_RATES.input_per_mtok)
+    + (cached / 1e6) * Number(COST_RATES.cached_input_per_mtok)
+    + (output / 1e6) * Number(COST_RATES.output_per_mtok);
+  const flags = opts.skew ? ["cache_exceeds_input"] : [];
+  return {
+    amount: amount.toFixed(6),
+    cache_hit_ratio: input ? Math.min(0.94, cached / input + (opts.skew ? 0.06 : 0)) : null,
+    currency: COST_RATES.currency,
+    flags,
+    partial: priced.length < expected,
+    priced_hours: priced.length,
+    expected_hours: expected,
+    tokens: { cached_input: String(cached), uncached_input: String(uncached), output: String(output) },
+  };
+}
+
+/** Range today / month / lifetime, aggregated from the same hourly data. */
+function hoursBetween(fromMs, toMs, s) {
+  const out = [];
+  for (let h = hourAt(fromMs); h < toMs; h += HOUR) out.push({ start: new Date(h).toISOString(), end: new Date(h + HOUR).toISOString(), m: hourMetrics(h, s) });
+  return out;
+}
+function rangeFor(kind, s, nowMs) {
+  const start0 = START_HOUR[s];
+  let from, to, incomplete;
+  if (kind === "today") { from = dayAt(nowMs); to = hourAt(nowMs) + HOUR; incomplete = true; }
+  else if (kind === "month") { from = dayAt(Date.parse(new Date(nowMs).toISOString().slice(0, 7) + "-01T00:00:00Z")); to = hourAt(nowMs) + HOUR; incomplete = true; }
+  else { from = start0; to = hourAt(nowMs) + HOUR; incomplete = true; }
+  const hours = hoursBetween(from, to, s);
+  const counters = countersFor(hours, s);
+  const processed = counters.computed_input.tokens === null && counters.generated_output.tokens === null
+    ? null
+    : String(BigInt(counters.computed_input.tokens || "0") + BigInt(counters.generated_output.tokens || "0"));
+  const gap = counters._gaps;
+  const flags = [...new Set(hours.flatMap((h) => h.m.flags || []))];
+  if (kind !== "today" && hours.length > 24) flags.push("time_attribution_approximate");
+  if (kind === "lifetime") flags.push("reset_boundary", "clock_discontinuity");
+  return {
+    started_at: hours.length ? hours[0].start : null,
+    ended_at: hours.length ? hours[hours.length - 1].end : null,
+    processed_total: processed,
+    counters: {
+      computed_input: counters.computed_input, generated_output: counters.generated_output,
+      cached_input: counters.cached_input, request_input: counters.request_input, request_output: counters.request_output,
+    },
+    gap_seconds: gap,
+    quality_flags: [...new Set(flags)],
+    partial: gap.primary > 0,
+    incomplete,
+    observed: counters._intervals > 0,
+    metadata_complete: kind !== "lifetime",
+    api_equivalent: apiEquivalentFor(hours, s, { skew: kind === "lifetime" }),
+  };
+}
+
+/** History buckets for the trend panel (hourly for 24h, daily for 7d/30d/custom). */
+function paramsForRange(preset, now, cf, ct) {
+  if (preset === "24h") { const h = hourAt(now); return { from: new Date(h - 23 * HOUR).toISOString(), to: new Date(h + HOUR).toISOString(), bucket: "hour" }; }
+  if (preset === "7d" || preset === "30d") {
+    const days = preset === "7d" ? 6 : 29, mid = dayAt(now);
+    return { from: new Date(mid - days * DAY).toISOString(), to: new Date(mid + DAY).toISOString(), bucket: "day" };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cf) || !/^\d{4}-\d{2}-\d{2}$/.test(ct)) return { code: "invalid_time" };
+  const a = Date.parse(`${cf}T00:00:00Z`), b = Date.parse(`${ct}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return { code: "invalid_time" };
+  const to = b + DAY, span = (to - a) / DAY;
+  if (a >= to || span > 366) return { code: "invalid_range" };
+  return { from: new Date(a).toISOString(), to: new Date(to).toISOString(), bucket: "day" };
+}
+function buildHistory(s, params, nowMs) {
+  const out = [];
+  const step = params.bucket === "hour" ? HOUR : DAY;
+  for (let t = Date.parse(params.from); t < Date.parse(params.to); t += step) {
+    const hours = params.bucket === "hour"
+      ? [{ start: new Date(t).toISOString(), end: new Date(t + HOUR).toISOString(), m: hourMetrics(t, s) }]
+      : hoursBetween(t, Math.min(t + DAY, Date.parse(params.to)), s);
+    const counters = countersFor(hours, s);
+    const processed = counters.computed_input.tokens === null && counters.generated_output.tokens === null
+      ? null : String(BigInt(counters.computed_input.tokens || "0") + BigInt(counters.generated_output.tokens || "0"));
+    const flags = [...new Set(hours.flatMap((h) => h.m.flags || []))];
+    out.push({
+      bucket: params.bucket,
+      started_at: new Date(t).toISOString(),
+      ended_at: new Date(t + step).toISOString(),
+      processed_total: processed,
+      counters: {
+        computed_input: counters.computed_input, generated_output: counters.generated_output,
+        cached_input: counters.cached_input, request_input: counters.request_input, request_output: counters.request_output,
+      },
+      gap_seconds: counters._gaps,
+      quality_flags: flags,
+      partial: hours.some((h) => h.m.partial),
+      incomplete: t + step > hourAt(nowMs) + (params.bucket === "hour" ? 0 : 0) && t >= dayAt(nowMs),
+      metadata_complete: params.bucket === "hour",
+    });
+  }
+  const last = out[out.length - 1];
+  if (last) last.incomplete = true;   // the current UTC hour/day is always the open bucket
+  return {
+    schema_version: 1, generated_at: new Date(nowMs).toISOString(), series_id: SERIES[s].series_id,
+    model_name: SERIES[s].model_name, engine: SERIES[s].engine, bucket: params.bucket,
+    bucket_count: out.length, from: params.from, to: params.to,
+    collection_status: "healthy", storage_status: "ok",
+    buckets: out,
+    range: rangeFor("today", s, nowMs),
+  };
+}
+
+const EVENTS = [
+  { event_id: 4821, kind: "primary_unusable", occurred_at: "2026-10-27T04:02:11Z", series_id: SERIES[0].series_id, details: { scope: "primary", reason: "stats_missing_model", polls: 3 } },
+  { event_id: 4814, kind: "restart_detected", occurred_at: "2026-10-26T02:41:05Z", series_id: SERIES[0].series_id, details: { evidence: "uptime_s_decrease", uptime_s: 41 } },
+  { event_id: 4813, kind: "counter_reset", occurred_at: "2026-10-26T02:41:05Z", series_id: SERIES[0].series_id, details: { counter: "computed_input", reason: "counter_reset" } },
+  { event_id: 4812, kind: "optional_rebaselined", occurred_at: "2026-10-26T02:41:05Z", series_id: SERIES[0].series_id, details: { counter: "request_output", reason: "restart_evidence" } },
+  { event_id: 4650, kind: "clock_discontinuity", occurred_at: "2026-10-19T12:14:36Z", series_id: SERIES[0].series_id, details: { skew_seconds: -37, scope: "primary" } },
+  { event_id: 4644, kind: "primary_unusable", occurred_at: "2026-10-19T11:03:02Z", series_id: SERIES[0].series_id, details: { scope: "primary", reason: "deadline_exceeded", polls: 9 } },
+  { event_id: 4390, kind: "series_absent", occurred_at: "2026-10-12T22:15:31Z", series_id: SERIES[0].series_id, details: { polls: 4, scopes: ["request_input", "cached_input"] } },
+  { event_id: 4102, kind: "optional_reset", occurred_at: "2026-10-08T05:20:48Z", series_id: SERIES[0].series_id, details: { counter: "request_input", reason: "counter_reset" } },
+];
+const EPOCHS = [
+  { epoch_id: 1, reason: "new_series", started_at: "2026-10-06T09:15:00Z", opening_computed_input: "812447102", opening_generated_output: "41208551" },
+  { epoch_id: 2, reason: "clock_regression", started_at: "2026-10-19T12:14:36Z", opening_computed_input: "5431882910", opening_generated_output: "288104377" },
+  { epoch_id: 3, reason: "restart_evidence", started_at: "2026-10-26T02:41:05Z", opening_computed_input: "7102664003", opening_generated_output: "391054882" },
+];
+function buildSummary(s, nowMs, opts = {}) {
+  const ranges = {
+    today: rangeFor("today", s, nowMs),
+    month: rangeFor("month", s, nowMs),
+    lifetime: rangeFor("lifetime", s, nowMs),
+  };
+  const obsAt = new Date(nowMs - 15_000).toISOString();
+  const rate = (tokensPerSecond, interval, tokens, flags = [], eligible = true) => ({
+    eligible, tokens_per_second: eligible ? tokensPerSecond : null, tokens: eligible ? String(tokens) : null,
+    interval_seconds: eligible ? interval : null, observed_at: eligible ? obsAt : null, quality_flags: flags,
+  });
+  return {
+    schema_version: 1, generated_at: new Date(nowMs).toISOString(),
+    series_id: SERIES[s].series_id, model_name: SERIES[s].model_name, engine: SERIES[s].engine,
+    labels: SERIES[s].labels,
+    collection_status: opts.collectionStatus ?? "healthy",
+    storage_status: opts.storageStatus ?? "ok",
+    state: opts.seriesState ?? "healthy",
+    first_observation_at: FIRST_OBSERVATION[s],
+    last_observed_at: obsAt, last_accepted_at: obsAt,
+    epoch: EPOCHS[EPOCHS.length - 1],
+    epochs: { items: EPOCHS, next_cursor: null },
+    ranges,
+    rates: {
+      computed_input: rate(4213.6, 15.02, 63214),
+      generated_output: rate(96.4, 15.02, 1448),
+      cached_input: rate(2571.8, 15.02, 38619),
+      request_input: rate(4390.2, 15.02, 65941),
+      request_output: rate(0, 15.02, 0, ["counter_unavailable"], false),
+    },
+  };
+}
+function buildStatus(s, nowMs, opts = {}) {
+  return {
+    schema_version: 1, generated_at: new Date(nowMs).toISOString(), server_time: new Date(nowMs).toISOString(),
+    source_id: "jarvis-lab-a", collector_status: opts.collectionStatus ?? "healthy",
+    storage_status: opts.storageStatus ?? "ok", storage_code: null,
+    collector_code: null, series_count: SERIES.length, poll_interval_seconds: 15,
+    last_attempt_at: new Date(nowMs - 4_000).toISOString(), last_poll_at: new Date(nowMs - 4_000).toISOString(),
+    last_success_at: opts.lastSuccessAt ?? new Date(nowMs - 4_000).toISOString(),
+    latest_observed_at: new Date(nowMs - 15_000).toISOString(),
+    first_observation_at: FIRST_OBSERVATION[s],
+    last_error_code: opts.lastErrorCode ?? null, last_recorded_error_code: opts.lastRecordedErrorCode ?? "deadline_exceeded",
+    raw_retention_days: 90, shutting_down: false, cost_rates: COST_RATES,
+  };
+}
+const RETENTION = {
+  raw_retention_days: 90,
+  raw_samples_from: "2026-10-06T09:15:00Z",
+  raw_samples_until: "2026-10-27T11:42:00Z",
+  note: "Raw samples are pruned after 90 days; hourly and daily buckets are kept indefinitely.",
+};
+
+/* -------------------------------------------------- live snapshot simulator
+   Mirrors GET /api/v1/live: rates in tokens/second, ratios 0..1, null = "-". */
+const liveBuffers = { active: [], queued: [], prefill: [], decode: [], perReq: [], mtp5: [], moe5: [] };
+function smoothNoise(i, seed, amp, base) {
+  const r = rng(i * 9301 + seed * 49297);
+  const wave = Math.sin(i / 7 + seed) * 0.45 + Math.sin(i / 23 + seed * 2) * 0.3;
+  return base + amp * (wave * 0.7 + (r() - 0.5) * 0.6);
+}
+function liveSample(k, s) {
+  const d = new Date(NOW + k * 1000);
+  const iso = d.toISOString();
+  if (s === "starting") {
+    return {
+      schema_version: 1, generated_at: iso, state: "starting", observed_at: null,
+      requests: { active: null, queued: null }, prefill_tokens_per_second: null,
+      decode_tokens_per_second: null, decode_tokens_per_second_per_request: null,
+      mtp_acceptance: { window_5s: null, window_1m: null, window_30m: null, lifetime: null },
+      moe_gpu_hit: { window_5s: null, window_1m: null, window_30m: null },
+    };
+  }
+  const stale = s === "stale" || s === "unavailable";
+  const running = Math.max(0, Math.round(smoothNoise(k, 1, 3.2, 4.4)));
+  const queued = Math.max(0, Math.round(smoothNoise(k, 5, 2.2, 1.3)));
+  const prefillBase = 1500 + 900 * Math.sin(k / 41);
+  const prefill = Math.max(0, smoothNoise(k, 2, 1100, prefillBase));
+  const decode = Math.max(0, smoothNoise(k, 3, 46, 168 + running * 11));
+  const perReq = running > 0 ? decode / running : null;
+  const mtp5 = Math.min(0.93, Math.max(0.42, smoothNoise(k, 4, 0.11, 0.71)));
+  const mtp1m = Math.min(0.9, Math.max(0.5, smoothNoise(k, 6, 0.045, 0.705)));
+  const mtp30m = Math.min(0.9, Math.max(0.55, smoothNoise(k, 7, 0.014, 0.70)));
+  const moe5 = Math.min(0.99, Math.max(0.6, smoothNoise(k, 8, 0.05, 0.915)));
+  const moe1m = Math.min(0.99, Math.max(0.65, smoothNoise(k, 9, 0.02, 0.918)));
+  const moe30m = Math.min(0.99, Math.max(0.7, smoothNoise(k, 10, 0.008, 0.921)));
+  return {
+    schema_version: 1, generated_at: iso,
+    state: s === "unavailable" ? "unavailable" : stale ? "stale" : "live",
+    observed_at: iso,
+    requests: { active: running, queued },
+    prefill_tokens_per_second: Math.round(prefill * 10) / 10,
+    decode_tokens_per_second: Math.round(decode * 10) / 10,
+    decode_tokens_per_second_per_request: perReq === null ? null : Math.round(perReq * 100) / 100,
+    mtp_acceptance: { window_5s: mtp5, window_1m: mtp1m, window_30m: mtp30m, lifetime: 0.6638 },
+    moe_gpu_hit: { window_5s: moe5, window_1m: moe1m, window_30m: moe30m },
+  };
+}
+/** Seed the 90-sample ring buffers so sparklines are full on first paint. */
+function seedLive(s) {
+  for (const k of Object.keys(liveBuffers)) liveBuffers[k].length = 0;
+  if (s === "starting") return;
+  for (let k = -90; k < 0; k++) {
+    const v = liveSample(k, s);
+    pushLive(v, true);
+  }
+}
+function pushLive(v, silent) {
+  const push = (arr, val) => { arr.push(val); if (arr.length > 90) arr.shift(); };
+  push(liveBuffers.active, v.requests.active);
+  push(liveBuffers.queued, v.requests.queued);
+  push(liveBuffers.prefill, v.prefill_tokens_per_second);
+  push(liveBuffers.decode, v.decode_tokens_per_second);
+  push(liveBuffers.perReq, v.decode_tokens_per_second_per_request);
+  push(liveBuffers.mtp5, v.mtp_acceptance.window_5s);
+  push(liveBuffers.moe5, v.moe_gpu_hit.window_5s);
+  if (!silent) lastLiveTickAt = Date.now();
+}
+
+/* ==========================================================================
+   SVG / HTML drawing helpers
+   ========================================================================== */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
+
+const COLORS = {
+  blue: "#7aa2f7", cyan: "#7dcfff", teal: "#73daca", green: "#9ece6a",
+  yellow: "#e0af68", orange: "#ff9e64", red: "#f7768e", magenta: "#bb9af7",
+  muted: "#9aa5ce", fg: "#c0caf5", fgDark: "#a9b1d6", ghost: "#2c3350",
+  dark5: "#737aa2", lineSoft: "#292e42", deep: "#1b1e2d",
+};
+
+/** Threshold band colour: rising value goes teal -> yellow -> red. */
+function zoneColor(v, th) {
+  if (v === null || v === undefined) return COLORS.muted;
+  if (v >= th.bad) return COLORS.red;
+  if (v >= th.warn) return COLORS.yellow;
+  return COLORS.teal;
+}
+/** Ratio thresholds for MTP / MoE (lower is worse, so the ramp is inverted). */
+function ratioColor(v, th) {
+  if (v === null || v === undefined) return COLORS.muted;
+  if (v < th.bad) return COLORS.red;
+  if (v < th.warn) return COLORS.yellow;
+  return COLORS.teal;
+}
+const GAUGE_BANDS = { warn: 0.62, bad: 0.85 };           // fraction of full scale (assumption)
+const MTP_TH = { warn: 0.70, bad: 0.50 };                // assumption
+const MOE_TH = { warn: 0.85, bad: 0.65 };                // assumption
+const SCALE = {
+  prefill: 4000, decode: 300,                             // tok/s full scale (assumption)
+  rateInput: 6000, rateOutput: 200,                       // tok/s full scale (assumption)
+  running: 12, queued: 6,                                 // request slots (assumption)
+};
+
+const pt = (cx, cy, r, deg) => [cx + r * Math.sin(deg * Math.PI / 180), cy - r * Math.cos(deg * Math.PI / 180)];
+function arcPath(cx, cy, r, a0, a1) {
+  const [x0, y0] = pt(cx, cy, r, a0), [x1, y1] = pt(cx, cy, r, a1);
+  const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+  const sweep = a1 > a0 ? 1 : 0;
+  return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${large} ${sweep} ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+}
+
+/** Semicircular arc gauge (Grafana gauge): track, threshold bands, value arc, knob. */
+function gaugeSvg(value, max, bands, color) {
+  const cx = 100, cy = 96, r = 74, W = 200, H = 116;
+  const frac = value === null || value === undefined ? 0 : Math.max(0, Math.min(1, value / max));
+  const ang = -90 + 180 * frac;
+  const seg = (f0, f1, cls, stroke, w) => {
+    const [x0, y0] = pt(cx, cy, r + 11, -90 + 180 * f0), [x1, y1] = pt(cx, cy, r + 11, -90 + 180 * f1);
+    return `<path class="${cls}" d="${arcPath(cx, cy, r + 11, -90 + 180 * f0, -90 + 180 * f1)}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="butt"/>`;
+  };
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => {
+    const [x0, y0] = pt(cx, cy, r - 7, -90 + 180 * f), [x1, y1] = pt(cx, cy, r - 13, -90 + 180 * f);
+    return `<line class="tick" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>`;
+  }).join("");
+  const [kx, ky] = pt(cx, cy, r, ang);
+  const known = value !== null && value !== undefined;
+  return `<svg class="gauge-svg" viewBox="0 0 ${W} ${H}" role="img" aria-hidden="true" focusable="false">
+  <path class="track" d="${arcPath(cx, cy, r, -90, 90)}"/>
+  ${seg(0, bands.warn, "band", COLORS.teal, 2.5)}
+  ${seg(bands.warn, bands.bad, "band", COLORS.yellow, 2.5)}
+  ${seg(bands.bad, 1, "band", COLORS.red, 2.5)}
+  ${ticks}
+  ${known ? `<path class="value glow-arc" d="${arcPath(cx, cy, r, -90, ang)}" stroke="${color}"/>
+  <circle class="knob" cx="${kx.toFixed(2)}" cy="${ky.toFixed(2)}" r="4.5" fill="${color}"/>` : ""}
+  <text class="glabel" x="16" y="112">0</text>
+  <text class="glabel" x="168" y="112">${compact(max)}</text>
+</svg>`;
+}
+
+/** Horizontal mini bar gauge (used by the latest-rate panels). */
+function miniGauge(value, max, bands, color) {
+  const known = value !== null && value !== undefined;
+  const frac = known ? Math.max(0, Math.min(1, value / max)) : 0;
+  return `<div class="bar bar-th" role="img" aria-hidden="true" style="height:10px;--th1:${(bands.warn * 100).toFixed(1)}%;--th2:${(bands.bad * 100).toFixed(1)}%">
+    <span class="seg${known ? " on" : ""}" style="flex:0 0 ${(frac * 100).toFixed(2)}%;color:${color};box-shadow:0 0 8px ${color}"></span>
+    <span class="seg" style="flex:1 1 auto"></span>
+  </div>`;
+}
+
+/** Segmented bar gauge rows — one row per window (5s / 1m / 30m / lifetime). */
+function barRows(rows, thresholds, segments) {
+  const n = segments || 18;
+  return `<div class="bars">` + rows.map(([label, v]) => {
+    const known = v !== null && v !== undefined;
+    const filled = known ? Math.max(v >= 0.999 ? 1 : 0, Math.round(v * n)) : 0;
+    const color = ratioColor(v, thresholds);
+    let segs = "";
+    if (!known) {
+      segs = `<span class="seg" style="flex:1 1 auto"></span>`;
+    } else {
+      for (let i = 0; i < n; i++) {
+        const on = i < filled;
+        segs += `<span class="seg${on ? " on" : ""}${i === filled - 1 ? " top" : ""}"${on ? ` style="color:${color}"` : ""}></span>`;
+      }
+    }
+    return `<div class="bar-row">
+      <span class="w">${label}</span>
+      <span class="bar${known ? "" : " is-null"}" role="img" aria-hidden="true">${segs}</span>
+      <span class="v">${formatRatio(v)}</span>
+    </div>`;
+  }).join("") + `</div>`;
+}
+
+/** Sparkline; nulls leave a gap (never a fabricated zero). */
+function sparkline(values, color, opts = {}) {
+  const W = opts.w || 200, H = opts.h || 34, pad = 2;
+  const vals = values.filter((v) => v !== null && v !== undefined);
+  if (!vals.length) {
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <line class="axis" x1="0" y1="${H - pad}" x2="${W}" y2="${H - pad}"/></svg>`;
+  }
+  let lo = opts.min !== undefined ? opts.min : Math.min(...vals);
+  let hi = opts.max !== undefined ? opts.max : Math.max(...vals);
+  if (hi === lo) hi = lo + 1;
+  const x = (i) => (i / Math.max(1, values.length - 1)) * W;
+  const y = (v) => H - pad - ((v - lo) / (hi - lo)) * (H - pad * 2 - (opts.top || 0));
+  let d = "", started = false, area = "";
+  values.forEach((v, i) => {
+    if (v === null || v === undefined) { started = false; return; }
+    d += `${started ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
+    if (!started) { area += `M${x(i).toFixed(1)} ${H - pad}`; area += `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`; }
+    else area += `L${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
+    started = true;
+  });
+  const lastIdx = values.reduce((acc, v, i) => (v === null || v === undefined ? acc : i), 0);
+  area += `L${x(lastIdx).toFixed(1)} ${H - pad}Z`;
+  const [lx, ly] = [x(lastIdx), y(values[lastIdx])];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" focusable="false"${opts.style ? ` style="${opts.style}"` : ""}>
+    <path class="area" d="${area}" fill="${color}" opacity="${opts.fillOpacity === undefined ? 0.14 : opts.fillOpacity}"/>
+    <path class="line" d="${d}" stroke="${color}" vector-effect="non-scaling-stroke"/>
+    <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.4" fill="${color}"/>
+  </svg>`;
+}
+
+/** Requests: running / waiting slot bank (each slot = a concurrency share). */
+function requestBank(active, queued) {
+  const slots = SCALE.running + SCALE.queued;
+  const run = active === null || active === undefined ? 0 : Math.min(SCALE.running, active);
+  const q = queued === null || queued === undefined ? 0 : Math.min(SCALE.queued, queued);
+  const unknown = active === null && queued === null;
+  let html = "";
+  for (let i = 0; i < slots; i++) {
+    const cls = !unknown && i < run ? "run" : !unknown && i >= SCALE.running && i < SCALE.running + q ? "queue" : "";
+    html += `<span class="slot ${cls}"></span>`;
+  }
+  return `<div class="seg-stack" role="img" aria-hidden="true">${html}</div>`;
+}
+
+function stackBars(history) {
+  const inVals = history.buckets.map((b) => (b.counters.computed_input.tokens === null ? null : Number(b.counters.computed_input.tokens)));
+  const outVals = history.buckets.map((b) => (b.counters.generated_output.tokens === null ? null : Number(b.counters.generated_output.tokens)));
+  const totals = inVals.map((v, i) => (v === null && outVals[i] === null ? null : (v || 0) + (outVals[i] || 0)));
+  return { inVals, outVals, totals };
+}
+function niceCeil(v) {
+  if (!(v > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(v)), n = v / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+function badgeHtml(tone, text, pulse) {
+  return `<span class="badge ${tone}"><span class="dot${pulse ? " pulse" : ""}"></span>${escapeHtml(text)}</span>`;
+}
+function qualityOf(b) {
+  const lines = b.quality_flags.map(flagLabel);
+  if (b.partial) lines.push("partial");
+  if (b.incomplete) lines.push("incomplete");
+  return lines.length ? lines.join(" · ") : "complete";
+}
+
+/* ==========================================================================
+   STATE + MOCK VIEW MODEL
+   ========================================================================== */
+const STATES = {
+  live: { label: "Live", collection: "healthy", storage: "ok", seriesState: "healthy", live: "live" },
+  starting: { label: "Starting", collection: "starting", storage: "ok", seriesState: "starting", live: "starting" },
+  stale: { label: "Stale", collection: "degraded", storage: "ok", seriesState: "stale", live: "stale" },
+  offline: { label: "Offline banner", collection: "offline", storage: "ok", seriesState: "stale", live: "stale", offline: true },
+  "api-error": { label: "API error", collection: "degraded", storage: "ok", seriesState: "healthy", live: "stale", apiError: "network_error" },
+  skeleton: { label: "First-load skeleton", collection: "starting", storage: "ok", seriesState: "starting", live: "starting", firstLoad: true },
+  empty: { label: "Empty", collection: "starting", storage: "ok", seriesState: "starting", live: "starting", empty: true },
+  baseline: { label: "Baseline only", collection: "starting", storage: "ok", seriesState: "starting", live: "starting", baseline: true },
+};
+const ui = {
+  state: "live", series: 0, range: "24h",
+  customFrom: "2026-10-12", customTo: "2026-10-27", customFrom2: "", customTo2: "",
+  cursor: null, tick: 0, paused: false, theme: "dark", open: [],
+};
+const OPEN_KEYS = ["table", "req", "diag", "custom"];
+let lastLiveTickAt = Date.now();
+let chartCursor = null;
+
+function readHash() {
+  const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (h.get("state") && STATES[h.get("state")]) ui.state = h.get("state");
+  if (h.get("series") !== null) ui.series = Number(h.get("series")) ? 1 : 0;
+  if (h.get("range")) ui.range = h.get("range");
+  if (h.get("from")) ui.customFrom = h.get("from");
+  if (h.get("to")) ui.customTo = h.get("to");
+  if (h.get("pause") !== null) ui.paused = true;
+  ui.open = (h.get("open") || "").split(",").filter(Boolean);
+}
+
+/** The panels re-create their <details> on every render, so the open set is
+ *  re-applied after rendering and kept in sync with the hash. */
+function applyOpen() {
+  OPEN_KEYS.forEach((k) => {
+    const el = document.getElementById(`open-${k}`);
+    if (el) el.open = ui.open.includes(k);
+  });
+}
+
+/** Everything the panels render, derived from the selected mock state. */
+function view() {
+  const st = STATES[ui.state], s = ui.series;
+  const nowMs = NOW + ui.tick * 1000;
+  const summary = buildSummary(s, nowMs, { collectionStatus: st.collection, storageStatus: st.storage, seriesState: st.seriesState });
+  const status = buildStatus(s, nowMs, {
+    collectionStatus: st.collection, storageStatus: st.storage,
+    lastSuccessAt: st.offline ? new Date(nowMs - 120_000).toISOString() : (ui.state === "starting" ? null : new Date(nowMs - 4_000).toISOString()),
+    lastErrorCode: st.collection === "offline" ? "deadline_exceeded" : (st.apiError ? "connect_timeout" : null),
+  });
+  if (st.baseline) {
+    for (const key of ["today", "month", "lifetime"]) {
+      const r = summary.ranges[key];
+      r.processed_total = null;
+      for (const c of ["computed_input", "generated_output", "cached_input", "request_input", "request_output"]) {
+        r.counters[c].tokens = null; r.counters[c].observed_intervals = 0;
+      }
+      r.observed = false; r.api_equivalent = { amount: null, cache_hit_ratio: null, currency: "USD", flags: [], partial: false, priced_hours: 0, expected_hours: 0, tokens: { cached_input: "0", uncached_input: "0", output: "0" } };
+    }
+    summary.state = "starting";
+  }
+  const params = paramsForRange(ui.range, nowMs, ui.customFrom, ui.customTo);
+  const rangeError = "code" in params ? params.code : null;
+  const history = "code" in params ? null : buildHistory(s, params, nowMs);
+  if (history) {
+    history.collection_status = st.collection;
+    if (st.baseline) {
+      for (const b of history.buckets) {
+        b.processed_total = null;
+        for (const c of ["computed_input", "generated_output", "cached_input", "request_input", "request_output"]) b.counters[c].tokens = null;
+        b.quality_flags = []; b.partial = false;
+      }
+      history.range = summary.ranges.today;
+    }
+  }
+  // A stale series has no fresh accepted interval, so the rate windows are
+  // uncomputable — the real RatesPanel says so and renders no numbers.
+  if (st.seriesState === "stale") {
+    for (const k of Object.keys(summary.rates)) {
+      summary.rates[k] = {
+        eligible: false, tokens_per_second: null, tokens: null,
+        interval_seconds: null, observed_at: null, quality_flags: []
+      };
+    }
+  }
+  const live = liveSample(ui.tick, st.live);
+  return {
+    st, s, nowMs, summary, status, history, live, params, rangeError,
+    events: EVENTS, epochs: EPOCHS, retention: RETENTION,
+    offline: !!st.offline, apiError: st.apiError ? { code: st.apiError, message: st.apiError } : null,
+    staleSince: st.apiError ? new Date(nowMs - 95_000).toISOString() : null,
+    firstLoad: !!st.firstLoad, empty: !!st.empty, baseline: !!st.baseline,
+    showCost: !!status.cost_rates,
+  };
+}
+
+/* ==========================================================================
+   HEADER / BANNERS
+   ========================================================================== */
+function seriesName(v) {
+  if (v.empty) return "No series yet";
+  return `${v.summary.model_name} · engine ${v.summary.engine}`;
+}
+function badgeFor(v) {
+  const storage = v.summary.storage_status || v.status.storage_status;
+  const collection = v.summary.collection_status || "starting";
+  const text = storage === "unavailable" ? "Storage unavailable" : collectionLabel(collection);
+  const tone = (storage === "unavailable" || collection === "offline") ? "is-bad" : collection === "healthy" ? "is-ok" : "is-warn";
+  return { text, tone };
+}
+function renderHeader(v) {
+  const badge = badgeFor(v);
+  const last = v.status.last_success_at ? `Last successful update ${formatUtc(v.status.last_success_at)}` : "Last successful update no data";
+  const picker = v.empty ? "" : `<label class="series-picker-label" for="series-picker">Series</label>
+    <select id="series-picker" class="series-picker" data-testid="series-picker">
+      ${SERIES.map((it, i) => `<option value="${i}"${i === v.s ? " selected" : ""}>${escapeHtml(it.model_name)} · engine ${it.engine}</option>`).join("")}
+    </select>`;
+  $("#app-header").innerHTML = `
+    <div class="header-main">
+      <h1>Jarvis <span class="sub-title">Token</span> Dashboard</h1>
+      <p class="series-name" data-testid="series-name">${escapeHtml(seriesName(v))}</p>
+    </div>
+    <div class="header-side">
+      <div class="header-meta">
+        ${badgeHtml(badge.tone, badge.text, true)}
+        <p class="last-update" data-testid="last-update">${escapeHtml(last)}</p>
+      </div>
+      <div class="header-controls">
+        <span class="mock-tag" title="This file is a design mockup: every number is generated in-page.">MOCK DATA</span>
+        <button type="button" class="theme-toggle" data-testid="theme-toggle"
+          title="The real control cycles system / light / dark. This mockup is dark-only, so the label cycles and nothing else changes.">Theme: ${ui.theme}</button>
+        ${picker}
+      </div>
+    </div>`;
+  $("#app-header .theme-toggle").addEventListener("click", () => {
+    ui.theme = ui.theme === "system" ? "light" : ui.theme === "light" ? "dark" : "system";
+    renderHeader(v);
+  });
+  const sel = $("#series-picker");
+  if (sel) sel.addEventListener("change", (e) => { ui.series = Number(e.target.value); ui.cursor = null; renderAll(); });
+}
+function renderBanners(v) {
+  const bits = [];
+  if (v.offline) {
+    bits.push(`<p class="banner banner-warn" role="status" data-testid="offline-banner">
+      <span class="glyph" aria-hidden="true">!WARN</span>
+      <span>Collection is offline: no successful sample for more than two poll intervals. Values below are the last observed history.</span></p>`);
+  }
+  if (v.apiError) {
+    bits.push(`<div class="banner banner-error" role="alert" data-testid="api-error">
+      <span class="glyph" aria-hidden="true">!ERR</span>
+      <div><p>${escapeHtml(rangeErrorText(v.apiError.code))}</p>
+      ${v.staleSince ? `<p class="stale-notice" data-testid="stale-notice">Showing data from ${escapeHtml(formatUtc(v.staleSince))}</p>` : ""}</div></div>`);
+  }
+  $("#banners").innerHTML = bits.join("");
+}
+
+/* ==========================================================================
+   LIVE PANEL (1 Hz)
+   ========================================================================== */
+function liveChip(v) {
+  const st = v.live.state;
+  if (st === "stale" || st === "unavailable") return { label: "Stale", tone: "is-bad" };
+  if (st === "live") return { label: "Live", tone: "is-ok" };
+  return { label: "Starting", tone: "is-warn" };
+}
+function renderLive(v) {
+  const chip = liveChip(v);
+  const chipEl = $("#live-state");
+  chipEl.className = `badge ${chip.tone}`;
+  chipEl.innerHTML = `<span class="dot pulse"></span>${chip.label}`;
+  $("#live-observed").textContent = `observed ${formatUtc(v.live.observed_at)}`;
+
+  const L = v.live;
+  const count = (x) => (x === null || x === undefined ? LIVE_PLACEHOLDER : String(x));
+  const reqKnown = L.requests.active !== null && L.requests.active !== undefined;
+  const prefill = L.prefill_tokens_per_second;
+  const decode = L.decode_tokens_per_second;
+  const perReq = L.decode_tokens_per_second_per_request;
+  const mtp = L.mtp_acceptance, moe = L.moe_gpu_hit;
+
+  $("#live-grid").innerHTML = `
+    <div class="cell">
+      <div class="cell-title"><span>Requests</span></div>
+      <p class="stat-value" data-testid="live-requests" style="color:${reqKnown ? COLORS.blue : COLORS.muted}">
+        ${count(L.requests.active)} <span class="unit">/</span> ${count(L.requests.queued)}</p>
+      ${requestBank(L.requests.active, L.requests.queued)}
+      ${sparkline(liveBuffers.active.map((a, i) => (a === null ? null : a + (liveBuffers.queued[i] || 0))), COLORS.blue, { h: 34 })}
+      <p class="cell-slots">running / waiting · scale ${SCALE.running}+${SCALE.queued} (assumed)</p>
+    </div>
+
+    <div class="cell">
+      <div class="cell-title"><span>Prefill</span></div>
+      ${gaugeSvg(prefill, SCALE.prefill, GAUGE_BANDS, zoneColor(prefill, { warn: SCALE.prefill * GAUGE_BANDS.warn, bad: SCALE.prefill * GAUGE_BANDS.bad }))}
+      <p class="stat-value" data-testid="live-prefill" style="--glow-c:${zoneColor(prefill, { warn: 1e9, bad: 1e9 })}44">${formatTps(prefill)}</p>
+      ${sparkline(liveBuffers.prefill, COLORS.cyan, { h: 30, min: 0 })}
+      <p class="cell-slots">instantaneous</p>
+    </div>
+
+    <div class="cell">
+      <div class="cell-title"><span>Decode</span></div>
+      ${gaugeSvg(decode, SCALE.decode, GAUGE_BANDS, zoneColor(decode, { warn: SCALE.decode * GAUGE_BANDS.warn, bad: SCALE.decode * GAUGE_BANDS.bad }))}
+      <p class="stat-value" data-testid="live-decode">${formatTps(decode)}</p>
+      <p class="cell-slots" style="font-size:12px;color:${COLORS.fgDark}">${formatPerRequest(perReq)} · <span style="color:${COLORS.muted}">per running request</span></p>
+      ${sparkline(liveBuffers.decode, COLORS.green, { h: 30, min: 0 })}
+      <p class="cell-slots">instantaneous · per running request</p>
+    </div>
+
+    <div class="cell">
+      <div class="cell-title"><span>MTP accept</span></div>
+      ${barRows([["5s", mtp.window_5s], ["1m", mtp.window_1m], ["30m", mtp.window_30m], ["life", mtp.lifetime]], MTP_TH)}
+      <p class="stat-value" data-testid="live-mtp" style="font-size:14px">${escapeHtml(joinSlots([formatRatio(mtp.window_5s), formatRatio(mtp.window_1m), formatRatio(mtp.window_30m), formatRatio(mtp.lifetime)]))}</p>
+      ${sparkline(liveBuffers.mtp5, COLORS.teal, { h: 26, min: 0.4, max: 1 })}
+      <p class="cell-slots">5s · 1m · 30m · lifetime · thresholds 70% / 50% (assumed)</p>
+    </div>
+
+    <div class="cell">
+      <div class="cell-title"><span>MoE GPU hit</span></div>
+      ${barRows([["5s", moe.window_5s], ["1m", moe.window_1m], ["30m", moe.window_30m]], MOE_TH)}
+      <p class="stat-value" data-testid="live-moe" style="font-size:14px">${escapeHtml(joinSlots([formatRatio(moe.window_5s), formatRatio(moe.window_1m), formatRatio(moe.window_30m)]))}</p>
+      ${sparkline(liveBuffers.moe5, COLORS.magenta, { h: 26, min: 0.6, max: 1 })}
+      <p class="cell-slots">5s · 1m · 30m · thresholds 85% / 65% (assumed)</p>
+    </div>`;
+}
+
+
+/* ==========================================================================
+   SUMMARY CARDS (row 02)
+   ========================================================================== */
+function cardSpark(kind, s, nowMs) {
+  if (kind === "today") {
+    const h = hourAt(nowMs), out = [];
+    for (let t = dayAt(nowMs); t <= h; t += HOUR) {
+      const m = hourMetrics(t, s);
+      out.push(m.noData ? null : m.input + m.output);
+    }
+    return out;
+  }
+  const from = kind === "month"
+    ? dayAt(Date.parse(new Date(nowMs).toISOString().slice(0, 7) + "-01T00:00:00Z"))
+    : START_HOUR[s];
+  const out = [];
+  for (let t = from; t <= dayAt(nowMs); t += DAY) {
+    let sum = 0, seen = false;
+    for (let h = t; h < t + DAY; h += HOUR) {
+      const m = hourMetrics(h, s);
+      if (!m.noData) { sum += m.input + m.output; seen = true; }
+    }
+    out.push(seen ? sum : null);
+  }
+  return out;
+}
+function flagLines(r) {
+  const lines = [];
+  if (r.partial) lines.push("Partial — some intervals are unobserved");
+  if (r.incomplete) lines.push("Current period is incomplete");
+  if (r.metadata_complete === false) lines.push("Quality metadata is incomplete for this total.");
+  for (const f of r.quality_flags) if (!["collection_gap", "time_attribution_approximate"].includes(f)) lines.push(flagLabel(f));
+  return [...new Set(lines)];
+}
+function summaryCard(title, r, s, nowMs, opts) {
+  const inT = r.counters.computed_input.tokens === null ? null : Number(r.counters.computed_input.tokens);
+  const outT = r.counters.generated_output.tokens === null ? null : Number(r.counters.generated_output.tokens);
+  const total = inT === null && outT === null ? null : (inT || 0) + (outT || 0);
+  const share = total ? inT / total : null;
+  const cost = r.api_equivalent;
+  const rows = [];
+  rows.push(["Computed input", formatTokens(inT), "in"]);
+  rows.push(["Generated output", formatTokens(outT), "out"]);
+  if (opts.showCost) rows.push(["API-equivalent", cost && cost.amount ? formatAmount(cost.amount) : NO_DATA, "cost"]);
+  if (cost && cost.cache_hit_ratio !== null && cost.cache_hit_ratio !== undefined) {
+    rows.push(["Cache hits", formatCacheShare(cost.cache_hit_ratio), "cache"]);
+  }
+  const coverage = formatCoverage(cost);
+  const costFlags = formatCostFlags(cost);
+  const lines = flagLines(r);
+  const lifetimeExtra = opts.lifetime
+    ? (r.observed
+      ? `<p class="note">Collecting since ${escapeHtml(formatDay(r.started_at || FIRST_OBSERVATION[s]))}</p>`
+      : `<p class="note">Collecting a first baseline — no observed work yet</p>`)
+    : "";
+  const spark = cardSpark(opts.kind, s, nowMs);
+  const cls = ["panel", "framed", "card", r.observed ? "" : "is-baseline", r.partial ? "is-partial" : ""].filter(Boolean).join(" ");
+  return `<div class="${cls}" data-testid="card-${opts.kind}">
+    <svg class="bg-spark" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path d="${sparkAreaPath(spark, 200, 60)}" fill="${COLORS.blue}" opacity="0.11"/>
+      <path d="${sparkPath(spark, 200, 60)}" fill="none" stroke="${COLORS.blue}" stroke-width="1.2" opacity="0.55" vector-effect="non-scaling-stroke"/>
+    </svg>
+    <div class="card-body">
+      <div class="cell-title"><span>${title}</span><span class="utc-tag">UTC</span></div>
+      <div>
+        <div class="stat-value hero mono" data-testid="card-${opts.kind}-total"
+          style="${r.observed ? "--glow-c:rgba(122,162,247,.30)" : "color:" + COLORS.muted}">${escapeHtml(formatTokens(r.processed_total))}</div>
+        <p class="lv-label">Processed total · tokens</p>
+      </div>
+      ${share === null ? "" : `
+      <div>
+        <div class="ratio" role="img" aria-label="Computed input ${(share * 100).toFixed(0)} percent, generated output ${(100 - share * 100).toFixed(0)} percent of processed total">
+          <span class="in" style="flex:0 0 ${(share * 100).toFixed(2)}%"></span>
+          <span class="out" style="flex:1 1 auto"></span>
+        </div>
+        <div class="ratio-legend"><span style="color:${COLORS.blue}">input ${(share * 100).toFixed(0)}%</span><span style="color:${COLORS.orange}">output ${(100 - share * 100).toFixed(0)}%</span></div>
+      </div>`}
+      <div class="rows">
+        ${rows.map(([label, value, key]) => `<div class="value-row" data-testid="card-${opts.kind}-${key}">
+            <span class="lv-label">${label}</span>
+            <span class="lv-value${key === "cache" ? " is-muted" : ""}">${escapeHtml(value)}</span>
+          </div>
+          ${key === "cache" ? `<div class="meter" role="img" aria-label="Cache hit share ${Math.round(r.api_equivalent.cache_hit_ratio * 100)} percent"><span class="fill" style="width:${(r.api_equivalent.cache_hit_ratio * 100).toFixed(1)}%"></span></div>` : ""}`).join("")}
+      </div>
+      ${coverage ? `<p class="note mono">${escapeHtml(coverage)}</p>` : ""}
+      ${costFlags.map((f) => `<p class="note mono" style="color:${COLORS.yellow}">${escapeHtml(f)}</p>`).join("")}
+      ${lifetimeExtra}
+      ${lines.map((l) => `<p class="flag">${escapeHtml(l)}</p>`).join("")}
+    </div>
+  </div>`;
+}
+function renderSummary(v) {
+  const cards = [
+    summaryCard("Observed today", v.summary.ranges.today, v.s, v.nowMs, { kind: "today", showCost: v.showCost }),
+    summaryCard("Observed this month", v.summary.ranges.month, v.s, v.nowMs, { kind: "month", showCost: v.showCost }),
+    summaryCard("Observed since collection began", v.summary.ranges.lifetime, v.s, v.nowMs, { kind: "lifetime", showCost: v.showCost, lifetime: true }),
+  ].join("");
+  return `<section class="summary-sec" aria-label="Observed totals">
+    <div class="panel-head sec-head">
+      <h2 class="panel-label"><span class="tick" aria-hidden="true"></span>02 · Observed totals</h2>
+      <span class="head-spacer"></span>
+      <span class="note">${v.showCost ? escapeHtml(formatRatesFootnote(v.status.cost_rates)) : ""}</span>
+    </div>
+    <div class="summary-grid">${cards}</div>
+  </section>`;
+}
+
+/* ==========================================================================
+   TREND (row 03) — pixel-measured SVG so the panel can flex to fill portrait
+   ========================================================================== */
+let cur = null;
+function sparkPath(values, W, H) {
+  const vals = values.filter((x) => x !== null && x !== undefined);
+  if (!vals.length) return "";
+  const lo = Math.min(...vals), hi = Math.max(...vals) || 1;
+  const x = (i) => (i / Math.max(1, values.length - 1)) * W;
+  const y = (v) => H - ((v - lo) / (hi - lo || 1)) * (H * 0.85);
+  let d = "", started = false;
+  values.forEach((v, i) => {
+    if (v === null || v === undefined) { started = false; return; }
+    d += `${started ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
+    started = true;
+  });
+  return d;
+}
+function sparkAreaPath(values, W, H) {
+  const line = sparkPath(values, W, H);
+  if (!line) return "";
+  const idx = values.map((v, i) => (v === null || v === undefined ? -1 : i)).filter((i) => i >= 0);
+  return `${line}L${((idx[idx.length - 1] / Math.max(1, values.length - 1)) * W).toFixed(1)} ${H}L${((idx[0] / Math.max(1, values.length - 1)) * W).toFixed(1)} ${H}Z`;
+}
+function trendAriaLabel(v) {
+  const preset = ui.range === "custom" ? "custom" : ui.range;
+  const h = v.history;
+  return `Stacked bar chart of computed input and generated output tokens for ${v.summary.model_name} engine ${v.summary.engine}, ${preset} range, ${h ? formatUtc(h.from) : NO_DATA} to ${h ? formatUtc(h.to) : NO_DATA}`;
+}
+function renderTrend(v) {
+  const h = v.history;
+  const incompleteNote = h && h.buckets.length && h.buckets[h.buckets.length - 1].incomplete
+    ? `<p class="note" data-testid="incomplete-note">Last bucket is incomplete (current UTC ${h.bucket})</p>` : "";
+  const cost = h ? h.range.api_equivalent : null;
+  const costBits = [];
+  if (cost && cost.amount) costBits.push(`API-equivalent ${formatAmount(cost.amount)}`);
+  if (cost && cost.cache_hit_ratio !== null && cost.cache_hit_ratio !== undefined) costBits.push(`Cache hits ${formatCacheShare(cost.cache_hit_ratio)}`);
+  if (cost && formatCoverage(cost)) costBits.push(formatCoverage(cost));
+  formatCostFlags(cost).forEach((f) => costBits.push(f));
+  const chips = [["24h", "24 hours"], ["7d", "7 days"], ["30d", "30 days"]].map(([k, label]) =>
+    `<button type="button" class="chip${ui.range === k ? " is-active" : ""}" data-range="${k}" aria-pressed="${ui.range === k}" data-testid="range-${k}">${k}<span class="visually-hidden"> — ${label}</span></button>`).join("");
+  const rows = h ? h.buckets.map((b) => `<tr>
+      <th scope="row">${escapeHtml(bucketLabel(b))}</th>
+      <td>${escapeHtml(formatTokens(b.counters.computed_input.tokens))}</td>
+      <td>${escapeHtml(formatTokens(b.counters.generated_output.tokens))}</td>
+      <td>${escapeHtml(formatTokens(b.processed_total))}</td>
+      <td>${escapeHtml(qualityOf(b))}</td>
+    </tr>`).join("") : "";
+  return `<section class="panel framed trend-panel" aria-label="Trend">
+    <div class="panel-head">
+      <h2 class="panel-label" id="trend-title"><span class="tick" aria-hidden="true"></span>03 · Trend</h2>
+      <span class="head-spacer"></span>
+      ${incompleteNote}
+    </div>
+    <div class="control-row">
+      <div class="chips" role="group" aria-label="Trend range">${chips}</div>
+      <details class="custom-range" id="open-custom">
+        <summary>Custom range</summary>
+        <div class="custom-fields">
+          <label for="cf">UTC start (inclusive)<input type="date" id="cf" value="${escapeHtml(ui.customFrom)}" data-testid="custom-from"></label>
+          <label for="ct">UTC end (exclusive)<input type="date" id="ct" value="${escapeHtml(ui.customTo)}" data-testid="custom-to"></label>
+          <button type="button" class="ghost-btn" id="custom-apply" data-testid="custom-apply">Apply</button>
+        </div>
+      </details>
+      <span class="note mono" data-testid="trend-meta">${h ? `${escapeHtml(h.bucket)} buckets · ${h.bucket_count} · ${escapeHtml(formatUtc(h.from))} → ${escapeHtml(formatUtc(h.to))}` : ""}</span>
+    </div>
+    ${costBits.length ? `<p class="note" data-testid="trend-cost">${costBits.map(escapeHtml).join(" · ")}</p>` : ""}
+    ${v.rangeError ? `<p class="range-error" role="status" data-testid="range-error">${escapeHtml(rangeErrorText(v.rangeError))}</p>` : ""}
+    <div class="chart-wrap${h ? "" : " is-empty"}" id="chart-wrap" tabindex="0" role="group"
+         aria-label="${escapeHtml(trendAriaLabel(v))}. Use left and right arrow keys to inspect buckets." data-testid="chart">
+      ${h ? "" : `<p class="note" style="padding:16px">No chart for this range.</p>`}
+      <div class="tooltip" id="tooltip" hidden></div>
+    </div>
+    <div class="legend">
+      <span class="key"><span class="sw" style="background:${COLORS.blue}"></span>Computed input</span>
+      <span class="key"><span class="sw" style="background:${COLORS.orange}"></span>Generated output</span>
+      <span class="key"><span class="sw" style="background:transparent;border:1px dashed ${COLORS.yellow}"></span>incomplete / partial bucket</span>
+      <span class="key"><span class="sw" style="background:transparent;border:1px solid ${COLORS.red}"></span>no data</span>
+      <span class="note mono">← → inspect · Home/End jump · Esc clear</span>
+    </div>
+    <div class="readout" id="readout" hidden></div>
+    <p class="visually-hidden" role="status" aria-live="polite" id="readout-sr"></p>
+    <details class="chart-disclosure" id="open-table">
+      <summary>Show as table</summary>
+      ${h ? `<table class="chart-table" data-testid="trend-table">
+        <caption>Computed input and generated output tokens per UTC bucket</caption>
+        <thead><tr><th scope="col">UTC bucket</th><th scope="col">Computed input</th><th scope="col">Generated output</th><th scope="col">Processed total</th><th scope="col">Quality</th></tr></thead>
+        <tbody>${rows}</tbody></table>` : ""}
+    </details>
+  </section>`;
+}
+
+function drawTrend() {
+  const wrap = $("#chart-wrap");
+  if (!wrap || !cur || !cur.history) return;
+  const h = cur.history;
+  const W = Math.max(280, Math.round(wrap.clientWidth - 14));
+  const H = Math.max(180, Math.round(wrap.clientHeight - 14));
+  const m = { l: 58, r: 14, t: 16, b: 42 };
+  const plotW = W - m.l - m.r, plotH = H - m.t - m.b;
+  const { inVals, outVals, totals } = stackBars(h);
+  const n = h.buckets.length;
+  const maxTotal = niceCeil(Math.max(1, ...totals.filter((t) => t !== null)));
+  const slot = plotW / Math.max(1, n);
+  const barW = Math.max(3, Math.min(46, slot * 0.62));
+  const x = (i) => m.l + slot * (i + 0.5);
+  const y = (v) => m.t + plotH - (v / maxTotal) * plotH;
+
+  const ticks = 5;
+  let grid = "";
+  for (let i = 0; i <= ticks; i++) {
+    const v = (maxTotal / ticks) * i, yy = y(v);
+    grid += `<line class="grid${i === 0 ? " zero" : ""}" x1="${m.l}" y1="${yy.toFixed(1)}" x2="${W - m.r}" y2="${yy.toFixed(1)}"/>
+      <text class="axis-text" x="${m.l - 8}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end">${escapeHtml(compact(v))}</text>`;
+  }
+  const every = Math.ceil(n / (plotW > 700 ? 8 : 5));
+  let xlab = "";
+  h.buckets.forEach((b, i) => {
+    if (i % every && i !== n - 1) return;
+    const label = h.bucket === "hour" ? new Date(b.started_at).toISOString().slice(11, 16) : new Date(b.started_at).toISOString().slice(5, 10);
+    xlab += `<text class="axis-text" x="${x(i).toFixed(1)}" y="${(H - m.b + 18).toFixed(1)}" text-anchor="middle">${escapeHtml(label)}</text>`;
+  });
+
+  let bars = "";
+  h.buckets.forEach((b, i) => {
+    const iv = inVals[i], ov = outVals[i];
+    const cx = x(i) - barW / 2;
+    if (iv === null && ov === null) {
+      const cy = m.t + plotH * 0.5;
+      bars += `<g><line class="bar-null" x1="${(cx + 3).toFixed(1)}" y1="${(cy - 7).toFixed(1)}" x2="${(cx + barW - 3).toFixed(1)}" y2="${(cy + 7).toFixed(1)}"/>
+        <line class="bar-null" x1="${(cx + 3).toFixed(1)}" y1="${(cy + 7).toFixed(1)}" x2="${(cx + barW - 3).toFixed(1)}" y2="${(cy - 7).toFixed(1)}"/></g>`;
+      return;
+    }
+    const ih = iv ? (iv / maxTotal) * plotH : 0;
+    const oh = ov ? (ov / maxTotal) * plotH : 0;
+    if (ih > 0) bars += `<rect class="bar-in" x="${cx.toFixed(1)}" y="${(m.t + plotH - ih).toFixed(1)}" width="${barW.toFixed(1)}" height="${ih.toFixed(1)}" rx="1.5"/>`;
+    if (oh > 0) bars += `<rect class="bar-out" x="${cx.toFixed(1)}" y="${(m.t + plotH - ih - oh).toFixed(1)}" width="${barW.toFixed(1)}" height="${oh.toFixed(1)}" rx="1.5"/>`;
+    const top = m.t + plotH - ih - oh;
+    if (b.incomplete || b.partial) {
+      bars += `<rect class="partial${b.incomplete ? " hatch" : ""}" x="${cx.toFixed(1)}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${(ih + oh).toFixed(1)}" ${b.incomplete ? `fill="url(#hatch)"` : `fill="none"`} rx="1.5"/>`;
+    }
+  });
+
+  let cursorLayer = "";
+  if (chartCursor !== null && h.buckets[chartCursor]) {
+    const i = chartCursor;
+    cursorLayer = `<rect class="cursor-slot" x="${(x(i) - slot / 2).toFixed(1)}" y="${m.t}" width="${slot.toFixed(1)}" height="${plotH}"/>
+      <line class="crosshair" x1="${x(i).toFixed(1)}" y1="${m.t}" x2="${x(i).toFixed(1)}" y2="${m.t + plotH}"/>`;
+  }
+  const svg = `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(trendAriaLabel(cur))}" focusable="false">
+    <defs>
+      <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y1="0" x2="0" y2="6" stroke="${COLORS.yellow}" stroke-width="1.6" opacity="0.5"/>
+      </pattern>
+    </defs>
+    ${grid}${bars}${cursorLayer}${xlab}
+    <line class="grid" x1="${m.l}" y1="${m.t}" x2="${m.l}" y2="${m.t + plotH}"/>
+  </svg>`;
+  const tip = $("#tooltip", wrap);
+  wrap.querySelectorAll("svg.chart-svg").forEach((el) => el.remove());
+  wrap.insertAdjacentHTML("afterbegin", svg);
+  if (tip) wrap.appendChild(tip);
+  wrap._geom = { m, slot, x, W, H, n };
+}
+function trendBucketAt(px) {
+  const wrap = $("#chart-wrap");
+  if (!wrap._geom || !cur || !cur.history) return null;
+  const { m, slot, n } = wrap._geom;
+  const i = Math.floor((px - m.l) / slot);
+  return i >= 0 && i < n ? i : null;
+}
+function showReadout(i, announce) {
+  const wrap = $("#chart-wrap");
+  const tip = $("#tooltip");
+  const out = $("#readout");
+  const sr = $("#readout-sr");
+  if (!wrap || !cur || !cur.history) return;
+  chartCursor = i;
+  drawTrend();
+  const b = cur.history.buckets[i];
+  if (!b) return;
+  const quality = qualityOf(b);
+  const both = b.counters.computed_input.tokens === null && b.counters.generated_output.tokens === null;
+  const bits = [
+    ["Bucket", bucketLabel(b)],
+    ["Computed input", formatTokens(b.counters.computed_input.tokens)],
+    ["Generated output", formatTokens(b.counters.generated_output.tokens)],
+    ["Processed total", formatTokens(b.processed_total)],
+    ["Quality", quality],
+  ];
+  if (out) {
+    out.hidden = false;
+    out.innerHTML = bits.map(([k, v]) => `<span><span class="k">${escapeHtml(k)}:</span> ${escapeHtml(v)}</span>`).join("");
+  }
+  if (tip) {
+    tip.hidden = false;
+    tip.innerHTML = `<div class="t-title">${escapeHtml(bucketLabel(b))}</div>`
+      + `<div class="t-row"><span>Computed input</span><span>${escapeHtml(formatTokens(b.counters.computed_input.tokens))}</span></div>`
+      + `<div class="t-row"><span>Generated output</span><span>${escapeHtml(formatTokens(b.counters.generated_output.tokens))}</span></div>`
+      + `<div class="t-row"><span>Processed total</span><span>${escapeHtml(formatTokens(b.processed_total))}</span></div>`
+      + `<div class="t-q">${escapeHtml(quality)}${both ? " · no data" : ""}</div>`;
+    const g = wrap._geom;
+    const left = Math.min(Math.max(8, g.x(i) + 14), Math.max(8, g.W - 250));
+    tip.style.left = `${left}px`;
+    tip.style.top = `${Math.max(8, g.m.t + 6)}px`;
+  }
+  if (announce && sr) sr.textContent = bits.map(([k, v]) => `${k}: ${v}`).join(", ");
+}
+function clearReadout() {
+  chartCursor = null;
+  const tip = $("#tooltip");
+  if (tip) tip.hidden = true;
+  const out = $("#readout");
+  if (out) out.hidden = true;
+  drawTrend();
+}
+function bindTrend() {
+  const wrap = $("#chart-wrap");
+  if (wrap && cur.history) {
+    wrap.addEventListener("mousemove", (e) => {
+      const r = wrap.getBoundingClientRect();
+      const i = trendBucketAt(e.clientX - r.left);
+      if (i !== null) showReadout(i, false);
+    });
+    wrap.addEventListener("mouseleave", clearReadout);
+    wrap.addEventListener("keydown", (e) => {
+      const n = cur.history.buckets.length;
+      let i = chartCursor === null ? n - 1 : chartCursor;
+      if (e.key === "ArrowRight") i = Math.min(n - 1, i + 1);
+      else if (e.key === "ArrowLeft") i = Math.max(0, i - 1);
+      else if (e.key === "Home") i = 0;
+      else if (e.key === "End") i = n - 1;
+      else if (e.key === "Escape") { clearReadout(); return; }
+      else return;
+      e.preventDefault();
+      showReadout(i, true);
+    });
+    wrap.addEventListener("blur", clearReadout);
+  }
+  $$("[data-range]").forEach((btn) => btn.addEventListener("click", () => {
+    ui.range = btn.dataset.range; ui.cursor = null; chartCursor = null; renderAll();
+  }));
+  const apply = $("#custom-apply");
+  if (apply) apply.addEventListener("click", () => {
+    ui.customFrom = $("#cf").value || ui.customFrom;
+    ui.customTo = $("#ct").value || ui.customTo;
+    ui.range = "custom"; chartCursor = null; renderAll();
+  });
+}
+
+/* ==========================================================================
+   LATEST RATE (row 04)
+   ========================================================================== */
+const rateHistory = { computed_input: [], generated_output: [] };
+function seedRateHistory(summary) {
+  for (const key of Object.keys(rateHistory)) {
+    rateHistory[key].length = 0;
+    const base = summary.rates[key] && summary.rates[key].eligible ? summary.rates[key].tokens_per_second : 0;
+    for (let i = 0; i < 40; i++) {
+      const f = 0.72 + 0.34 * Math.sin(i / 5.5) + 0.16 * Math.sin(i / 2.1 + 1);
+      rateHistory[key].push(Math.max(0, Math.round(base * f * 10) / 10));
+    }
+  }
+}
+function rateDelta(key) {
+  const arr = rateHistory[key];
+  if (arr.length < 4) return null;
+  const prev = arr[arr.length - 2], now = arr[arr.length - 1];
+  if (!prev) return null;
+  return (now - prev) / prev;
+}
+function deltaChip(d) {
+  if (d === null) return "";
+  const cls = d > 0.005 ? "up" : d < -0.005 ? "down" : "flat";
+  const arrow = d > 0.005 ? "▲" : d < -0.005 ? "▼" : "▬";
+  return `<span class="delta ${cls}" title="Mock-only delta vs the previous accepted interval">${arrow} ${(Math.abs(d) * 100).toFixed(1)}%</span>`;
+}
+function renderRates(v) {
+  const stale = v.summary.state === "stale" || v.summary.state === "unavailable";
+  const cell = (key, label, scale) => {
+    const rate = v.summary.rates[key];
+    const text = formatRate(rate);
+    const known = rate.eligible && rate.tokens_per_second !== null && rate.tokens_per_second !== undefined;
+    const color = known ? zoneColor(rate.tokens_per_second / scale, { warn: GAUGE_BANDS.warn, bad: GAUGE_BANDS.bad }) : COLORS.muted;
+    return `<div class="cell rate-cell${stale ? " is-stale" : ""}">
+      <div class="cell-title"><span>${label}</span>${stale ? `<span class="warn-glyph" title="Stale">! stale</span>` : ""}</div>
+      <div class="value-row">
+        <span class="stat-value mono${known ? " glow" : ""}" data-testid="rate-${key}" style="--glow-c:${known ? "rgba(125,207,255,.28)" : "transparent"}">${escapeHtml(text)}</span>
+        ${known ? deltaChip(rateDelta(key)) : ""}
+      </div>
+      ${miniGauge(known ? rate.tokens_per_second : null, scale, GAUGE_BANDS, color)}
+      ${sparkline(rateHistory[key].map((x) => (known ? x : null)), known ? COLORS.cyan : COLORS.ghost, { h: 30, min: 0 })}
+      <p class="cell-slots">over the last accepted interval · ${escapeHtml(formatUtc(rate.observed_at))}</p>
+      ${rate.quality_flags.length ? `<p class="flag">${rate.quality_flags.map(flagLabel).map(escapeHtml).join(" · ")}</p>` : ""}
+    </div>`;
+  };
+  const req = (key, label) => {
+    const c = v.summary.ranges.lifetime.counters[key];
+    const gapShare = Math.min(1, c.gap_seconds / Math.max(1, c.observed_intervals * 15 + c.gap_seconds));
+    return `<div class="request-cell">
+      <h4 class="request-title">${label}</h4>
+      <div class="value-row"><span class="stat-value mono" style="font-size:20px">${escapeHtml(c.tokens === null ? "unavailable" : formatTokens(c.tokens))}</span></div>
+      <div class="meter" role="img" aria-label="Unobserved share ${Math.round(gapShare * 100)} percent of the collection window"><span class="fill" style="width:${((1 - gapShare) * 100).toFixed(1)}%;background:${COLORS.blue}"></span></div>
+      <p class="request-meta">${c.observed_intervals} observed intervals · ${escapeHtml(describeGap(c.gap_seconds))}</p>
+      ${c.quality_flags.length ? `<p class="flag">${c.quality_flags.map(flagLabel).map(escapeHtml).join(" · ")}</p>` : ""}
+    </div>`;
+  };
+  return `<section class="panel framed rates-panel" aria-label="Latest rate">
+    <div class="panel-head">
+      <h2 class="panel-label"><span class="tick" aria-hidden="true"></span>04 · Latest rate</h2>
+      <span class="head-spacer"></span>
+      ${stale ? `<p class="stale-notice" role="status" data-testid="rates-stale">Rates are unavailable while the series is stale</p>` : ""}
+    </div>
+    <div class="rate-grid">${cell("computed_input", "Computed input", SCALE.rateInput)}${cell("generated_output", "Generated output", SCALE.rateOutput)}</div>
+    <details class="requests-disclosure" id="open-req">
+      <summary>Request-accounted usage</summary>
+      <p class="note">Request-accounted usage counts tokens recorded per request and can include cache-served tokens; it is not added to engine totals.</p>
+      <div class="request-grid">${req("request_input", "Request input")}${req("request_output", "Request output")}</div>
+    </details>
+  </section>`;
+}
+
+/* ==========================================================================
+   DIAGNOSTICS (row 05)
+   ========================================================================== */
+const EVENT_SEV = {
+  primary_unusable: "bad", restart_detected: "bad", counter_reset: "bad", clock_discontinuity: "bad",
+  series_absent: "warn", optional_reset: "warn", optional_rebaselined: "warn",
+};
+function gapMeterRow(label, seconds, windowSeconds) {
+  const share = Math.min(1, seconds / Math.max(1, windowSeconds));
+  const color = share === 0 ? COLORS.teal : share < 0.02 ? COLORS.yellow : COLORS.red;
+  return `<div class="gap-row">
+    <div class="value-row"><span class="lv-label">${label}</span><span class="lv-value is-muted">${escapeHtml(describeGap(seconds))}</span></div>
+    <div class="bar" role="img" aria-label="${escapeHtml(describeGap(seconds))} within the collection window" style="height:8px">
+      <span class="seg on" style="flex:0 0 ${(share * 100).toFixed(2)}%;color:${color}"></span>
+      <span class="seg" style="flex:1 1 auto"></span>
+    </div>
+  </div>`;
+}
+function epochTimeline(v) {
+  const from = Date.parse(FIRST_OBSERVATION[v.s]);
+  const to = v.nowMs;
+  const W = 640, H = 92, m = { l: 8, r: 8, t: 16, b: 20 };
+  const x = (t) => m.l + ((t - from) / (to - from)) * (W - m.l - m.r);
+  const spanTop = 30, spanH = 26;
+  const gaps = [];
+  for (let h = from; h < to; h += HOUR) {
+    const key = new Date(h).toISOString().slice(0, 13);
+    if (GAP_HOURS.has(key)) gaps.push(h);
+  }
+  let gapSvg = "";
+  gaps.forEach((h) => {
+    const x0 = x(h), x1 = x(Math.min(to, h + HOUR));
+    gapSvg += `<rect class="gapfill" x="${x0.toFixed(1)}" y="${spanTop}" width="${Math.max(1.5, x1 - x0).toFixed(1)}" height="${spanH}"/>`;
+  });
+  const ep = v.epochs.map((e) => {
+    const ex = x(Date.parse(e.started_at));
+    return `<line class="epoch" x1="${ex.toFixed(1)}" y1="${spanTop - 10}" x2="${ex.toFixed(1)}" y2="${spanTop + spanH + 6}"/>
+      <text class="etxt" x="${Math.min(W - 40, ex + 4).toFixed(1)}" y="${spanTop - 12}">E${e.epoch_id}</text>`;
+  }).join("");
+  return `<div class="timeline-wrap">
+    <svg class="timeline" viewBox="0 0 ${W} ${H}" role="img" aria-label="Collection timeline from ${escapeHtml(formatUtc(from))} to ${escapeHtml(formatUtc(to))} with ${gaps.length} unobserved hours and ${v.epochs.length} epoch boundaries">
+      <rect class="span" x="${x(from).toFixed(1)}" y="${spanTop}" width="${(x(to) - x(from)).toFixed(1)}" height="${spanH}"/>
+      ${gapSvg}${ep}
+      <line class="axis" x1="${m.l}" y1="${spanTop + spanH + 6}" x2="${W - m.r}" y2="${spanTop + spanH + 6}"/>
+      <text class="txt" x="${m.l}" y="${H - 6}">${escapeHtml(formatDay(from))}</text>
+      <text class="txt" x="${W - m.r}" y="${H - 6}" text-anchor="end">${escapeHtml(formatDay(to))}</text>
+      <text class="txt" x="${m.l}" y="${spanTop - 12}">collection window · hatched = unobserved hours · magenta = epoch boundary</text>
+    </svg>
+  </div>`;
+}
+function renderDiagnostics(v) {
+  const r = v.summary.ranges.lifetime;
+  const windowSeconds = Math.max(1, (v.nowMs - Date.parse(FIRST_OBSERVATION[v.s])) / 1000);
+  const flags = [...new Set([
+    ...v.summary.ranges.today.quality_flags, ...v.summary.ranges.month.quality_flags, ...r.quality_flags,
+    ...(r.metadata_complete === false ? ["metadata_incomplete"] : []),
+  ])];
+  const events = v.events.length
+    ? `<div class="logs" data-testid="events">${v.events.map((e) => `<div class="log-row ${EVENT_SEV[e.kind] || "info"}">
+        <span class="sev" aria-hidden="true"></span>
+        <span class="t">${escapeHtml(formatUtc(e.occurred_at))}</span>
+        <span class="kind">${escapeHtml(e.kind)}</span>
+        <span class="det">${escapeHtml(JSON.stringify(e.details))}</span>
+      </div>`).join("")}</div>`
+    : `<p class="note">No collection events recorded.</p>`;
+  const epochs = v.epochs.length
+    ? `<ul class="epoch-list" data-testid="epochs">${v.epochs.map((e) => `<li>
+        <span class="e-reason">${escapeHtml(e.reason)}</span>
+        <span class="e-meta"> · ${escapeHtml(formatUtc(e.started_at))}</span>
+        <div class="note">Opening balance — excluded from totals: ${escapeHtml(formatTokens(e.opening_computed_input))} in, ${escapeHtml(formatTokens(e.opening_generated_output))} out</div>
+      </li>`).join("")}</ul>`
+    : `<p class="note">No epoch boundaries recorded.</p>`;
+  const lastErr = v.status.last_error_code
+    ? `<p class="status-line" data-testid="last-error"><span class="dot" style="color:${COLORS.red}"></span><span>Last collection error: ${escapeHtml(v.status.last_error_code)}. The collector retries on its own; the values shown are from the last successful sample.</span></p>`
+    : `<p class="status-line"><span class="dot" style="color:${COLORS.teal}"></span><span>No collection error recorded.</span></p>`;
+  return `<details class="panel framed diagnostics" id="open-diag">
+    <summary><span class="panel-label" style="display:inline"><span class="tick" aria-hidden="true"></span>05 · Diagnostics</span></summary>
+    <div class="diag-body">
+      <div class="diag-grid">
+        <div class="diagnostics-block">
+          <h3>Unobserved intervals</h3>
+          <div class="gap-rows" data-testid="gaps">
+            ${gapMeterRow("Engine counters", r.gap_seconds.primary, windowSeconds)}
+            ${gapMeterRow("Request input", r.gap_seconds.request_input, windowSeconds)}
+            ${gapMeterRow("Request output", r.gap_seconds.request_output, windowSeconds)}
+            ${gapMeterRow("Cached input", r.gap_seconds.cached_input, windowSeconds)}
+          </div>
+          <p class="note mono">Share of the collection window since ${escapeHtml(formatUtc(FIRST_OBSERVATION[v.s]))}</p>
+        </div>
+        <div class="diagnostics-block">
+          <h3>Quality flags</h3>
+          <div class="flag-chips" data-testid="flags">
+            ${flags.length ? flags.map((f) => `<div class="chip-flag"><span class="glyph" aria-hidden="true">▲</span><span><strong>${escapeHtml(f)}</strong> — ${escapeHtml(flagLabel(f))}</span></div>`).join("") : `<p class="note">No quality flags on the current payload.</p>`}
+          </div>
+          <h3 style="margin-top:14px">Raw retention</h3>
+          <p class="note">Raw samples are kept for ${v.retention.raw_retention_days} days.</p>
+          <p class="note mono">Raw samples available ${escapeHtml(formatUtc(v.retention.raw_samples_from))} – ${escapeHtml(formatUtc(v.retention.raw_samples_until))}</p>
+          <div class="bar" role="img" aria-label="Raw retention window covers the whole collection window" style="height:8px;margin-top:6px">
+            <span class="seg on" style="flex:1 1 auto;color:${COLORS.blue}"></span>
+          </div>
+          ${v.retention.note ? `<p class="note mono">${escapeHtml(v.retention.note)}</p>` : ""}
+          ${lastErr}
+        </div>
+      </div>
+      <div class="diagnostics-block">
+        <h3>Collection events</h3>
+        ${events}
+      </div>
+      <div class="diagnostics-block">
+        <h3>Epochs</h3>
+        ${epochTimeline(v)}
+        ${epochs}
+      </div>
+    </div>
+  </details>`;
+}
+
+/* ==========================================================================
+   SKELETON / EMPTY
+   ========================================================================== */
+function renderSkeleton() {
+  return `<div class="skeleton" role="status" aria-label="Loading dashboard" data-testid="skeleton">
+    <div class="skeleton-row"><div class="skeleton-block"></div><div class="skeleton-block"></div><div class="skeleton-block"></div></div>
+    <div class="skeleton-chart"></div>
+    <p class="note">First load: summary, trend and rates panels are being fetched.</p>
+  </div>`;
+}
+function renderEmpty() {
+  return `<p class="empty-state" data-testid="empty-state"><span class="glyph" aria-hidden="true">[ · · · ]</span>No series collected yet. Collection starts after the first successful sample.</p>`;
+}
+
+/* ==========================================================================
+   ASSEMBLY
+   ========================================================================== */
+function renderStateView(v) {
+  const host = $("#state-view");
+  if (v.firstLoad) { host.innerHTML = renderSkeleton(); return; }
+  if (v.empty) { host.innerHTML = renderEmpty(); return; }
+  host.innerHTML = renderSummary(v) + renderTrend(v) + renderRates(v) + renderDiagnostics(v);
+  bindTrend();
+  drawTrend();
+}
+function renderAll() {
+  const v = view();
+  cur = v;
+  renderHeader(v);
+  renderBanners(v);
+  renderLive(v);
+  renderStateView(v);
+  const badge = badgeFor(v);
+  $("#sr-live").textContent = `${badge.text}. ${v.status.last_success_at ? `Last successful update ${formatUtc(v.status.last_success_at)}` : "No successful update yet."}`;
+  $("#live-panel").classList.toggle("is-live", v.live.state === "live");
+  renderDev();
+  applyOpen();
+  const hash = `#state=${encodeURIComponent(ui.state)}&series=${ui.series}&range=${encodeURIComponent(ui.range)}`
+    + (ui.open.length ? `&open=${ui.open.join(",")}` : "") + (ui.paused ? "&pause" : "");
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+}
+function renderDev() {
+  const grid = $("#dev-grid");
+  const chip = (label, on, fn, testid) => `<button type="button" class="chip${on ? " is-active" : ""}" data-act="${fn}"${on ? ' aria-pressed="true"' : ""} data-testid="${testid}">${label}</button>`;
+  grid.innerHTML = [
+    `<span class="dev-label">State</span>`,
+    ...Object.entries(STATES).map(([k, s]) => chip(s.label, ui.state === k, `state:${k}`, `state-${k}`)),
+    `<span class="dev-label">Range</span>`,
+    ...["24h", "7d", "30d", "custom"].map((k) => chip(k, ui.range === k, `range:${k}`, `dev-range-${k}`)),
+    `<span class="dev-label">Series</span>`,
+    ...SERIES.map((s, i) => chip(`engine ${s.engine}`, ui.series === i, `series:${i}`, `dev-series-${i}`)),
+    chip(ui.paused ? "Running" : "Pause tick", ui.paused, "pause", "dev-pause"),
+    `<span class="dev-label">URL: copy the hash · reduced-motion honoured (ticks 15 s)</span>`,
+  ].join("");
+  $$("#dev-grid .chip").forEach((btn) => btn.addEventListener("click", () => {
+    const [kind, val] = btn.dataset.act.split(":");
+    if (kind === "state") { ui.state = val; seedLive(STATES[val].live); seedRateHistory(view().summary); chartCursor = null; }
+    if (kind === "range") ui.range = val;
+    if (kind === "series") { ui.series = Number(val); seedLive(STATES[ui.state].live); }
+    if (kind === "pause") ui.paused = !ui.paused;
+    renderAll();
+  }));
+}
+
+/* 1 Hz live row + 15 s panel refresh; 15 s cadence under prefers-reduced-motion. */
+let panelClock = 0;
+function tick() {
+  if (ui.paused || document.hidden) return;
+  const step = reducedMotion.matches ? 15 : 1;
+  ui.tick += step;
+  panelClock += step;
+  const v = view();
+  cur = v;
+  if (v.live.state !== "starting") { pushLive(liveSample(ui.tick, v.live.state), false); }
+  renderLive(v);
+  $("#sr-live").textContent = `${badgeFor(v).text}. ${v.status.last_success_at ? `Last successful update ${formatUtc(v.status.last_success_at)}` : "No successful update yet."}`;
+  if (panelClock >= 15) {
+    panelClock = 0;
+    renderHeader(v);
+    renderBanners(v);
+    if (!v.firstLoad && !v.empty) { renderStateView(v); }
+  }
+}
+
+/* -------------------------------------------------------------- bootstrap */
+function boot() {
+  readHash();
+  seedLive(STATES[ui.state].live);
+  seedRateHistory(view().summary);
+  renderAll();
+  const ro = new ResizeObserver(() => { if (cur && cur.history) drawTrend(); });
+  const wrap = $("#chart-wrap");
+  if (wrap) ro.observe(wrap);
+  window.__jarvisTick = setInterval(tick, reducedMotion.matches ? 15000 : 1000);
+  reducedMotion.addEventListener("change", () => { clearInterval(window.__jarvisTick); window.__jarvisTick = setInterval(tick, reducedMotion.matches ? 15000 : 1000); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) renderAll(); });
+  // Keep the hash's open= list in sync with the user's disclosure toggles.
+  document.addEventListener("toggle", (e) => {
+    const id = e.target.id || "";
+    if (!id.startsWith("open-")) return;
+    const k = id.slice(5);
+    const set = new Set(ui.open);
+    if (e.target.open) set.add(k); else set.delete(k);
+    ui.open = [...set];
+    const hash = `#state=${encodeURIComponent(ui.state)}&series=${ui.series}&range=${encodeURIComponent(ui.range)}`
+      + (ui.open.length ? `&open=${ui.open.join(",")}` : "") + (ui.paused ? "&pause" : "");
+    if (location.hash !== hash) history.replaceState(null, "", hash);
+  }, true);
+}
+boot();
+
+</script>
+</body>
+</html>

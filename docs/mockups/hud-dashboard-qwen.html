@@ -1,0 +1,1411 @@
+<!doctype html>
+<html lang="en" data-state="live">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080, initial-scale=1">
+<title>JARVIS · TOKEN USAGE HUD — design mockup (simulated data)</title>
+<!--
+  ============================================================================
+  HUD DESIGN MOCKUP — NOT PART OF THE VUE APP, NOT WIRED TO ANY API.
+  Every number in this file is SIMULATED sample data (see MOCK / buildTrend()).
+  Field names, units, formats and states mirror frontend/src (App.vue,
+  components/, lib/format.ts, lib/dashboard.ts, lib/live.ts, api/schema.ts).
+  Single self-contained file: inline CSS + JS, inline SVG charts, no CDN,
+  no network requests. Fixed 1080x1920 portrait layout, no page scroll.
+  State toggle: press key `s` (or the small STATE chip in the header).
+  Debug/audit: open with  #debug  to overlay an overflow + console audit.
+  ============================================================================
+-->
+<style>
+/* ============ Tokyo Night Storm (adjusted for a near-black HUD base) ===== */
+:root{
+  --bg:#24283b;            /* palette base (kept for reference) */
+  --bg-dark:#1f2335;       /* palette base (kept for reference) */
+  --bg-deep:#10131f;       /* page: bg_dark pushed to near-black (refs avg lum .085-.20) */
+  --pnl-a:#1c2135;         /* panel gradient top  (derived from bg_dark)   */
+  --pnl-b:#161a2b;         /* panel gradient bottom                        */
+  --sunk:#121627;          /* inset wells / chart ground                   */
+  --fg:#c0caf5;
+  --mute:#8892b8;          /* comment #565f89 lifted -> AA 5.4:1 on panels */
+  --line:#565f89;          /* decorative line work only, never body text   */
+  --blue:#7aa2f7;  --cyan:#7dcfff;  --magenta:#bb9af7; --green:#9ece6a;
+  --teal:#73daca;  --yellow:#e0af68; --orange:#ff9e64; --red:#f7768e;
+  --in:var(--blue);        /* computed input  (app --series-input)  */
+  --out:var(--orange);     /* generated output (app --series-output) */
+  --cost:var(--yellow); --mtp:var(--magenta); --moe:var(--cyan); --cache:var(--teal);
+  --ok:var(--green); --warn:var(--yellow); --bad:var(--red);
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --cut:16px;
+  --r16:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#080a12;color:var(--fg);
+  font:14px/1.45 var(--sans);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+#hud{position:relative;width:1080px;height:1920px;overflow:hidden;background:
+  radial-gradient(120% 60% at 50% 0%,#1a2038 0%,rgba(26,32,56,0) 62%),
+  radial-gradient(90% 45% at 50% 100%,#131a2e 0%,rgba(19,26,46,0) 60%),
+  var(--bg-deep);}
+/* grid + scanline overlay (traits 4 + 1) */
+#hud::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;
+  background:
+   repeating-linear-gradient(to right,rgba(86,95,137,.075) 0 1px,transparent 1px 44px),
+   repeating-linear-gradient(to bottom,rgba(86,95,137,.075) 0 1px,transparent 1px 44px);}
+#hud::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:7;
+  background:repeating-linear-gradient(to bottom,rgba(192,202,245,.028) 0 1px,transparent 1px 5px),
+   radial-gradient(105% 78% at 50% 46%,rgba(0,0,0,0) 55%,rgba(0,0,0,.55) 100%);}
+.grid{position:absolute;inset:0;padding:16px;z-index:2;display:grid;gap:10px;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:92px 44px 454px 432px 452px 212px 158px;}
+
+/* ============================== panel frame ============================== */
+.pnl{position:relative;min-height:0;min-width:0;overflow:hidden;padding:1px;
+  clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));
+  background:linear-gradient(150deg,rgba(122,162,247,.55),rgba(86,95,137,.30) 45%,rgba(125,207,255,.42));}
+.pnl>.in{position:relative;height:100%;padding:8px 14px 9px;overflow:hidden;
+  clip-path:polygon(calc(var(--cut) - 1px) 0,100% 0,100% calc(100% - (var(--cut) - 1px)),calc(100% - (var(--cut) - 1px)) 100%,0 100%,0 calc(var(--cut) - 1px));
+  background:linear-gradient(165deg,var(--pnl-a) 0%,var(--pnl-b) 58%,#131728 100%);}
+.pnl>.in::before,.pnl>.in::after{content:"";position:absolute;width:16px;height:16px;pointer-events:none;
+  border:1px solid var(--cyan);opacity:.6}
+.pnl>.in::before{top:5px;left:7px;border-right:0;border-bottom:0}
+.pnl>.in::after{bottom:5px;right:7px;border-left:0;border-top:0}
+.pnl.acc-cyan{--cut:18px}
+/* panel head */
+.ph{display:flex;align-items:center;gap:10px;height:26px;flex:none}
+.ph .idx{font:600 11px/1 var(--mono);letter-spacing:.16em;color:var(--cyan);opacity:.9}
+.ph h2{margin:0;font:600 12.5px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--fg)}
+.ph .rule{flex:1;height:1px;background:linear-gradient(90deg,rgba(125,207,255,.5),rgba(86,95,137,.22) 45%,rgba(86,95,137,0))}
+.ph .meta{font:11px/1 var(--mono);letter-spacing:.09em;color:var(--mute);text-transform:uppercase;white-space:nowrap}
+.lab{font:600 11px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.num{font-family:var(--mono);font-weight:600;letter-spacing:-.01em}
+.sub{font:12.5px/1.35 var(--sans);color:var(--mute)}
+.mono{font-family:var(--mono)}
+.utc{font:600 10px/1 var(--mono);letter-spacing:.14em;color:var(--mute);border:1px solid rgba(86,95,137,.55);
+  padding:2px 4px;border-radius:2px}
+.hr{height:1px;background:linear-gradient(90deg,rgba(86,95,137,.55),rgba(86,95,137,.08));margin:8px 0}
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 11.5px/1 var(--mono);letter-spacing:.14em;
+  text-transform:uppercase;padding:5px 9px;border:1px solid currentColor;background:rgba(0,0,0,.22);
+  clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.chip.ok{color:var(--ok)}.chip.warn{color:var(--warn)}.chip.bad{color:var(--bad)}
+.chip.idle{color:var(--mute)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 currentColor}
+.live .dot{animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(158,206,106,.75)}70%{box-shadow:0 0 0 7px rgba(158,206,106,0)}100%{box-shadow:0 0 0 0 rgba(158,206,106,0)}}
+.chip.warn .dot{animation-name:pulse-w}
+@keyframes pulse-w{0%{box-shadow:0 0 0 0 rgba(224,175,104,.7)}70%{box-shadow:0 0 0 7px rgba(224,175,104,0)}100%{box-shadow:0 0 0 0 rgba(224,175,104,0)}}
+/* flags: always text, colour is additive only */
+.flag{display:inline-flex;align-items:center;gap:4px;font:12px/1.25 var(--sans);color:var(--warn);
+  border:1px solid rgba(224,175,104,.42);background:rgba(224,175,104,.09);padding:3px 7px}
+.flag::before{content:"\25B2";font:700 10px/1 var(--mono);opacity:.9}
+.flag.bad{color:var(--bad);border-color:rgba(247,118,142,.45);background:rgba(247,118,142,.10)}
+.note{font:13px/1.4 var(--sans);color:var(--mute)}
+.note b{color:var(--fg);font-weight:600}
+.tag-sim{font:700 10px/1 var(--mono);flex:none;white-space:nowrap;letter-spacing:.16em;color:var(--bg-deep);background:var(--yellow);
+  padding:4px 6px;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px)}
+/* disclosure */
+details{min-height:0}
+summary{cursor:pointer;list-style:none;font:600 11.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--cyan);display:flex;align-items:center;gap:8px;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸";font-size:11px;transition:transform .15s}
+details[open]>summary::before{transform:rotate(90deg)}
+summary:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+
+/* =============================== header ================================= */
+#p-head>.in{display:flex;align-items:center;gap:16px;padding:8px 16px}
+.brand{display:flex;flex-direction:column;gap:3px;flex:none;width:228px}
+.brand .t{font:700 23px/1 var(--mono);letter-spacing:.06em;color:var(--fg);text-shadow:0 0 16px rgba(122,162,247,.45)}
+.brand .t i{font-style:normal;color:var(--cyan)}
+.brand .s{font:12px/1.2 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.1em;color:var(--mute);text-transform:uppercase}
+.sel{display:flex;flex-direction:column;gap:4px}
+select,#custom input,button{font:13px/1.2 var(--mono);color:var(--fg);background:var(--sunk);
+  border:1px solid rgba(86,95,137,.7);padding:6px 8px;border-radius:2px}
+select:focus-visible,#custom input:focus-visible,button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.sel{flex:none;width:206px}
+select{width:100%;min-width:0}
+button{cursor:pointer;letter-spacing:.1em;text-transform:uppercase;font-size:11.5px}
+button:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn-on{border-color:var(--cyan);color:var(--bg-deep);background:var(--cyan);font-weight:700}
+.hstat{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none}
+.hbox{border:1px solid rgba(86,95,137,.5);background:rgba(18,22,39,.72);padding:5px 10px;width:170px;flex:none;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.hbox .lab{display:block;margin-bottom:4px}
+.hbox .v{font:600 14px/1.15 var(--mono);color:var(--fg);white-space:nowrap}
+#badge{display:flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid currentColor;flex:none;white-space:nowrap;
+  font:700 12.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;
+  clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px)}
+#badge.ok{color:var(--ok);background:rgba(158,206,106,.09)}
+#badge.warn{color:var(--warn);background:rgba(224,175,104,.09)}
+#badge.bad{color:var(--bad);background:rgba(247,118,142,.10);animation:blink 1.1s steps(2,end) infinite}
+@keyframes blink{50%{background:rgba(247,118,142,.24)}}
+#statebox{display:flex;flex-direction:column;gap:4px;position:relative;flex:none}
+#statemenu{position:absolute;right:0;top:100%;margin-top:6px;display:none;flex-direction:column;gap:4px;z-index:9;
+  background:var(--sunk);border:1px solid rgba(125,207,255,.5);padding:8px;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+#statebox.open #statemenu{display:flex}
+#statemenu button{min-width:132px;text-align:left}
+
+/* ============================ status strip ============================== */
+#p-banner>.in{display:flex;align-items:center;gap:12px;padding:0 14px}
+#banner{display:flex;align-items:center;gap:10px;flex:1;min-width:0;font:13.5px/1.3 var(--sans)}
+#banner .code{font:700 11px/1 var(--mono);letter-spacing:.14em;padding:4px 7px;border:1px solid currentColor}
+#banner.bad{color:var(--bad)}#banner.warn{color:var(--warn)}#banner.idle{color:var(--mute)}
+#banner .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sr-live{font:11.5px/1 var(--mono);letter-spacing:.1em;color:var(--mute);text-transform:uppercase;white-space:nowrap}
+/* ============================== live panel ============================== */
+#p-live>.in{display:flex;flex-direction:column}
+#live-grid{flex:1;display:grid;grid-template-columns:252px 1fr 296px;gap:14px;min-height:0;margin-top:6px}
+.well{position:relative;background:var(--sunk);border:1px solid rgba(86,95,137,.34);padding:8px 10px;min-width:0;
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.well .lab{margin-bottom:2px}
+.gauge-col{display:grid;grid-template-rows:1fr 1fr;gap:10px;min-height:0}
+.gauge{display:grid;grid-template-columns:118px 1fr;gap:10px;align-items:center;height:100%}
+.gauge svg{width:114px;height:100px;display:block}
+.g-val{font:700 27px/1 var(--mono);letter-spacing:-.02em}
+.g-unit{font:12px/1 var(--mono);color:var(--mute);letter-spacing:.1em;margin-top:3px}
+.g-sub{font:13px/1.35 var(--sans);color:var(--mute);margin-top:4px}
+.spark{margin-top:auto;padding-top:5px}
+.spark svg{width:100%;height:30px;display:block}
+#live-mid{display:grid;grid-template-rows:1fr 1fr;gap:10px;min-height:0}
+.rings{display:grid;grid-template-columns:106px 1fr;gap:8px;align-items:center;flex:1;min-height:0;margin-top:2px}
+.rings svg{width:106px;height:106px}
+.rings.sm{grid-template-columns:90px 1fr}
+.rings.sm svg{width:90px;height:90px}
+.rlist{display:flex;flex-direction:column;gap:4px;min-width:0}
+.rrow{display:grid;grid-template-columns:62px 1fr 46px;gap:7px;align-items:center;font:12.5px/1 var(--mono);
+  letter-spacing:.08em;color:var(--mute)}
+.rrow b{font-size:14px;color:var(--fg);text-align:right;font-weight:700}
+.segbar{display:flex;gap:2px;height:7px}
+.segbar i{flex:1;background:rgba(86,95,137,.32)}
+.segbar i.on{background:currentColor;box-shadow:0 0 7px currentColor}
+#live-left{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;min-height:0}
+#req-num{font:700 40px/1.15 var(--mono);letter-spacing:-.02em}
+#req-num span{color:var(--mute);font-size:26px;font-weight:500}
+#req-bars{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+#live-sweep{position:absolute;left:0;right:0;height:70px;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(125,207,255,0),rgba(125,207,255,.075),rgba(125,207,255,0));
+  animation:sweep 7.5s linear infinite}
+@keyframes sweep{0%{transform:translateY(-80px)}100%{transform:translateY(560px)}}
+#live-chip{margin-left:auto}
+/* ============================== trend =================================== */
+#p-trend>.in{display:flex;flex-direction:column}
+#tr-ctl{display:flex;align-items:center;gap:8px;flex:none;margin-top:4px}
+#tr-ctl .grp{display:flex;gap:4px}
+#custom{display:none;align-items:flex-end;gap:8px}
+#custom.on{display:flex}
+#custom label{display:flex;flex-direction:column;gap:4px;font:10.5px/1.2 var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--mute)}
+#tr-notes{display:flex;align-items:center;gap:12px;flex:none;margin-top:6px;min-height:20px;flex-wrap:wrap}
+#tr-err{color:var(--bad);font:13px/1.3 var(--sans)}
+#chart{position:relative;flex:1;min-height:0;margin-top:6px;background:
+  linear-gradient(to bottom,rgba(18,22,39,.9),rgba(18,22,39,.6));border:1px solid rgba(86,95,137,.3)}
+#chart svg{position:absolute;inset:0;width:100%;height:100%}
+#legend{display:flex;gap:14px;align-items:center;flex:none;margin-top:5px;font:12.5px/1.2 var(--mono);color:var(--mute)}
+#legend i{display:inline-block;width:11px;height:11px;margin-right:6px;vertical-align:-1px}
+#tip{position:absolute;z-index:9;pointer-events:none;display:none;min-width:226px;background:rgba(12,15,26,.97);
+  border:1px solid var(--cyan);padding:9px 11px;font:13px/1.5 var(--mono);color:var(--fg);
+  box-shadow:0 8px 26px rgba(0,0,0,.65)}
+#tip .h{font-weight:700;color:var(--cyan);letter-spacing:.04em}
+#tip .r{display:flex;justify-content:space-between;gap:14px}
+#tip .q{color:var(--warn);font-family:var(--sans);font-size:12.5px;margin-top:5px;border-top:1px solid rgba(86,95,137,.4);padding-top:5px}
+#tr-table{flex:1;min-height:0;overflow:auto;margin-top:6px}
+#p-trend.tbl-on #chart,#p-trend.tbl-on #legend{display:none}
+#p-trend.tbl-on #tr-tbl{display:flex;flex-direction:column;flex:1;min-height:0}
+#p-trend.tbl-on #tr-table{flex:1;min-height:0;margin-top:4px}
+#tr-table[hidden]{display:none}
+table{width:100%;border-collapse:collapse;font:13px/1.35 var(--mono)}
+caption{text-align:left;font:11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding-bottom:6px}
+th,td{text-align:right;padding:5px 8px;border-bottom:1px solid rgba(86,95,137,.24);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mute);font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  position:sticky;top:0;background:#151a2c}
+td.q{color:var(--warn);font-family:var(--sans);font-size:12.5px;white-space:normal;text-align:left}
+tbody tr:hover{background:rgba(122,162,247,.09)}
+/* ============================== summary ================================= */
+#p-sum>.in{display:grid;grid-template-rows:26px 1fr auto;gap:6px}
+#cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;min-height:0;align-items:stretch}
+.card{position:relative;background:var(--sunk);border:1px solid rgba(86,95,137,.34);padding:5px 10px 6px;min-width:0;min-height:0;overflow:hidden;
+  clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+.card .ch{display:flex;align-items:center;gap:8px;margin-bottom:2px;white-space:nowrap;overflow:hidden}
+.card .ch span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--mute)}
+.card .ch h3{margin:0;font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--cyan)}
+.card .big{font:700 30px/1.05 var(--mono);letter-spacing:-.02em;margin:2px 0 0}
+.card .big.k{font-size:20px;color:var(--mute)}
+.split{margin-top:5px}
+.split .bar{display:flex;height:12px;background:rgba(86,95,137,.28);overflow:hidden}
+.split .bar i{display:block;height:100%}
+.split .keys{display:grid;grid-template-columns:1fr auto;gap:1px 8px;margin-top:4px;font:13px/1.25 var(--mono)}
+.split .keys span{color:var(--mute)}
+.split .keys b{color:var(--fg);font-weight:600;text-align:right}
+.card .row{display:grid;grid-template-columns:50px 1fr;gap:9px;align-items:center;margin-top:4px}
+.donut{width:50px;height:50px}
+.card .kv{display:flex;flex-direction:column;gap:1px}
+.card .kv .k{font:11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.card .kv .v{font:600 15.5px/1.2 var(--mono);color:var(--fg)}
+.card .kv .v.cost{color:var(--cost)}
+.card .flags{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;min-height:0;align-content:flex-start;overflow:hidden}
+#sum-foot{font:13px/1.35 var(--sans);color:var(--mute);min-height:18px}
+/* =============================== rates ================================== */
+#p-rate>.in{display:grid;grid-template-rows:26px 1fr auto;gap:6px}
+#rate-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-height:0}
+.rate .top{display:flex;align-items:baseline;gap:10px}
+.rate .v{font:700 31px/1.15 var(--mono);letter-spacing:-.02em}
+.rate .u{font:11.5px/1 var(--mono);letter-spacing:.1em;color:var(--mute)}
+.meter{display:flex;gap:3px;height:22px;margin-top:9px}
+.meter i{flex:1;background:rgba(86,95,137,.3);clip-path:polygon(3px 0,100% 0,calc(100% - 3px) 100%,0 100%)}
+.meter i.on{background:currentColor;box-shadow:0 0 9px currentColor}
+#rate-req{overflow:auto;min-height:0}
+#rate-req[open]{max-height:100%}
+#rate-req .cells{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+#rate-req .cells>div{background:rgba(18,22,39,.7);border:1px solid rgba(86,95,137,.3);padding:6px 9px}
+/* ============================ diagnostics =============================== */
+#p-diag>.in{display:grid;grid-template-rows:26px 1fr;gap:4px}
+#diag-dtl{display:flex;flex-direction:column;min-height:0;flex:none}
+#diag-dtl[open]{flex:1}
+#diag-dtl[open] #diag-body{flex:1;min-height:0;overflow:auto}
+#diag-body{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;min-height:0;overflow:auto;margin-top:4px}
+#diag-body section{border-left:1px solid rgba(125,207,255,.35);padding-left:9px;min-width:0}
+#diag-body h4{margin:0 0 5px;font:600 10.5px/1.2 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--cyan)}
+#diag-body p,#diag-body li{margin:0 0 4px;font:12.5px/1.4 var(--sans);color:var(--fg);word-break:break-word}
+#diag-body ul{margin:0;padding-left:14px}
+#diag-body .k{color:var(--mute)}
+/* ========================= states: skeleton/empty ======================= */
+#p-skel,#p-empty{display:none;grid-row:3 / 8}
+html[data-state="loading"] #p-skel{display:block}
+html[data-state="empty"] #p-empty{display:block}
+html[data-state="loading"] #p-live,html[data-state="loading"] #p-trend,html[data-state="loading"] #p-sum,
+html[data-state="loading"] #p-rate,html[data-state="loading"] #p-diag,
+html[data-state="empty"] #p-live,html[data-state="empty"] #p-trend,html[data-state="empty"] #p-sum,
+html[data-state="empty"] #p-rate,html[data-state="empty"] #p-diag{display:none}
+.sk{background:linear-gradient(90deg,rgba(86,95,137,.14) 0%,rgba(122,162,247,.22) 45%,rgba(86,95,137,.14) 90%);
+  background-size:280% 100%;animation:sh 1.5s linear infinite;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+@keyframes sh{0%{background-position:120% 0}100%{background-position:-60% 0}}
+#p-skel .in{display:grid;grid-template-rows:repeat(6,1fr);gap:12px}
+#p-empty .in{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+#p-empty svg{width:190px;height:190px;opacity:.8}
+#p-empty .e1{font:700 22px/1.3 var(--mono);letter-spacing:.1em;color:var(--fg)}
+#p-empty .e2{font:15px/1.5 var(--sans);color:var(--mute);max-width:520px}
+/* frozen (stale / offline / error) */
+html[data-state="stale"] #live-sweep,html[data-state="offline"] #live-sweep,
+html[data-state="error"] #live-sweep,html[data-state="starting"] #live-sweep{animation-play-state:paused;opacity:.35}
+html[data-state="stale"] #hud,html[data-state="offline"] #hud{--in:#6b76a3;--out:#a4846b}
+/* reduced motion */
+@media (prefers-reduced-motion:reduce){
+  #live-sweep,.sk,.live .dot,.chip.warn .dot,#badge.bad{animation:none!important}
+  html{scroll-behavior:auto}
+}
+#audit{position:absolute;left:16px;bottom:16px;z-index:20;display:none;max-width:1048px;background:rgba(12,15,26,.96);
+  border:1px solid var(--cyan);padding:10px 12px;font:12px/1.5 var(--mono);color:var(--fg)}
+html[data-audit="1"] #audit{display:block}
+#audit .ok{color:var(--ok)}#audit .bad{color:var(--bad)}
+#audit .info{color:var(--mute)}
+</style>
+</head>
+<body>
+<div id="hud" class="live"><div class="grid">
+
+  <!-- 00 HEADER -->
+  <section class="pnl" id="p-head" style="grid-row:1"><div class="in">
+    <div class="brand">
+      <div class="t">JARVIS<i>·</i>TOKEN<i>//</i>HUD</div>
+      <div class="s" id="hd-series">—</div>
+    </div>
+    <div class="sel"><label class="lab" for="series">Series</label><select id="series"></select></div>
+    <div class="hstat">
+      <div class="hbox"><span class="lab">Last successful update · UTC</span><span class="v" id="hd-last">—</span></div>
+      <div id="badge" class="ok"><span class="dot"></span><span id="badge-t">HEALTHY</span></div>
+      <span class="tag-sim" title="All values in this mockup are simulated">SIMULATED</span>
+      <div id="statebox">
+        <button id="state-btn" aria-haspopup="true" aria-expanded="false">STATE ▾</button>
+        <div id="statemenu" role="menu" aria-label="Review state">
+          <button data-st="live">Live</button><button data-st="starting">Starting</button>
+          <button data-st="stale">Stale</button><button data-st="offline">Offline</button>
+          <button data-st="error">API error</button><button data-st="loading">Loading</button>
+          <button data-st="empty">Empty</button>
+        </div>
+      </div>
+    </div>
+  </div></section>
+  <!-- 00b STATUS STRIP -->
+  <section class="pnl" id="p-banner" style="grid-row:2"><div class="in">
+    <div id="banner" class="idle"><span class="code">SYS</span><span class="txt" id="banner-txt">—</span></div>
+    <span id="sr-live" role="status" aria-live="polite">—</span>
+  </div></section>
+
+  <!-- 01 LIVE -->
+  <section class="pnl acc-cyan" id="p-live" style="grid-row:3"><div class="in">
+    <div id="live-sweep"></div>
+    <div class="ph"><span class="idx">01</span><h2>Live</h2><span class="rule"></span>
+      <span class="meta">1 Hz · instantaneous</span>
+      <span class="meta" id="live-obs">observed —</span>
+      <span class="chip idle" id="live-chip"><span class="dot"></span><span id="live-chip-t">STARTING</span></span></div>
+    <div id="live-grid">
+      <div id="live-left">
+        <div class="well">
+          <span class="lab">Requests</span>
+          <div id="req-num" class="num">— <span>/ —</span></div>
+          <div class="sub">running / waiting</div>
+          <div id="req-bars">
+            <div class="rrow" style="color:var(--blue)"><span>ACTIVE</span><span class="segbar" id="req-a"></span><b id="req-a-n">—</b></div>
+            <div class="rrow" style="color:var(--yellow)"><span>WAITING</span><span class="segbar" id="req-q"></span><b id="req-q-n">—</b></div>
+          </div>
+        </div>
+        <div class="well">
+          <span class="lab" style="color:var(--mtp)">MTP acceptance ratio</span>
+          <div class="rings">
+            <svg viewBox="0 0 132 132" id="mtp-svg" role="img" aria-label="MTP acceptance ratio, concentric rings for 5 seconds, 1 minute, 30 minutes and lifetime"></svg>
+            <div class="rlist" id="mtp-list"></div>
+          </div>
+          <div class="spark"><svg viewBox="0 0 300 34" preserveAspectRatio="none" id="sp-mtp"></svg>
+            <div class="sub" style="font-size:11.5px">MTP 5s window · last 40 samples</div></div>
+        </div>
+      </div>
+      <div id="live-mid" class="gauge-col">
+        <div class="well gauge">
+          <svg viewBox="0 0 118 104" id="pf-svg" role="img" aria-label="Prefill throughput gauge"></svg>
+          <div style="min-width:0">
+            <span class="lab">Prefill</span>
+            <div class="g-val num" id="pf-v" style="color:var(--green)">—</div>
+            <div class="g-unit">tok/s · instantaneous</div>
+            <div class="spark"><svg viewBox="0 0 300 38" preserveAspectRatio="none" id="sp-pf"></svg></div>
+          </div>
+        </div>
+        <div class="well gauge">
+          <svg viewBox="0 0 118 104" id="dc-svg" role="img" aria-label="Decode throughput gauge"></svg>
+          <div style="min-width:0">
+            <span class="lab">Decode</span>
+            <div class="g-val num" id="dc-v" style="color:var(--cyan)">—</div>
+            <div class="g-unit">tok/s · instantaneous · <span id="dc-per">—</span> per running request</div>
+            <div class="spark"><svg viewBox="0 0 300 38" preserveAspectRatio="none" id="sp-dc"></svg></div>
+          </div>
+        </div>
+      </div>
+      <div id="live-right" style="display:grid;grid-template-rows:1fr auto auto;gap:10px;min-height:0">
+        <div class="well">
+          <span class="lab" style="color:var(--moe)">MoE GPU hit ratio</span>
+          <div class="rings">
+            <svg viewBox="0 0 132 132" id="moe-svg" role="img" aria-label="MoE GPU hit ratio, concentric rings for 5 seconds, 1 minute and 30 minutes"></svg>
+            <div class="rlist" id="moe-list"></div>
+          </div>
+        </div>
+        <div class="well">
+          <span class="lab">Signal history</span>
+          <div class="spark" style="margin-top:4px"><svg viewBox="0 0 300 30" preserveAspectRatio="none" id="sp-req"></svg>
+            <div class="sub" style="font-size:11.5px">requests running (line) · waiting (bars)</div></div>
+        </div>
+        <div class="well" id="live-hint" style="padding:7px 10px">
+          <span class="note" id="live-note">—</span>
+        </div>
+      </div>
+    </div>
+  </div></section>
+
+  <!-- 02 TREND -->
+  <section class="pnl" id="p-trend" style="grid-row:4"><div class="in">
+    <div class="ph"><span class="idx">02</span><h2>Trend</h2><span class="rule"></span>
+      <span class="meta" id="tr-meta">—</span></div>
+    <div id="tr-ctl">
+      <div class="grp" id="presets" role="group" aria-label="Range preset">
+        <button data-p="24h" class="btn-on">24H · hourly</button><button data-p="7d">7D · daily</button>
+        <button data-p="30d">30D · daily</button><button data-p="custom" id="custom-btn">CUSTOM · UTC</button>
+      </div>
+      <div id="custom">
+        <label>UTC start (inclusive)<input type="date" id="c-from"></label>
+        <label>UTC end (inclusive)<input type="date" id="c-to"></label>
+        <button id="c-apply">Apply</button>
+      </div>
+      <span style="margin-left:auto"><span class="utc">UTC</span></span>
+    </div>
+    <div id="tr-notes">
+      <span class="note" id="tr-inc"></span><span class="note" id="tr-cost"></span><span id="tr-err"></span>
+    </div>
+    <div id="chart">
+      <svg id="chart-svg" role="img" aria-label="Stacked bar chart of computed input and generated output tokens"></svg>
+      <div id="tip" role="status"></div>
+    </div>
+    <div id="legend">
+      <span><i style="background:var(--in)"></i>Computed input</span>
+      <span><i style="background:var(--out)"></i>Generated output</span>
+      <span><i style="background:var(--cost);height:3px;vertical-align:3px"></i>API-equivalent cost per bucket (right axis)</span>
+      <span id="leg-n" style="margin-left:auto">—</span>
+    </div>
+    <details id="tr-tbl">
+      <summary>Show as table</summary>
+      <div id="tr-table"><table><caption>Token totals per UTC bucket</caption>
+        <thead><tr><th>UTC bucket</th><th>Computed input</th><th>Generated output</th><th>Processed total</th><th>Quality</th></tr></thead>
+        <tbody id="tr-tb"></tbody></table></div>
+    </details>
+  </div></section>
+
+  <!-- 03 SUMMARY -->
+  <section class="pnl" id="p-sum" style="grid-row:5"><div class="in">
+    <div class="ph"><span class="idx">03</span><h2>Period summary</h2><span class="rule"></span>
+      <span class="meta" id="sum-meta">—</span></div>
+    <div id="cards"></div>
+    <div id="sum-foot">—</div>
+  </div></section>
+
+  <!-- 04 RATES -->
+  <section class="pnl" id="p-rate" style="grid-row:6"><div class="in">
+    <div class="ph"><span class="idx">04</span><h2>Latest rate</h2><span class="rule"></span>
+      <span class="meta" id="rate-meta">over the last accepted interval</span>
+      <span class="meta" id="rate-stale"></span></div>
+    <div id="rate-grid">
+      <div class="well rate">
+        <span class="lab" style="color:var(--in)">Computed input</span>
+        <div class="top"><span class="v num" id="ri-v">—</span><span class="u" id="ri-u">tok/s</span></div>
+        <div class="meter" id="ri-m" style="color:var(--in)"></div>
+        <div class="sub" id="ri-s">—</div>
+      </div>
+      <div class="well rate">
+        <span class="lab" style="color:var(--out)">Generated output</span>
+        <div class="top"><span class="v num" id="ro-v">—</span><span class="u" id="ro-u">tok/s</span></div>
+        <div class="meter" id="ro-m" style="color:var(--out)"></div>
+        <div class="sub" id="ro-s">—</div>
+      </div>
+    </div>
+    <details id="rate-req">
+      <summary>Request-accounted usage</summary>
+      <p class="note" style="margin:6px 0 0">Request-accounted usage counts tokens recorded per request and can include
+        cache-served tokens; it is <b>not</b> added to engine totals.</p>
+      <div class="cells">
+        <div><span class="lab">Request input</span><div class="num" style="font-size:19px" id="rq-i">—</div>
+          <div class="sub" id="rq-i-s">—</div></div>
+        <div><span class="lab">Request output</span><div class="num" style="font-size:19px" id="rq-o">—</div>
+          <div class="sub" id="rq-o-s">—</div></div>
+      </div>
+    </details>
+  </div></section>
+
+  <!-- 05 DIAGNOSTICS -->
+  <section class="pnl" id="p-diag" style="grid-row:7"><div class="in">
+    <div class="ph"><span class="idx">05</span><h2>Diagnostics</h2><span class="rule"></span>
+      <span class="meta" id="diag-meta">—</span></div>
+    <details id="diag-dtl"><summary>Collection diagnostics — gaps, epochs, quality flags, retention</summary>
+      <div id="diag-body"></div></details>
+  </div></section>
+
+  <!-- loading skeleton / empty state -->
+  <section class="pnl" id="p-skel"><div class="in">
+    <div class="sk" style="height:100%"></div><div class="sk" style="height:100%"></div>
+    <div class="sk" style="height:100%"></div><div class="sk" style="height:100%"></div>
+    <div class="sk" style="height:100%"></div><div class="sk" style="height:100%"></div>
+    <span class="sr" style="position:absolute;left:-9999px">Loading dashboard</span>
+  </div></section>
+  <section class="pnl" id="p-empty"><div class="in">
+    <svg viewBox="0 0 120 120" fill="none" stroke="#7aa2f7" stroke-width="1.4" aria-hidden="true">
+      <circle cx="60" cy="60" r="52" opacity=".35"/><circle cx="60" cy="60" r="34" opacity=".25"/>
+      <circle cx="60" cy="60" r="16" opacity=".2"/><path d="M60 8v104M8 60h104" opacity=".18"/>
+      <path d="M60 60 104 34" stroke="#7dcfff" stroke-width="1.6"/>
+      <circle cx="86" cy="44" r="3" fill="#7dcfff" stroke="none" opacity=".9"/>
+    </svg>
+    <div class="e1">NO SERIES COLLECTED YET</div>
+    <div class="e2">Collection starts after the first successful sample.</div>
+    <div class="chip idle"><span class="dot"></span><span id="empty-badge">COLLECTING</span></div>
+  </div></section>
+
+  <div id="audit"></div>
+</div></div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   SIMULATED DATA + FORMATS.  No network calls anywhere in this file.
+   Field names/units mirror frontend/src/api/schema.ts; formatting mirrors
+   frontend/src/lib/format.ts; labels mirror lib/dashboard.ts.
+   ========================================================================== */
+/* ---------- formats (mirrors of lib/format.ts) ---------- */
+const NO_DATA = "no data";
+const fmtTokens = (n) => (n === null || n === undefined) ? NO_DATA
+  : BigInt(n).toLocaleString("en-US");
+function fmtMoney(micro){                       // micro-dollar integer string
+  if(micro === null || micro === undefined) return NO_DATA;
+  const m = BigInt(micro);
+  if(m === 0n) return "$0.00";
+  const neg = m < 0n, a = neg ? -m : m;
+  if(a > 0n && a < 5000n) return "< $0.01";
+  const cents = (a + 5000n) / 10000n;
+  const whole = cents / 100n, frac = cents % 100n;
+  return (neg ? "-" : "") + "$" + whole.toLocaleString("en-US") +
+         "." + String(frac).padStart(2, "0");
+}
+const fmtAmount = (m) => (m === null || m === undefined) ? NO_DATA : "≈ " + fmtMoney(m);
+const fmtRatio  = (r) => (r === null || r === undefined) ? NO_DATA : Math.round(r * 100) + "%";
+const fmtCacheShare = (r) => (r === null || r === undefined) ? NO_DATA : Math.round(r * 100) + "% of input";
+const fmtTps = (v) => (v === null || v === undefined) ? "N/A" : Math.round(v).toLocaleString("en-US") + " tok/s";
+const fmtPerReq = (v) => (v === null || v === undefined) ? "-" : Math.round(v).toLocaleString("en-US") + "/req";
+const joinSlots = (a, b) => [a, b].join(" / ");
+const pad2 = (n) => String(n).padStart(2, "0");
+function fmtUtc(iso){
+  if(!iso) return NO_DATA;
+  const d = new Date(iso);
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ` +
+         `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())} UTC`;
+}
+const fmtDay = (iso) => iso ? iso.slice(0, 10) : NO_DATA;
+function humanDur(s){
+  if(s === null || s === undefined) return NO_DATA;
+  const sec = Math.max(0, Math.round(Number(s)));
+  const d = Math.floor(sec/86400), h = Math.floor(sec%86400/3600), m = Math.floor(sec%3600/60);
+  const p = [];
+  if(d) p.push(d + "d");
+  if(h) p.push(h + "h");
+  if(m && !d) p.push(m + "m");
+  if(!p.length) p.push(sec + "s");
+  return p.join(" ");
+}
+const describeGap = (s) => (!s || Number(s) <= 0) ? "no unobserved interval" : "unobserved for " + humanDur(s);
+const FLAG_LABELS = {
+  collection_gap: "Some intervals were not collected; totals cover observed intervals only.",
+  reset_boundary: "A counter reset boundary sits at the start of this range.",
+  continuity_unverified: "Continuity across this interval could not be verified.",
+  time_attribution_approximate: "Work is attributed to this bucket approximately, not exactly.",
+  clock_discontinuity: "A clock discontinuity was observed in this range.",
+  counter_unavailable: "This counter was unavailable for part of the range.",
+  metadata_incomplete: "Quality metadata is incomplete for this total.",
+};
+const flagLabel = (f) => FLAG_LABELS[f] || ("Unrecognised quality flag: " + f);
+const RANGE_ERROR_TEXT = {
+  invalid_range: "Narrow the range to 366 days or fewer.",
+  range_too_large: "Narrow the range to 366 days or fewer.",
+  unaligned_range: "Choose range bounds aligned to the selected UTC hour or day.",
+  invalid_bucket: "Choose a supported bucket: hourly or daily.",
+  invalid_time: "Choose valid UTC dates for the range.",
+  invalid_series_id: "Select a series from the list; the previous selection is no longer valid.",
+  invalid_cursor: "The page cursor expired — reload the page.",
+  series_not_found: "This series is no longer collected — pick another series.",
+  storage_unavailable: "Retry — storage is unavailable.",
+  read_capacity_exceeded: "Retry — too many reads are in flight.",
+  schema_mismatch: "The dashboard and API versions differ — reload after redeploying.",
+  network_error: "Retry — the dashboard API could not be reached.",
+  unknown: "The request failed — retry.",
+};
+const rangeErrorText = (c) => RANGE_ERROR_TEXT[c] || ("The request failed (" + c + ").");
+const COLLECTION_LABEL = { starting: "Collecting", healthy: "Healthy", degraded: "Degraded", offline: "Offline" };
+function coverage(partial, observed, expected){
+  if(!partial) return "";
+  const hours = expected;
+  return hours >= 48
+    ? `partial · covers ${(observed/24).toFixed(1)} of ${(hours/24).toFixed(1)} days`
+    : `partial · covers ${Math.round(observed)} of ${Math.round(hours)} h`;
+}
+const LIVE_PLACEHOLDER = "-";
+
+/* ---------- seeded fixtures (stable across reloads) ---------- */
+function mulberry(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0;
+  let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const HOUR = 3600e3, DAY = 24 * HOUR;
+const NOW = (() => { const d = new Date(); d.setUTCSeconds(0, 0); return d; })();
+const iso = (ms) => new Date(ms).toISOString().replace(".000", "");
+
+const COST_RATES = { input_per_mtok: "0.80", cached_input_per_mtok: "0.08",
+  output_per_mtok: "2.40", currency: "USD" };
+const costMicro = (inp, out, cached, r = COST_RATES) => {
+  const unc = Math.max(0, inp - cached);
+  return Math.round(unc * Number(r.input_per_mtok) + cached * Number(r.cached_input_per_mtok) +
+                    out * Number(r.output_per_mtok));            // tokens * $/Mtok = micro-dollars
+};
+const SERIES = [
+  { series_id: "se_7q2", model_name: "Qwen3-235B-A22B", engine: 0, state: "healthy",
+    first_seen_at: "2026-04-18T06:12:00Z", last_seen_at: iso(NOW.getTime() - 12e3),
+    labels: { endpoint: "http://engine-0:8000", quant: "fp8", tp: "8" }, _seed: 71, _k: 1.00 },
+  { series_id: "se_9d4", model_name: "DeepSeek-V3.1", engine: 1, state: "healthy",
+    first_seen_at: "2026-07-02T09:40:00Z", last_seen_at: iso(NOW.getTime() - 26e3),
+    labels: { endpoint: "http://engine-1:8000", quant: "fp8", tp: "4" }, _seed: 94, _k: 0.52 },
+  { series_id: "se_3f8", model_name: "Qwen3-30B-A3B", engine: 2, state: "degraded",
+    first_seen_at: "2026-10-21T15:05:00Z", last_seen_at: iso(NOW.getTime() - 41e3),
+    labels: { endpoint: "http://engine-2:8000", quant: "bf16", tp: "2" }, _seed: 38, _k: 0.18 },
+];
+
+/* trend buckets, API HistoryResponse/Bucket shape. preset -> bucket + count */
+const PRESETS = { "24h": { bucket: "hour", count: 24 }, "7d": { bucket: "day", count: 7 }, "30d": { bucket: "day", count: 30 } };
+function buildTrend(si, preset, fromMs, toMs){
+  const s = SERIES[si], P = PRESETS[preset] || { bucket: "day", count: Math.min(366, Math.round((toMs - fromMs) / DAY)) };
+  const bucket = P.bucket, n = P.count;
+  const step = bucket === "hour" ? HOUR : DAY;
+  const end = bucket === "hour" ? Math.ceil(NOW.getTime() / HOUR) * HOUR : Math.ceil(NOW.getTime() / DAY) * DAY;
+  const start = fromMs !== undefined ? fromMs : end - n * step;
+  const count = fromMs !== undefined ? Math.max(1, Math.round((toMs - start) / step)) : n;
+  const rnd = mulberry(s._seed * 977 + count * 13 + (bucket === "hour" ? 1 : 2));
+  const base = (bucket === "hour" ? 4_100_000 : 62_000_000) * s._k;
+  const out = [];
+  for(let i = 0; i < count; i++){
+    const st = start + i * step;
+    const week = 1 + 0.22 * Math.sin((st / DAY) * 1.1);
+    const diurnal = bucket === "hour" ? (0.55 + 0.75 * Math.max(0, Math.sin(((new Date(st).getUTCHours() - 3) / 24) * 2 * Math.PI))) : 1;
+    const inp = Math.round(base * week * diurnal * (0.72 + rnd() * 0.56) * 0.86);
+    const o  = Math.round(inp * (0.19 + rnd() * 0.16));
+    const cached = Math.round(inp * (0.42 + rnd() * 0.28));
+    const flags = [];
+    if(rnd() < 0.13) flags.push("collection_gap");
+    if(rnd() < 0.07) flags.push("time_attribution_approximate");
+    if(rnd() < 0.05) flags.push("counter_unavailable");
+    const last = i === count - 1;
+    out.push({
+      bucket, started_at: iso(st), ended_at: iso(st + step),
+      processed_total: String(BigInt(inp) + BigInt(o)),
+      counters: { computed_input: { tokens: String(inp) }, generated_output: { tokens: String(o) },
+                  cached_input: { tokens: String(cached) } },
+      api_equivalent: { amount: String(costMicro(inp, o, cached)), cache_hit_ratio: cached / inp },
+      gap_seconds: { primary: flags.includes("collection_gap") ? Math.round(300 + rnd() * 5400) : 0 },
+      quality_flags: flags, partial: flags.length > 0, incomplete: last,
+      metadata_complete: rnd() > 0.04,
+    });
+  }
+  return { series_id: s.series_id, model_name: s.model_name, engine: s.engine, bucket,
+           bucket_count: count, buckets: out, collection_status: s.state,
+           storage_status: "ready", from: iso(start), to: iso(start + count * step),
+           generated_at: iso(NOW.getTime()) };
+}
+/* ---- live telemetry, API LiveResponse shape ---- */
+function buildLive(si){
+  const s = SERIES[si], k = s._k;
+  return { state: s.state === "degraded" ? "stale" : "live", generated_at: iso(NOW.getTime()),
+    observed_at: iso(NOW.getTime() - 900),
+    prefill_tokens_per_second: Math.round(9400 * k * (0.8 + 0.4 * Math.random())),
+    decode_tokens_per_second: Math.round(1180 * k * (0.8 + 0.4 * Math.random())),
+    decode_tokens_per_second_per_request: Math.round(96 * (0.8 + 0.4 * Math.random())),
+    requests: { active: Math.round(11 * (0.6 + 0.8 * Math.random())), queued: Math.round(3 * Math.random() * 2) },
+    mtp_acceptance: { window_5s: 0.71, window_1m: 0.7, window_30m: 0.69, lifetime: 0.68 },
+    moe_gpu_hit: { window_5s: 0.9, window_1m: 0.88, window_30m: 0.87 } };
+}
+function rangeTotals(inp, out, cached, hours, partial, incomplete, flags, gaps, obsH){
+  return { processed_total: String(BigInt(inp) + BigInt(out)),
+    counters: {
+      computed_input: { tokens: String(inp), observed_intervals: Math.round(hours * 6), gap_seconds: gaps.primary, first_observed_at: null, last_observed_at: null, metadata_complete: !flags.includes("metadata_incomplete"), quality_flags: flags },
+      generated_output: { tokens: String(out), observed_intervals: Math.round(hours * 6), gap_seconds: gaps.request_output, quality_flags: flags },
+      cached_input: { tokens: String(cached), observed_intervals: Math.round(hours * 6), gap_seconds: gaps.cached_input, quality_flags: [] },
+      request_input: { tokens: String(Math.round(inp * 1.34)), observed_intervals: Math.round(hours * 6), gap_seconds: gaps.request_input, quality_flags: [] },
+      request_output: { tokens: String(Math.round(out * 1.02)), observed_intervals: Math.round(hours * 6), gap_seconds: gaps.request_output, quality_flags: [] },
+    },
+    api_equivalent: { amount: String(costMicro(inp, out, cached)), cache_hit_ratio: cached / inp,
+      currency: "USD", expected_hours: hours, flags: flags.includes("cache_exceeds_input") ? ["cache_exceeds_input"] : [],
+      partial, priced_hours: hours * 0.96, tokens: { cached_input: String(cached), uncached_input: String(inp - cached), output: String(out) } },
+    gap_seconds: gaps, quality_flags: flags.filter(f => f in FLAG_LABELS), partial, incomplete,
+    metadata_complete: !flags.includes("metadata_incomplete"), observed: true,
+    started_at: null, ended_at: null, observed_hours: obsH === undefined ? hours : obsH };
+}
+function buildSummary(si){
+  const s = SERIES[si], k = s._k, t = NOW.getTime();
+  const dayStart = Math.floor(t / DAY) * DAY;
+  const hObs = Math.max(1, (t - dayStart) / HOUR);
+  const today = rangeTotals(Math.round(3.9e6 * 24 * k * (hObs / 24)), Math.round(0.71e6 * 24 * k * (hObs / 24)),
+      Math.round(1.85e6 * 24 * k * (hObs / 24)), 24, true, true, ["collection_gap"],
+      { primary: 900, request_input: 1200, request_output: 900, cached_input: 0 }, hObs);
+  const month = rangeTotals(Math.round(4.35e8 * k), Math.round(7.9e7 * k), Math.round(2.06e8 * k), 24 * 27, true, true,
+      ["time_attribution_approximate"], { primary: 5400, request_input: 7200, request_output: 5400, cached_input: 3600 }, 24 * 26.2);
+  const life = rangeTotals(Math.round(3.92e9 * k), Math.round(6.63e8 * k), Math.round(1.81e9 * k), 24 * 192, true, false,
+      ["reset_boundary", "continuity_unverified", "metadata_incomplete"],
+      { primary: 41400, request_input: 46800, request_output: 41400, cached_input: 28800 }, 24 * 189.5);
+  return {
+    series_id: s.series_id, model_name: s.model_name, engine: s.engine, labels: s.labels,
+    state: s.state, storage_status: "ready", collection_status: s.state,
+    first_observation_at: s.first_seen_at, last_observed_at: s.last_seen_at,
+    last_accepted_at: iso(t - 8000),
+    ranges: { today, month, lifetime: life },
+    rates: {
+      computed_input: { eligible: true, tokens_per_second: Math.round(2140 * k), tokens: String(Math.round(1.04e6 * k)), interval_seconds: 487, observed_at: iso(t - 8000), quality_flags: [] },
+      generated_output: { eligible: true, tokens_per_second: Math.round(392 * k), tokens: String(Math.round(1.9e5 * k)), interval_seconds: 487, observed_at: iso(t - 8000), quality_flags: ["time_attribution_approximate"] },
+    },
+    epoch: 4,
+    epochs: [
+      { epoch_id: "ep_4", reason: "counter_reset", started_at: iso(t - 6 * DAY), opening_computed_input: "0", opening_generated_output: "0" },
+      { epoch_id: "ep_3", reason: "restart_evidence", started_at: iso(t - 21 * DAY), opening_computed_input: "1842200", opening_generated_output: "311400" },
+      { epoch_id: "ep_2", reason: "endpoint_change", started_at: "2026-07-02T09:41:00Z", opening_computed_input: "964200", opening_generated_output: "140800" },
+      { epoch_id: "ep_1", reason: "new_series", started_at: s.first_seen_at, opening_computed_input: null, opening_generated_output: null },
+    ],
+    schema_version: "1.4.0",
+  };
+}
+function buildStatus(si){
+  const s = SERIES[si], t = NOW.getTime();
+  return { collector_status: s.state, storage_status: "ready", last_success_at: iso(t - 12000),
+    last_attempt_at: iso(t - 4000), last_poll_at: iso(t - 4000),
+    last_error_code: si === 2 ? "read_capacity_exceeded" : null,
+    last_recorded_error_code: si === 2 ? "read_capacity_exceeded" : null,
+    latest_observed_at: s.last_seen_at, first_observation_at: s.first_seen_at,
+    poll_interval_seconds: 15, raw_retention_days: 14, series_count: SERIES.length,
+    source_id: "vllm-metrics-" + s.engine, server_time: iso(t), shutting_down: false,
+    cost_rates: COST_RATES };
+}
+function buildEvents(si){
+  const t = NOW.getTime();
+  const all = [
+    { kind: "sample_accepted", occurred_at: iso(t - 12000), details: { interval_seconds: 15, tokens: 41200 } },
+    { kind: "collection_gap", occurred_at: iso(t - 51 * 60e3), details: { gap_seconds: 900, reason: "engine scrape timeout" } },
+    { kind: "series_stale", occurred_at: iso(t - 53 * 60e3), details: { stale_seconds: 120 } },
+    { kind: "epoch_boundary", occurred_at: iso(t - 6 * DAY), details: { reason: "counter_reset", epoch_id: "ep_4" } },
+  ];
+  return { items: si === 2 ? all : all.slice(0, 1).concat(all.slice(2)),
+    retention: { raw_retention_days: 14, raw_samples_from: iso(t - 14 * DAY), raw_samples_until: iso(t),
+      note: "Raw samples older than the retention window are pruned; rollups are kept." } };
+}
+/* ---------- svg primitives ---------- */
+const NS = "http://www.w3.org/2000/svg";
+const el = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const V = getComputedStyle(document.documentElement);
+const col = (n) => V.getPropertyValue(n).trim();
+const compact = (n) => n >= 1e9 ? (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + "B"
+  : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M"
+  : n >= 1e3 ? Math.round(n / 1e3) + "K" : String(Math.round(n));
+const THRESH = (v, g, y, r) => v >= g ? col("--ok") : v >= y ? col("--warn") : v >= r ? col("--orange") : col("--bad");
+
+function gauge(svg, val, max, color, unit){
+  const cx = 59, cy = 60, r = 44, a0 = -220, a1 = 40, sw = 8;
+  const pt = (a, rr) => [cx + rr * Math.cos(a * Math.PI / 180), cy + rr * Math.sin(a * Math.PI / 180)];
+  const d = (from, to, rr) => {
+    const [x1, y1] = pt(from, rr), [x2, y2] = pt(to, rr);
+    return `M${x1.toFixed(2)} ${y1.toFixed(2)}A${rr} ${rr} 0 ${(to - from) > 180 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+  };
+  const frac = Math.max(0, Math.min(1, val / max));
+  let ticks = "";
+  for(let i = 0; i <= 10; i++){
+    const a = a0 + (a1 - a0) * i / 10, [x1, y1] = pt(a, r + 6), [x2, y2] = pt(a, r + (i % 5 === 0 ? 12 : 9));
+    ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${i % 5 === 0 ? col("--line") : "rgba(86,95,137,.5)"}" stroke-width="${i % 5 === 0 ? 1.4 : 1}"/>`;
+  }
+  const [nx, ny] = pt(a0 + (a1 - a0) * frac, r - 15), va = d(a0, a0 + (a1 - a0) * Math.max(frac, .004), r);
+  svg.innerHTML = ticks +
+    `<path d="${d(a0, a1, r)}" fill="none" stroke="rgba(86,95,137,.42)" stroke-width="${sw}"/>` +
+    (val > 0 ? `<path d="${va}" fill="none" stroke="${color}" stroke-width="${sw + 7}" opacity=".16"/>` +
+               `<path d="${va}" fill="none" stroke="${color}" stroke-width="${sw}"/>` : "") +
+    `<line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${color}" stroke-width="2"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="3.4" fill="${color}"/>` +
+    `<text x="${cx}" y="${cy + 27}" text-anchor="middle" fill="${col("--mute")}" font-size="9" font-family="ui-monospace,monospace" letter-spacing="1.4">${unit}</text>` +
+    `<text x="${cx - r - 2}" y="${cy + 40}" fill="${col("--mute")}" font-size="8.5" font-family="ui-monospace,monospace">0</text>` +
+    `<text x="${cx + r + 2}" y="${cy + 40}" text-anchor="end" fill="${col("--mute")}" font-size="8.5" font-family="ui-monospace,monospace">${compact(max)}</text>`;
+}
+function rings(svg, list){                     /* list: [{label, value, color}] innermost first */
+  const cx = 66, cy = 66;
+  let s = `<circle cx="66" cy="66" r="62" fill="none" stroke="rgba(86,95,137,.28)" stroke-dasharray="2 4"/>`;
+  list.forEach((it, i) => {
+    const r = 20 + i * 13, a0 = -220, a1 = 40;
+    const f = Math.max(0, Math.min(1, it.value || 0));
+    const pt = (a, rr) => [cx + rr * Math.cos(a * Math.PI / 180), cy + rr * Math.sin(a * Math.PI / 180)];
+    const [x1, y1] = pt(a0, r), [x2, y2] = pt(a1, r);
+    s += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}A${r} ${r} 0 1 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="rgba(86,95,137,.4)" stroke-width="7"/>`;
+    if(f > 0.002){
+      const [vx1, vy1] = pt(a0, r), [vx2, vy2] = pt(a0 + (a1 - a0) * f, r);
+      s += `<path d="M${vx1.toFixed(1)} ${vy1.toFixed(1)}A${r} ${r} 0 ${(a1 - a0) * f > 180 ? 1 : 0} 1 ${vx2.toFixed(1)} ${vy2.toFixed(1)}" fill="none" stroke="${it.color}" stroke-width="7" stroke-linecap="butt"/>`;
+      s += `<path d="M${vx1.toFixed(1)} ${vy1.toFixed(1)}A${r} ${r} 0 ${(a1 - a0) * f > 180 ? 1 : 0} 1 ${vx2.toFixed(1)} ${vy2.toFixed(1)}" fill="none" stroke="${it.color}" stroke-width="13" opacity=".13"/>`;
+    }
+  });
+  svg.innerHTML = s;
+}
+function spark(svg, vals, color, fill){
+  const w = 300, h = +svg.getAttribute("viewBox").split(" ")[3];
+  if(!vals.length){ svg.innerHTML = ""; return; }
+  const mn = Math.min(...vals), mx = Math.max(...vals), sp = (mx - mn) || 1;
+  const X = (i) => (i / (vals.length - 1 || 1)) * w, Y = (v) => h - 3 - ((v - mn) / sp) * (h - 6);
+  const pts = vals.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  svg.innerHTML =
+    (fill ? `<polygon points="0,${h} ${pts} ${w},${h}" fill="${color}" opacity=".14"/>` : "") +
+    `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/>` +
+    `<circle cx="${X(vals.length - 1).toFixed(1)}" cy="${Y(vals[vals.length - 1]).toFixed(1)}" r="2.6" fill="${color}"/>`;
+}
+function segbar(node, filled, total, color){
+  let s = "";
+  for(let i = 0; i < total; i++) s += `<i class="${i < filled ? "on" : ""}"></i>`;
+  node.innerHTML = s; if(color) node.style.color = color;
+}
+function meter(node, frac, cells, color){
+  const f = Math.max(0, Math.min(1, frac || 0)), n = Math.round(f * cells);
+  let s = "";
+  for(let i = 0; i < cells; i++) s += `<i class="${i < n ? "on" : ""}"></i>`;
+  node.innerHTML = s; if(color) node.style.color = color;
+}
+function donut(value, color, label){
+  const r = 26, c = 2 * Math.PI * r, f = Math.max(0, Math.min(1, value || 0));
+  return `<svg viewBox="0 0 66 66" class="donut" role="img" aria-label="${esc(label)} ${Math.round(f * 100)} percent">
+    <circle cx="33" cy="33" r="${r}" fill="none" stroke="rgba(86,95,137,.42)" stroke-width="8"/>
+    <circle cx="33" cy="33" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="butt"
+      transform="rotate(-90 33 33)" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}"/>
+    <text x="33" y="37" text-anchor="middle" fill="${col("--fg")}" font-size="15" font-weight="700" font-family="var(--mono)">${Math.round(f * 100)}%</text></svg>`;
+}
+
+/* ---------- app state ---------- */
+const S = { si: 0, preset: "24h", custom: null, trend: null, summary: null, status: null, events: null,
+  live: null, state: "live", hist: { pf: [], dc: [], req: [], reqq: [], mtp: [], moe: [] },
+  apiError: null, staleSince: null };
+
+/* ---------- renderers ---------- */
+function view(){
+  const st = S.state;
+  const base = buildSummary(S.si), status = buildStatus(S.si), events = buildEvents(S.si);
+  S.summary = base; S.status = status; S.events = events;
+  S.apiError = st === "error" ? { code: "network_error", staleSince: iso(NOW.getTime() - 34 * 60e3) } : null;
+  if(st === "empty"){ S.trend = null; S.live = null; return; }
+  S.trend = buildTrend(S.si, S.preset, S.custom ? S.custom.from : undefined, S.custom ? S.custom.to : undefined);
+  S.live = buildLive(S.si);
+  if(st === "stale" || st === "offline"){
+    S.live.state = "stale"; S.live.observed_at = iso(NOW.getTime() - (st === "offline" ? 9 * 60e3 : 3.5 * 60e3));
+    S.summary.collection_status = st === "offline" ? "offline" : "degraded";
+    S.summary.state = "stale"; S.status.collector_status = st === "offline" ? "offline" : "degraded";
+  }
+  if(st === "starting"){
+    S.live = { state: "starting", generated_at: iso(NOW.getTime()), observed_at: null,
+      prefill_tokens_per_second: null, decode_tokens_per_second: null, decode_tokens_per_second_per_request: null,
+      requests: { active: null, queued: null },
+      mtp_acceptance: { window_5s: null, window_1m: null, window_30m: null, lifetime: null },
+      moe_gpu_hit: { window_5s: null, window_1m: null, window_30m: null } };
+    S.status.collector_status = "starting"; S.summary.collection_status = "starting";
+  }
+  if(st === "error"){
+    S.status.last_error_code = "network_error"; S.status.last_recorded_error_code = "network_error";
+    S.status.collector_status = "degraded"; S.summary.collection_status = "degraded";
+  }
+}
+function renderHeader(){
+  const s = SERIES[S.si], st = S.status, empty = S.state === "empty";
+  el("hd-series").textContent = empty ? "No series yet" : `${s.model_name} · engine ${s.engine}`;
+  const sel = el("series");
+  sel.innerHTML = SERIES.map((x, i) => `<option value="${i}"${i === S.si ? " selected" : ""}>${esc(x.model_name)} · engine ${x.engine}</option>`).join("");
+  sel.disabled = empty || S.state === "loading";
+  const cs = empty ? "starting" : (st ? st.collector_status : "healthy");
+  const storageBad = !empty && st && st.storage_status === "unavailable";
+  const badge = el("badge");
+  const tone = storageBad || cs === "offline" ? "bad" : (cs === "healthy" ? "ok" : "warn");
+  badge.className = tone;
+  el("badge-t").textContent = storageBad ? "Storage unavailable" : (COLLECTION_LABEL[cs] || cs);
+  el("hd-last").textContent = empty ? NO_DATA : fmtUtc(st.last_success_at);
+  el("sr-live").textContent = empty
+    ? "Collecting. Last successful update No successful update yet."
+    : `${COLLECTION_LABEL[cs]}. Last successful update ${fmtUtc(st.last_success_at)}.`;
+}
+function renderBanner(){
+  const b = el("banner"), t = el("banner-txt");
+  b.className = "idle";
+  if(S.state === "loading"){ t.textContent = "Loading dashboard…"; b.querySelector(".code").textContent = "SYS"; return; }
+  if(S.state === "empty"){ t.textContent = "No series collected yet. Collection starts after the first successful sample."; return; }
+  if(S.apiError){
+    b.className = "bad"; b.querySelector(".code").textContent = "API " + S.apiError.code;
+    t.textContent = rangeErrorText(S.apiError.code) + (S.apiError.staleSince ? "  Showing data from " + fmtUtc(S.apiError.staleSince) + "." : "");
+    return;
+  }
+  if(S.state === "offline"){
+    b.className = "warn"; b.querySelector(".code").textContent = "OFFLINE";
+    t.textContent = "Collection is offline: no successful sample for more than two poll intervals. Values below are the last observed history.";
+    return;
+  }
+  if(S.state === "stale"){
+    b.className = "warn"; b.querySelector(".code").textContent = "STALE";
+    t.textContent = "Series is stale: the collector is running, the last accepted sample is older than the stale window. Values are the last accepted history.";
+    return;
+  }
+  if(S.state === "starting"){
+    b.querySelector(".code").textContent = "STARTING";
+    t.textContent = "Collecting: the first successful sample has not been accepted yet.";
+    return;
+  }
+  b.querySelector(".code").textContent = "NOMINAL";
+  t.textContent = "Collection healthy · 1 Hz live · dashboard polls every " + S.status.poll_interval_seconds + "s · raw retention " + S.status.raw_retention_days + " days";
+}
+function renderLive(){
+  const ph = LIVE_PLACEHOLDER;
+  const L = S.live;
+  if(!L){   // loading / empty: every live slot shows the "never produced" placeholder
+    el("live-chip").className = "chip idle"; el("live-chip-t").textContent = "STARTING";
+    el("live-obs").textContent = "observed " + NO_DATA;
+    el("req-num").innerHTML = ph + ' <span>/ ' + ph + "</span>";
+    el("req-a-n").textContent = ph; el("req-q-n").textContent = ph;
+    segbar(el("req-a"), 0, 16, col("--blue")); segbar(el("req-q"), 0, 16, col("--yellow"));
+    gauge(el("pf-svg"), 0, 1, col("--mute"), "tok/s"); gauge(el("dc-svg"), 0, 1, col("--mute"), "tok/s");
+    rings(el("mtp-svg"), [0, 0, 0, 0].map(v => ({ value: v, color: col("--mute") })));
+    rings(el("moe-svg"), [0, 0, 0].map(v => ({ value: v, color: col("--mute") })));
+    el("pf-v").textContent = ph; el("dc-v").textContent = ph; el("dc-per").textContent = ph;
+    el("pf-v").style.color = el("dc-v").style.color = col("--mute");
+    el("mtp-list").innerHTML = [["5s"], ["1m"], ["30m"], ["life"]].map(x => `<div class="rrow"><span>${x[0]}</span><span class="segbar">${"<i></i>".repeat(10)}</span><b>${ph}</b></div>`).join("");
+    el("moe-list").innerHTML = [["5s"], ["1m"], ["30m"]].map(x => `<div class="rrow"><span>${x[0]}</span><span class="segbar">${"<i></i>".repeat(10)}</span><b>${ph}</b></div>`).join("");
+    ["sp-pf", "sp-dc", "sp-mtp", "sp-req"].forEach(id => el(id).innerHTML = "");
+    el("live-note").innerHTML = "Live panel is empty until the first accepted sample; every slot shows <b>-</b> (never produced).";
+    return;
+  }
+  const chip = el("live-chip"), ct = el("live-chip-t");
+  const stale = !L || L.state === "stale" || L.state === "unavailable";
+  chip.className = "chip " + (stale ? "warn" : L.state === "live" ? "ok live" : "idle");
+  ct.textContent = stale ? "STALE" : L.state === "live" ? "LIVE" : "STARTING";
+  el("live-obs").textContent = "observed " + (L && L.observed_at ? fmtUtc(L.observed_at) : NO_DATA);
+  const rq = L.requests || {};
+  el("req-num").innerHTML = (rq.active ?? ph) + ' <span>/ ' + (rq.queued ?? ph) + "</span>";
+  el("req-a-n").textContent = rq.active ?? ph; el("req-q-n").textContent = rq.queued ?? ph;
+  segbar(el("req-a"), rq.active ? Math.min(16, rq.active) : 0, 16, col("--blue"));
+  segbar(el("req-q"), rq.queued ? Math.min(16, rq.queued) : 0, 16, col("--yellow"));
+  const k = SERIES[S.si]._k;
+  const pf = L.prefill_tokens_per_second, dc = L.decode_tokens_per_second;
+  const pfMax = Math.round(18000 * k), dcMax = Math.round(2600 * k);
+  el("pf-v").textContent = pf == null ? ph : Math.round(pf).toLocaleString("en-US");
+  el("pf-v").style.color = pf == null ? col("--mute") : THRESH(pf / pfMax, .6, .3, .15);
+  gauge(el("pf-svg"), pf || 0, pfMax, el("pf-v").style.color, "tok/s");
+  el("dc-v").textContent = dc == null ? ph : Math.round(dc).toLocaleString("en-US");
+  el("dc-v").style.color = dc == null ? col("--mute") : THRESH(dc / dcMax, .6, .3, .15);
+  gauge(el("dc-svg"), dc || 0, dcMax, el("dc-v").style.color, "tok/s");
+  el("dc-per").textContent = L.decode_tokens_per_second_per_request == null ? ph : Math.round(L.decode_tokens_per_second_per_request);
+  const m = L.mtp_acceptance || {}, g = L.moe_gpu_hit || {};
+  const mtp = [{ l: "5s", v: m.window_5s }, { l: "1m", v: m.window_1m }, { l: "30m", v: m.window_30m }, { l: "life", v: m.lifetime }];
+  const moe = [{ l: "5s", v: g.window_5s }, { l: "1m", v: g.window_1m }, { l: "30m", v: g.window_30m }];
+  const mc = (v) => v == null ? col("--mute") : THRESH(v, .7, .5, .35);
+  const gc = (v) => v == null ? col("--mute") : THRESH(v, .85, .6, .4);
+  rings(el("mtp-svg"), mtp.map((x, i) => ({ value: x.v || 0, color: mc(x.v) })));
+  rings(el("moe-svg"), moe.map(x => ({ value: x.v || 0, color: gc(x.v) })));
+  el("mtp-list").innerHTML = mtp.map(x =>
+    `<div class="rrow" style="color:${mc(x.v)}"><span>${x.l}</span><span class="segbar">${
+      Array.from({ length: 10 }, (_, i) => `<i class="${x.v != null && i < Math.round(x.v * 10) ? "on" : ""}"></i>`).join("")
+    }</span><b>${fmtRatio(x.v)}</b></div>`).join("");
+  el("moe-list").innerHTML = moe.map(x =>
+    `<div class="rrow" style="color:${gc(x.v)}"><span>${x.l}</span><span class="segbar">${
+      Array.from({ length: 10 }, (_, i) => `<i class="${x.v != null && i < Math.round(x.v * 10) ? "on" : ""}"></i>`).join("")
+    }</span><b>${fmtRatio(x.v)}</b></div>`).join("");
+  ["sp-pf", "sp-dc", "sp-mtp", "sp-req"].forEach(id => {
+    const map = { "sp-pf": [S.hist.pf, col("--green"), 1], "sp-dc": [S.hist.dc, col("--cyan"), 1],
+      "sp-mtp": [S.hist.mtp, col("--magenta"), 1], "sp-req": [S.hist.req, col("--blue"), 1] };
+    spark(el(id), map[id][0], map[id][1], !!map[id][2]);
+  });
+  el("live-note").innerHTML = S.state === "starting"
+    ? "Live state <b>Starting</b> — no engine sample accepted yet; every slot shows <b>-</b> (never produced)."
+    : stale ? "Live state <b>Stale</b> — the engine scrape is older than the stale window; values are frozen at the last accepted sample."
+    : `Prefill/decode are <b>instantaneous</b>; MTP acceptance is <b>proposed tokens accepted</b> per window, MoE GPU hit is <b>expert residency on GPU</b>.`;
+  document.getElementById("hud").classList.toggle("live", S.state === "live");
+}
+/* ---------- trend ---------- */
+function renderTrend(){
+  const T = S.trend, chart = el("chart"), svg = el("chart-svg");
+  if(!T){ el("tr-meta").textContent = "—"; svg.innerHTML = ""; el("tr-tb").innerHTML = ""; return; }
+  const B = T.buckets, n = B.length;
+  const presetLabel = S.preset === "custom" ? "custom" : S.preset;
+  el("tr-meta").textContent = `${n} ${T.bucket} buckets · ${fmtUtc(T.from)} → ${fmtUtc(T.to)} · ${T.model_name}`;
+  el("leg-n").textContent = `${T.bucket === "hour" ? "hourly" : "daily"} buckets · ${T.from.slice(0, 10)} → ${T.to.slice(0, 10)} UTC`;
+  const last = B[n - 1];
+  el("tr-inc").innerHTML = last && last.incomplete
+    ? `<b>Last bucket is incomplete</b> (current UTC ${T.bucket})` : "";
+  /* range-level cost/cache line (never per bucket) */
+  const sum = B.reduce((a, b) => {
+    a.i += Number(b.counters.computed_input.tokens); a.o += Number(b.counters.generated_output.tokens);
+    a.c += Number(b.counters.cached_input.tokens); a.m += Number(b.api_equivalent.amount);
+    a.p += b.partial ? 1 : 0; a.g += Number(b.gap_seconds.primary || 0); return a;
+  }, { i: 0, o: 0, c: 0, m: 0, p: 0, g: 0 });
+  const hrs = n * (T.bucket === "hour" ? 1 : 24);
+  const flags = [...new Set(B.flatMap(b => b.quality_flags))];
+  const cov = coverage(sum.p > 0, hrs - sum.g / 3600, hrs);
+  el("tr-cost").innerHTML = `<b class="mono" style="color:var(--cost)">${fmtAmount(sum.m)}</b> API-equivalent · ` +
+    `Cache hits <b>${fmtCacheShare(sum.c / sum.i)}</b> · ${cov || "complete"} · ${flags.length ? flagLabel(flags[0]) : "no quality flags"}`;
+  el("tr-err").textContent = S.rangeError ? rangeErrorText(S.rangeError) : "";
+  /* geometry */
+  const W = chart.clientWidth, H = chart.clientHeight, L = 64, R = 58, TP = 12, BT = 24;
+  const pw = Math.max(10, W - L - R), ph = Math.max(10, H - TP - BT);
+  const max = Math.max(...B.map(b => Number(b.counters.computed_input.tokens) + Number(b.counters.generated_output.tokens)), 1);
+  const top = (Math.ceil(max / Math.pow(10, Math.floor(Math.log10(max))) * Math.pow(10, Math.floor(Math.log10(max))) / 1e-9) * 0);
+  const nice = (m) => { const p = Math.pow(10, Math.floor(Math.log10(m))); return Math.ceil(m / p) * p; };
+  const yMax = nice(max);
+  const y = (v) => TP + ph - (v / yMax) * ph;
+  const bw = pw / n, bar = Math.max(2, bw * (n > 40 ? .74 : .62));
+  let g = `<defs><pattern id="inc" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="6" height="6" fill="rgba(192,202,245,.05)"/><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(192,202,245,.35)" stroke-width="1.4"/></pattern></defs>`;
+  for(let i = 0; i <= 4; i++){
+    const v = yMax * i / 4, yy = y(v);
+    g += `<line x1="${L}" y1="${yy.toFixed(1)}" x2="${L + pw}" y2="${yy.toFixed(1)}" stroke="rgba(86,95,137,${i === 0 ? ".7" : ".28"})" stroke-width="1"${i ? ' stroke-dasharray="2 4"' : ""}/>` +
+      `<text x="${L - 8}" y="${(yy + 3.5).toFixed(1)}" text-anchor="end" fill="${col("--mute")}" font-size="11" font-family="ui-monospace,monospace">${compact(v)}</text>`;
+  }
+  const cMax = Math.max(...B.map(b => Number(b.api_equivalent.amount))) / 1e6;
+  for(let i = 0; i <= 4; i++){
+    const yy = TP + ph - ph * i / 4;
+    g += `<text x="${L + pw + 8}" y="${(yy + 3.5).toFixed(1)}" fill="${col("--cost")}" font-size="11" font-family="ui-monospace,monospace" opacity=".9">$${compact(cMax * i / 4)}</text>`;
+  }
+  const step = Math.ceil(n / 12);
+  const costPts = [];
+  B.forEach((b, i) => {
+    const cx = L + bw * i + bw / 2, x = cx - bar / 2;
+    const inp = Number(b.counters.computed_input.tokens), out = Number(b.counters.generated_output.tokens);
+    if(inp + out > 0){
+      const y1 = y(inp), y2 = y(inp + out);
+      g += `<rect x="${x.toFixed(1)}" y="${y1.toFixed(1)}" width="${bar.toFixed(1)}" height="${Math.max(0, TP + ph - y1).toFixed(1)}" fill="${col("--in")}" opacity=".92"/>` +
+        `<rect x="${x.toFixed(1)}" y="${y2.toFixed(1)}" width="${bar.toFixed(1)}" height="${Math.max(0, y1 - y2).toFixed(1)}" fill="${col("--out")}" opacity=".95"/>`;
+      if(b.incomplete) g += `<rect x="${x.toFixed(1)}" y="${y2.toFixed(1)}" width="${bar.toFixed(1)}" height="${Math.max(1, TP + ph - y2).toFixed(1)}" fill="url(#inc)"/>`;
+      if(b.partial && !b.incomplete) g += `<rect x="${x.toFixed(1)}" y="${y2.toFixed(1)}" width="${bar.toFixed(1)}" height="${Math.max(1, TP + ph - y2).toFixed(1)}" fill="none" stroke="${col("--warn")}" stroke-width="1" stroke-dasharray="3 3"/>`;
+    } else g += `<text x="${cx.toFixed(1)}" y="${(TP + ph - 6).toFixed(1)}" text-anchor="middle" fill="${col("--mute")}" font-size="10" font-family="ui-monospace,monospace">no data</text>`;
+    if(i % step === 0 || i === n - 1){
+      const lab = T.bucket === "hour" ? new Date(b.started_at).getUTCHours() + "h" : b.started_at.slice(5);
+      g += `<text x="${cx.toFixed(1)}" y="${TP + ph + 15}" text-anchor="middle" fill="${col("--mute")}" font-size="11.5" font-family="ui-monospace,monospace">${lab}</text>`;
+    }
+    costPts.push([cx, TP + ph - (Number(b.api_equivalent.amount) / 1e6) / (cMax || 1) * ph]);
+    g += `<rect class="hit" data-i="${i}" x="${(L + bw * i).toFixed(1)}" y="${TP}" width="${bw.toFixed(1)}" height="${ph}" fill="transparent"/>`;
+  });
+  g += `<polyline points="${costPts.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")}" fill="none" stroke="${col("--cost")}" stroke-width="1.6" stroke-dasharray="4 3" opacity=".95"/>`;
+  g += `<text x="${L}" y="${TP - 2}" fill="${col("--mute")}" font-size="11" font-family="ui-monospace,monospace" letter-spacing="1.2">TOKENS PER BUCKET</text>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("aria-label", `Stacked bar chart of computed input and generated output tokens for ${T.model_name}, ${presetLabel} range, ${fmtUtc(T.from)} to ${fmtUtc(T.to)}`);
+  svg.innerHTML = g;
+  svg.querySelectorAll("rect.hit").forEach(r => {
+    r.addEventListener("mousemove", (e) => {
+      const b = B[+r.dataset.i];
+      const q = [...b.quality_flags.map(flagLabel), b.partial ? "partial" : "", b.incomplete ? "incomplete" : ""].filter(Boolean);
+      const inp = b.counters.computed_input.tokens, out = b.counters.generated_output.tokens;
+      el("tip").innerHTML = `<div class="h">${fmtUtc(b.started_at)} – ${fmtUtc(b.ended_at)}</div>` +
+        `<div class="r"><span>Computed input</span><b>${fmtTokens(inp)}</b></div>` +
+        `<div class="r"><span>Generated output</span><b>${fmtTokens(out)}</b></div>` +
+        `<div class="r"><span>Processed total</span><b>${fmtTokens(b.processed_total)}</b></div>` +
+        `<div class="r"><span>Cache hits</span><b>${fmtCacheShare(Number(b.counters.cached_input.tokens) / Number(inp))}</b></div>` +
+        `<div class="r"><span>API-equivalent</span><b>${fmtAmount(b.api_equivalent.amount)}</b></div>` +
+        (q.length ? `<div class="q">${esc(q.join(" · "))}</div>` : "") +
+        (Number(b.gap_seconds.primary) ? `<div class="q">${describeGap(b.gap_seconds.primary)}</div>` : "");
+      const box = chart.getBoundingClientRect();
+      el("tip").style.display = "block";
+      el("tip").style.left = Math.min(box.width - 236, Math.max(4, e.clientX - box.left + 14)) + "px";
+      el("tip").style.top = Math.max(4, e.clientY - box.top - 120) + "px";
+    });
+    r.addEventListener("mouseleave", () => { el("tip").style.display = "none"; });
+  });
+  el("tr-tb").innerHTML = n ? B.map(b => {
+    const q = [...b.quality_flags.map(flagLabel), b.partial ? "partial" : "", b.incomplete ? "incomplete" : ""].filter(Boolean);
+    return `<tr><td>${bucketLabel(b, T.bucket)}</td><td>${fmtTokens(b.counters.computed_input.tokens)}</td>` +
+      `<td>${fmtTokens(b.counters.generated_output.tokens)}</td><td>${fmtTokens(b.processed_total)}</td>` +
+      `<td class="q">${q.length ? esc(q.join(" · ")) : "complete"}</td></tr>`;
+  }).join("") : `<tr><td colspan="5">${NO_DATA}</td></tr>`;
+}
+const bucketLabel = (b, bucket) => bucket === "day" ? fmtDay(b.started_at)
+  : `${fmtDay(b.started_at)} ${new Date(b.started_at).getUTCHours()}:00–${new Date(b.ended_at).getUTCHours()}:00 UTC`;
+
+/* ---------- summary cards ---------- */
+function renderSummary(){
+  const D = S.summary, wrap = el("cards");
+  el("sum-meta").textContent = `${D.model_name} · engine ${D.engine} · schema ${D.schema_version}`;
+  const card = (title, R, opts = {}) => {
+    const inp = R.counters.computed_input.tokens, out = R.counters.generated_output.tokens;
+    const tot = Number(inp) + Number(out);
+    const pi = tot ? Number(inp) / tot * 100 : 50, po = tot ? 100 - pi : 50;
+    const A = R.api_equivalent;
+    const flags = [...new Set([...R.quality_flags.map(flagLabel), ...(R.metadata_complete ? [] : [flagLabel("metadata_incomplete")]),
+      ...(R.incomplete ? ["Current period is incomplete"] : []), ...(R.partial ? ["Partial — some intervals are unobserved"] : []),
+      ...(A.flags.map(f => f === "cache_exceeds_input" ? "approximate — cache count ahead of request count" : flagLabel(f)))])];
+    const cov = coverage(R.partial, (R.observed_hours || 0), R.api_equivalent.expected_hours);
+    return `<div class="card">
+      <div class="ch"><h3>${title}</h3><span class="utc">UTC</span>
+        <span style="margin-left:auto" class="mono" style="font-size:11px;color:var(--mute)">${opts.since ? "Collecting since " + fmtDay(D.first_observation_at) : ""}</span></div>
+      <span class="lab">Processed total</span>
+      <div class="big num">${fmtTokens(R.processed_total)}</div>
+      <div class="split">
+        <div class="bar"><i style="width:${pi.toFixed(1)}%;background:var(--in)"></i><i style="width:${po.toFixed(1)}%;background:var(--out)"></i></div>
+        <div class="keys"><span>Computed input</span><b class="mono num">${fmtTokens(inp)}</b>
+          <span>Generated output</span><b class="mono num">${fmtTokens(out)}</b></div>
+      </div>
+      <div class="row">${donut(A.cache_hit_ratio, col("--cache"), "cache hits")}
+        <div class="kv">
+          <span class="k">Cache hits · ${fmtCacheShare(A.cache_hit_ratio)}</span>
+          <span class="v cost">${opts.costs ? fmtAmount(A.amount) + " <span style='font-size:11px;color:var(--mute)'>API-equivalent</span>" : "cost rates not configured"}</span>
+          <span class="k" style="letter-spacing:.06em;text-transform:none;font-size:12px;font-family:var(--sans);color:var(--mute)">${cov || "complete"} · ${fmtTokens(R.counters.cached_input.tokens)} cached</span>
+        </div></div>
+      ${flags.length ? `<div class="flags">${flags.map(f => `<span class="flag">${esc(f)}</span>`).join("")}</div>` : ""}
+    </div>`;
+  };
+  wrap.innerHTML =
+    card("Observed today", D.ranges.today, { costs: !!S.status.cost_rates }) +
+    card("Observed this month", D.ranges.month, { costs: !!S.status.cost_rates }) +
+    card("Observed since collection began", D.ranges.lifetime, { costs: !!S.status.cost_rates, since: true });
+  const r = S.status.cost_rates;
+  el("sum-foot").innerHTML = r
+    ? `Approximate API-equivalent at ${"$" + r.input_per_mtok} input / ${"$" + r.cached_input_per_mtok} cached / ${"$" + r.output_per_mtok} output per M tokens (${r.currency}). Priced only where cache tracking exists.`
+    : "Cost rates are not configured on this deployment, so no API-equivalent cost is shown.";
+}
+/* ---------- rates ---------- */
+function renderRates(){
+  const D = S.summary, R = D.rates, stale = D.state === "stale" || S.state === "offline";
+  el("rate-stale").innerHTML = stale ? `<span style="color:var(--warn)">Rates are unavailable while the series is stale</span>` : "";
+  el("rate-meta").textContent = "over the last accepted interval";
+  const cell = (p, r, max) => {
+    const v = r.tokens_per_second;
+    el(p + "-v").textContent = v == null ? "N/A" : Math.round(v).toLocaleString("en-US");
+    el(p + "-v").style.color = v == null ? col("--mute") : THRESH(v / max, .6, .3, .12);
+    el(p + "-u").textContent = v == null ? "" : "tok/s · peak-scaled meter";
+    meter(el(p + "-m"), v == null ? 0 : v / max, 24, THRESH((v || 0) / max, .6, .3, .12));
+    el(p + "-s").innerHTML = `over the last accepted interval · <b>${r.observed_at ? fmtUtc(r.observed_at) : NO_DATA}</b>` +
+      ` · ${fmtTokens(r.tokens)} tokens over ${Math.round(r.interval_seconds)}s` +
+      (r.quality_flags.length ? ` · <span style="color:var(--warn)">${esc(flagLabel(r.quality_flags[0]))}</span>` : "");
+  };
+  cell("ri", R.computed_input, Math.round(3600 * SERIES[S.si]._k));
+  cell("ro", R.generated_output, Math.round(700 * SERIES[S.si]._k));
+  const L = D.ranges.lifetime.counters;
+  el("rq-i").textContent = L.request_input.tokens == null ? "unavailable" : fmtTokens(L.request_input.tokens);
+  el("rq-i-s").textContent = `${L.request_input.observed_intervals} observed intervals · ${describeGap(L.request_input.gap_seconds)}`;
+  el("rq-o").textContent = L.request_output.tokens == null ? "unavailable" : fmtTokens(L.request_output.tokens);
+  el("rq-o-s").textContent = `${L.request_output.observed_intervals} observed intervals · ${describeGap(L.request_output.gap_seconds)}`;
+}
+/* ---------- diagnostics ---------- */
+function renderDiag(){
+  const D = S.summary, G = D.ranges.lifetime.gap_seconds, E = S.events;
+  const flags = [...new Set([...D.ranges.today.quality_flags, ...D.ranges.month.quality_flags, ...D.ranges.lifetime.quality_flags,
+    ...D.ranges.lifetime.counters.computed_input.quality_flags, ...D.rates.generated_output.quality_flags,
+    ...(D.ranges.lifetime.metadata_complete ? [] : ["metadata_incomplete"])])];
+  el("diag-meta").textContent = `${E.items.length} events · epoch ${D.epoch} · retention ${E.retention.raw_retention_days} d · ${flags.length} flags`;
+  el("diag-body").innerHTML = `
+    <section><h4>Unobserved intervals</h4><ul>
+      <li><span class="k">Engine counters</span> ${describeGap(G.primary)}</li>
+      <li><span class="k">Request input</span> ${describeGap(G.request_input)}</li>
+      <li><span class="k">Request output</span> ${describeGap(G.request_output)}</li>
+      <li><span class="k">Cached input</span> ${describeGap(G.cached_input)}</li></ul></section>
+    <section><h4>Collection events</h4><ul>${E.items.length ? E.items.map(i =>
+      `<li><span class="k">${esc(i.kind)} · ${fmtUtc(i.occurred_at)}</span> ${esc(JSON.stringify(i.details))}</li>`).join("")
+      : "<li>No collection events recorded.</li>"}</ul></section>
+    <section><h4>Epochs</h4><ul>${D.epochs.length ? D.epochs.slice(0, 3).map(e =>
+      `<li><span class="k">${esc(e.reason)} · ${fmtUtc(e.started_at)}</span> Opening balance — excluded from totals: ` +
+      `${fmtTokens(e.opening_computed_input)} in, ${fmtTokens(e.opening_generated_output)} out</li>`).join("")
+      : "<li>No epoch boundaries recorded.</li>"}</ul></section>
+    <section><h4>Quality flags</h4><ul>${flags.length ? flags.map(f => `<li>${esc(flagLabel(f))}</li>`).join("")
+      : "<li>No quality flags on the current payload.</li>"}</ul></section>
+    <section><h4>Raw retention · last error</h4>
+      <p>Raw samples are kept for ${E.retention.raw_retention_days} days.</p>
+      <p class="k">Raw samples available ${fmtDay(E.retention.raw_samples_from)} – ${fmtDay(E.retention.raw_samples_until)}</p>
+      <p class="k">${esc(E.retention.note)}</p>
+      <p>${S.status.last_error_code ? `<span style="color:var(--bad)">Last collection error: ${esc(S.status.last_error_code)}. The collector retries on its own; the values shown are from the last successful sample.</span>` : "No collection error recorded."}</p></section>`;
+}
+function refreshTrend(){
+  if(S.state === "loading" || S.state === "empty") return;
+  S.trend = buildTrend(S.si, S.preset, S.custom ? S.custom.from : undefined, S.custom ? S.custom.to : undefined);
+  renderTrend();
+}
+function renderAll(){ view(); renderHeader(); renderBanner();
+  if(S.state === "loading" || S.state === "empty"){ renderHeader(); return; }
+  renderLive(); renderTrend(); renderSummary(); renderRates(); renderDiag();
+}
+/* ---------- interactions ---------- */
+function seedHist(){
+  const L = S.live, k = SERIES[S.si]._k, rnd = mulberry(SERIES[S.si]._seed);
+  S.hist = { pf: [], dc: [], req: [], reqq: [], mtp: [], moe: [] };
+  if(!L) return;
+  for(let i = 0; i < 40; i++){
+    S.hist.pf.push((L.prefill_tokens_per_second || 0) * (0.72 + rnd() * 0.5));
+    S.hist.dc.push((L.decode_tokens_per_second || 0) * (0.74 + rnd() * 0.44));
+    S.hist.req.push((L.requests.active || 0) * (0.5 + rnd()));
+    S.hist.mtp.push((L.mtp_acceptance.window_5s || 0) * (0.9 + rnd() * 0.16));
+    S.hist.moe.push((L.moe_gpu_hit.window_5s || 0) * (0.96 + rnd() * 0.07));
+  }
+}
+function setState(st){
+  S.state = st;
+  document.documentElement.dataset.state = st;
+  el("state-btn").textContent = "STATE · " + st.toUpperCase() + " ▾";
+  el("statebox").classList.remove("open");
+  el("state-btn").setAttribute("aria-expanded", "false");
+  if(st === "live" || st === "stale" || st === "offline" || st === "error"){ S.rangeError = null; }
+  renderAll(); seedHist();
+  if(S.live) renderLive();
+  audit();
+}
+function wire(){
+  el("series").addEventListener("change", (e) => { S.si = +e.target.value; renderAll(); seedHist(); renderLive(); });
+  el("presets").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-p]"); if(!b) return;
+    if(b.dataset.p === "custom"){
+      el("custom").classList.toggle("on");
+      el("c-from").value = el("c-from").value || new Date(NOW.getTime() - 9 * DAY).toISOString().slice(0, 10);
+      el("c-to").value = el("c-to").value || new Date(NOW.getTime() - DAY).toISOString().slice(0, 10);
+      el("c-from").focus(); return;
+    }
+    S.preset = b.dataset.p; S.custom = null; S.rangeError = null;
+    el("custom").classList.remove("on");
+    [...el("presets").querySelectorAll("button[data-p]")].forEach(x => x.classList.toggle("btn-on", x === b));
+    refreshTrend();
+  });
+  el("c-apply").addEventListener("click", () => {
+    const f = el("c-from").value, t = el("c-to").value;
+    const fm = Date.parse(f + "T00:00:00Z"), tm = Date.parse(t + "T00:00:00Z");
+    if(!f || !t || Number.isNaN(fm) || Number.isNaN(tm)){ S.rangeError = "invalid_time"; S.preset = "custom"; refreshTrend(); return; }
+    if(tm < fm){ S.rangeError = "invalid_time"; S.preset = "custom"; refreshTrend(); return; }
+    const days = (tm - fm) / DAY + 1;                        // operator enters an inclusive end date
+    if(days > 366){ S.rangeError = "range_too_large"; S.preset = "custom"; refreshTrend(); return; }
+    S.rangeError = null; S.preset = "custom";
+    S.custom = { from: fm, to: tm + DAY };                    // wire end is exclusive
+    [...el("presets").querySelectorAll("button[data-p]")].forEach(x => x.classList.remove("btn-on"));
+    refreshTrend();
+  });
+  el("tr-tbl").addEventListener("toggle", (e) => {
+    document.getElementById("p-trend").classList.toggle("tbl-on", !!e.target.open);
+    renderTrend();
+  });
+  el("rate-req").addEventListener("toggle", () => audit());
+  el("state-btn").addEventListener("click", () => {
+    const o = el("statebox").classList.toggle("open");
+    el("state-btn").setAttribute("aria-expanded", String(o));
+  });
+  el("statemenu").addEventListener("click", (e) => { const b = e.target.closest("button[data-st]"); if(b) setState(b.dataset.st); });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape") el("statebox").classList.remove("open");
+    if((e.key === "s" || e.key === "S") && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)){
+      el("statebox").classList.toggle("open");
+    }
+  });
+}
+/* ---------- live animation loop (1 sample / 1.2 s) ---------- */
+function tick(){
+  if(S.state === "live" && S.live){
+    const L = S.live, k = SERIES[S.si]._k, r = () => Math.random();
+    L.observed_at = iso(Date.now());
+    L.prefill_tokens_per_second = Math.max(300, Math.round((L.prefill_tokens_per_second || 9000 * k) * (0.86 + r() * 0.3)));
+    L.decode_tokens_per_second = Math.max(120, Math.round((L.decode_tokens_per_second || 1200 * k) * (0.88 + r() * 0.26)));
+    L.decode_tokens_per_second_per_request = Math.max(20, Math.round((L.decode_tokens_per_second_per_request || 95) * (0.9 + r() * 0.2)));
+    L.requests.active = Math.max(0, Math.min(24, (L.requests.active || 8) + Math.round(r() * 4 - 2)));
+    L.requests.queued = Math.max(0, Math.min(9, (L.requests.queued || 1) + (r() < .5 ? -1 : 1) * (r() < .45 ? 1 : 0)));
+    const j = (v, lo, hi) => Math.max(lo, Math.min(hi, v + (r() - .5) * 0.05));
+    L.mtp_acceptance.window_5s = j(L.mtp_acceptance.window_5s, .45, .88);
+    L.mtp_acceptance.window_1m = j(L.mtp_acceptance.window_1m, .5, .85);
+    L.mtp_acceptance.window_30m = j(L.mtp_acceptance.window_30m, .55, .82);
+    L.moe_gpu_hit.window_5s = j(L.moe_gpu_hit.window_5s, .55, .99);
+    L.moe_gpu_hit.window_1m = j(L.moe_gpu_hit.window_1m, .6, .98);
+    const push = (a, v, n = 40) => { a.push(v); if(a.length > n) a.shift(); };
+    push(S.hist.pf, L.prefill_tokens_per_second); push(S.hist.dc, L.decode_tokens_per_second);
+    push(S.hist.req, L.requests.active); push(S.hist.mtp, L.mtp_acceptance.window_5s);
+    push(S.hist.moe, L.moe_gpu_hit.window_5s);
+    renderLive();
+  }
+}
+/* ---------- self-audit (overflow / clipping / console errors) ---------- */
+const ERRORS = [];
+window.addEventListener("error", (e) => ERRORS.push(String(e.message)));
+window.addEventListener("unhandledrejection", (e) => ERRORS.push("rejection: " + e.reason));
+function audit(){
+  const bad = [];
+  const de = document.documentElement;
+  if(de.scrollWidth > 1081) bad.push(`page scrollWidth ${de.scrollWidth}`);
+  if(de.scrollHeight > 1921) bad.push(`page scrollHeight ${de.scrollHeight}`);
+  document.querySelectorAll("#hud .in, #chart, #tr-table, #diag-body, .card, .well").forEach(n => {
+    if(n.scrollHeight > n.clientHeight + 1) bad.push(`v-overflow ${n.closest(".pnl")?.id}/${n.className || n.tagName} ${n.scrollHeight}>${n.clientHeight}`);
+    if(n.scrollWidth > n.clientWidth + 1) bad.push(`h-overflow ${n.closest(".pnl")?.id}/${n.className || n.tagName} ${n.scrollWidth}>${n.clientWidth}`);
+  });
+  if(ERRORS.length) bad.push("JS errors: " + ERRORS.join(" | "));
+  el("audit").innerHTML = (bad.length ? `<span class="bad">AUDIT FAIL (${bad.length})</span> ` : `<span class="ok">AUDIT OK</span> 1080×1920 · no scroll · `) +
+    esc(bad.join(" · ")) + ` · state=${S.state} preset=${S.preset}`;
+  document.title = (bad.length ? "FAIL " : "OK ") + "Jarvis HUD · " + S.state;
+  window.__audit = { bad, errors: ERRORS };
+}
+/* ---------- boot ---------- */
+(function boot(){
+  const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+  window.__reviewHooks = () => {
+    const q = new URLSearchParams(location.hash.replace(/^#/, ""));
+    if(q.get("table")){ const d = el("tr-tbl"); d.open = true; d.dispatchEvent(new Event("toggle")); }
+    if(q.get("tip")){
+      const rs = [...document.querySelectorAll("#chart-svg rect.hit")];
+      const r = rs[Math.min(rs.length - 1, Math.max(0, Math.floor(rs.length * 0.6)))];
+      if(r){ const b = r.getBoundingClientRect();
+        r.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: b.x + b.width / 2, clientY: b.y + 40 })); }
+    }
+  };
+  S.preset = PRESETS[h.get("preset")] ? h.get("preset") : "24h";
+  document.documentElement.dataset.audit = h.get("debug") ? "1" : "0";
+  wire();
+  setState(["live", "starting", "stale", "offline", "error", "loading", "empty"].includes(h.get("state")) ? h.get("state") : "live");
+  [...el("presets").querySelectorAll("button[data-p]")].forEach(x => x.classList.toggle("btn-on", x.dataset.p === S.preset));
+  refreshTrend();
+  setInterval(tick, 1200);
+  window.addEventListener("load", () => { requestAnimationFrame(() => { try { window.__reviewHooks(); } catch(e){} }); audit(); if(h.get("test")) selfTest(); });
+  setTimeout(() => { audit(); if(h.get("test")) selfTest(); }, 300);
+})();
+
+/* ---------- headless self-test (only with #test): layout, interactions, console ---------- */
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+async function selfTest(){
+  const R = [];
+  const ok = (c, m) => R.push((c ? "PASS " : "FAIL ") + m);
+  const de = document.documentElement;
+  ok(de.scrollWidth <= 1081 && de.scrollHeight <= 1921, `page ${de.scrollWidth}x${de.scrollHeight} (want 1080x1920, no scroll)`);
+  const clip = [];
+  document.querySelectorAll("#hud *").forEach(n => {
+    if(n.namespaceURI !== "http://www.w3.org/1999/xhtml") return;   // SVG text metrics are not box-based
+    const cs = getComputedStyle(n);
+    if(cs.overflow === "visible" && cs.textOverflow !== "ellipsis" &&
+       (n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1) &&
+       n.children.length === 0 && n.textContent.trim())
+      clip.push(`${n.tagName}.${n.className || ""}:"${n.textContent.trim().slice(0, 26)}"${n.scrollWidth}>${n.clientWidth}/${n.scrollHeight}>${n.clientHeight}`);
+  });
+  const hidden = [];
+  document.querySelectorAll("#hud *").forEach(n => {
+    if(n.closest("details:not([open])") || n.namespaceURI !== "http://www.w3.org/1999/xhtml") return;
+    const b = n.getBoundingClientRect();
+    if(b.height < 4) return;
+    for(let a = n.parentElement; a && a.id !== "hud"; a = a.parentElement){
+      const cs = getComputedStyle(a);
+      if(cs.overflowY === "hidden" || cs.overflowY === "clip"){
+        const ab = a.getBoundingClientRect();
+        if(b.bottom > ab.bottom + 1)
+          hidden.push(`${n.tagName}#${n.id || ""}.${typeof n.className === "string" ? n.className.slice(0, 16) : ""} ${Math.round(b.bottom)}>${Math.round(ab.bottom)} in ${a.id || a.parentElement.id}`);
+        break;
+      }
+    }
+  });
+  ok(!hidden.length, "content clipped by panel: " + hidden.length + (hidden.length ? ": " + hidden.slice(0, 5).join(" | ") : ""));
+  ok(!clip.length, "text clipped in " + clip.length + (clip.length ? ": " + clip.slice(0, 8).join(" | ") : " text nodes"));
+  const ofl = [];
+  document.querySelectorAll("#hud .in").forEach(n => {
+    if(n.scrollHeight > n.clientHeight + 1) ofl.push((n.closest(".pnl") || {}).id + " " + n.scrollHeight + ">" + n.clientHeight);
+  });
+  ok(!ofl.length, "panel overflow: " + (ofl.join(", ") || "none"));
+  const hs = (n) => `${n.tagName}${n.id ? "#" + n.id : "." + (n.className || "")} sh=${n.scrollHeight} rect=${Math.round(n.getBoundingClientRect().height)}`;
+  R.push("INFO heights: " + [de, document.body, el("hud"), document.querySelector(".grid")].map(hs).join(" | "));
+  R.push("INFO panels: " + [...document.querySelectorAll("#hud .pnl")].map(n => n.id + ":" + Math.round(n.getBoundingClientRect().height) + "/" + n.scrollHeight).join(" "));
+  R.push("INFO below: " + [...document.querySelectorAll("#hud *")].filter(n => !n.closest("details:not([open])") && n.getBoundingClientRect().bottom > 1921)
+    .slice(0, 6).map(n => (n.id || n.className) + "@" + Math.round(n.getBoundingClientRect().bottom)).join(" "));
+  ok(el("pf-svg").querySelectorAll("path,line").length > 6, "prefill gauge arcs " + el("pf-svg").querySelectorAll("path,line").length);
+  ok(el("mtp-svg").querySelectorAll("path").length >= 8, "MTP rings " + el("mtp-svg").querySelectorAll("path").length);
+  ok(el("moe-svg").querySelectorAll("path").length >= 6, "MoE rings " + el("moe-svg").querySelectorAll("path").length);
+  ok(el("chart-svg").querySelectorAll("rect").length > 10, "trend bars " + el("chart-svg").querySelectorAll("rect").length);
+  ok(el("cards").children.length === 3 && el("cards").textContent.includes("Processed total"), "3 summary cards");
+  ok(el("diag-body").children.length === 5, "5 diagnostics sections");
+  ok(el("sp-pf").children.length > 0, "prefill sparkline drawn");
+  // tooltip
+  const hit = el("chart-svg").querySelector('rect.hit[data-i="3"]');
+  const b = hit.getBoundingClientRect();
+  hit.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: b.x + b.width / 2, clientY: b.y + b.height / 2 }));
+  ok(getComputedStyle(el("tip")).display !== "none" && /Computed input/.test(el("tip").textContent), "chart tooltip: " + el("tip").textContent.slice(0, 40));
+  // preset switches
+  for(const p of ["7d", "30d", "24h"]){
+    el(`presets`).querySelector(`[data-p="${p}"]`).click();
+    ok(S.trend.bucket_count === PRESETS[p].count && S.trend.bucket === PRESETS[p].bucket,
+      `preset ${p} -> ${S.trend.bucket_count} ${S.trend.bucket} buckets`);
+    ok(el("chart-svg").querySelectorAll("rect").length > 4, `preset ${p} redraws chart`);
+  }
+  // custom range: valid + two validation paths
+  el("custom-btn").click();
+  el("c-from").value = "2026-10-01"; el("c-to").value = "2026-10-10"; el("c-apply").click();
+  ok(S.preset === "custom" && S.trend.bucket_count === 10 && !S.rangeError, `custom range 10 daily buckets (got ${S.trend && S.trend.bucket_count})`);
+  el("c-from").value = "2025-01-01"; el("c-to").value = "2026-10-10"; el("c-apply").click();
+  ok(S.rangeError === "range_too_large" && /366 days/.test(el("tr-err").textContent), "custom >366d -> " + el("tr-err").textContent);
+  el("c-from").value = ""; el("c-apply").click();
+  ok(S.rangeError === "invalid_time" && /valid UTC dates/.test(el("tr-err").textContent), "custom empty -> " + el("tr-err").textContent);
+  el("presets").querySelector('[data-p="24h"]').click(); el("custom").classList.remove("on");
+  // table disclosure
+  el("tr-tbl").open = true; el("tr-tbl").dispatchEvent(new Event("toggle"));
+  ok(el("tr-tb").children.length === 24 && /Quality/.test(el("tr-tb").parentElement.textContent), "table rows " + el("tr-tb").children.length);
+  el("tr-tbl").open = false; el("tr-tbl").dispatchEvent(new Event("toggle"));
+  // series selector
+  el("series").value = "2"; el("series").dispatchEvent(new Event("change"));
+  ok(/Qwen3-30B/.test(el("hd-series").textContent), "series switch -> " + el("hd-series").textContent);
+  el("series").value = "0"; el("series").dispatchEvent(new Event("change"));
+  // rate disclosure
+  el("rate-req").open = true;
+  ok(/observed intervals/.test(el("rq-i-s").textContent), "request-accounted usage: " + el("rq-i-s").textContent);
+  el("rate-req").open = false;
+  // live animation
+  const a = el("pf-v").textContent, ao = el("live-obs").textContent;
+  await sleep(2600);
+  ok(el("pf-v").textContent !== a || el("live-obs").textContent !== ao, `live loop ticks (${a} -> ${el("pf-v").textContent})`);
+  // states
+  const want = { live: ["live-chip", "LIVE"], starting: ["live-chip", "STARTING"], stale: ["live-chip", "STALE"],
+    offline: ["live-chip", "STALE"], error: ["live-chip", "LIVE"], loading: ["p-skel", "grid"], empty: ["p-empty", "flex"] };
+  for(const [st, [id, want2]] of Object.entries(want)){
+    setState(st);
+    const n = el(id);
+    const probe = /^(p-skel|p-empty)$/.test(id) ? (getComputedStyle(n).display + "/" + getComputedStyle(n.querySelector(".in")).display) : (n.textContent || "").trim();
+    ok(probe.includes(want2), `state ${st}: #${id} = ${probe}`);
+    const dd = document.documentElement;
+    ok(dd.scrollWidth <= 1081 && dd.scrollHeight <= 1921, `state ${st}: ${dd.scrollWidth}x${dd.scrollHeight} no scroll`);
+    ok(!/undefined|NaN|\[object/.test(document.getElementById("hud").textContent), `state ${st}: no undefined/NaN text`);
+  }
+  setState("live");
+  ok(ERRORS.length === 0, "console/JS errors: " + (ERRORS.join(" | ") || "none"));
+  window.__test = R;
+  el("audit").innerHTML = R.map(r => `<div class="${r.startsWith("PASS") ? "ok" : r.startsWith("INFO") ? "info" : "bad"}">${esc(r)}</div>`).join("");
+  const nf = R.filter(r => r.startsWith("FAIL")).length + ERRORS.length;
+  document.title = (nf ? "TESTFAIL " + nf + " fails" : "ALLPASS");
+}
+</script></body></html>

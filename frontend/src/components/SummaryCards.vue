@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import type { Range } from "../api/client";
+import type { ApiEquivalent, Range } from "../api/client";
 import { dashboard } from "../lib/dashboard";
-import { flagLabel, formatDay, formatTokens } from "../lib/format";
+import {
+  flagLabel,
+  formatAmount,
+  formatCacheShare,
+  formatCoverage,
+  formatCostFlags,
+  formatDay,
+  formatRatesFootnote,
+  formatTokens,
+} from "../lib/format";
 import Card from "./Card.vue";
 import LabelValue from "./LabelValue.vue";
 
@@ -46,6 +55,31 @@ function counter(key: CardKey, counterKey: "computed_input" | "generated_output"
   return baseline.value ? NO_DATA : formatTokens(tokens);
 }
 
+/** Configured prices: the dollar line and the footnote are hidden without them. */
+const rates = computed(() => state.status?.cost_rates ?? null);
+const ratesFootnote = computed(() => formatRatesFootnote(rates.value));
+
+function cost(key: CardKey): ApiEquivalent | null {
+  const rangeValue = range(key);
+  return baseline.value || !rangeValue ? null : rangeValue.api_equivalent;
+}
+
+function amount(key: CardKey): string {
+  return formatAmount(cost(key)?.amount ?? null);
+}
+
+function cacheShare(key: CardKey): string {
+  return baseline.value ? NO_DATA : formatCacheShare(range(key)?.api_equivalent.cache_hit_ratio);
+}
+
+function coverage(key: CardKey): string {
+  return formatCoverage(cost(key));
+}
+
+function costFlags(key: CardKey): string[] {
+  return formatCostFlags(cost(key));
+}
+
 /** Plain-language quality lines; a flag is never communicated by colour alone. */
 function flags(key: CardKey): string[] {
   const rangeValue = range(key);
@@ -69,6 +103,29 @@ function flags(key: CardKey): string[] {
       <LabelValue label="Generated output" :testid="`${card.key}-output`" tone="muted">
         {{ counter(card.key, "generated_output") }}
       </LabelValue>
+      <!-- Money and cache share are read off the range the card already shows. -->
+      <LabelValue
+        v-if="rates"
+        label="API-equivalent"
+        :testid="`${card.key}-cost`"
+        tone="strong"
+      >
+        {{ amount(card.key) }}
+      </LabelValue>
+      <LabelValue label="Cache hits" :testid="`${card.key}-cache`" tone="muted">
+        {{ cacheShare(card.key) }}
+      </LabelValue>
+      <p v-if="coverage(card.key)" class="note" :data-testid="`${card.key}-cost-coverage`">
+        {{ coverage(card.key) }}
+      </p>
+      <p
+        v-for="line in costFlags(card.key)"
+        :key="line"
+        class="flag"
+        :data-testid="`${card.key}-cost-flag`"
+      >
+        {{ line }}
+      </p>
       <p
         v-if="card.key === 'lifetime'"
         class="lifetime-start"
@@ -84,4 +141,5 @@ function flags(key: CardKey): string[] {
       </p>
     </Card>
   </div>
+  <p v-if="ratesFootnote" class="note" data-testid="cost-rates-footnote">{{ ratesFootnote }}</p>
 </template>

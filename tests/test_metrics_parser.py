@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from jarvis_dashboard.domain import (
+    CACHED_INPUT,
     COMPUTED_INPUT,
     GENERATED_OUTPUT,
     MAX_EXACT_UPSTREAM,
@@ -89,8 +90,76 @@ def test_selected_counter_values_parse():
     assert res.scrape_error is None
     c = res.for_labels(ENGINE0)
     assert c is not None
-    assert c.values == {COMPUTED_INPUT: 1000, GENERATED_OUTPUT: 100, REQUEST_INPUT: 7, REQUEST_OUTPUT: 9}
+    assert c.values == {
+        COMPUTED_INPUT: 1000,
+        GENERATED_OUTPUT: 100,
+        REQUEST_INPUT: 7,
+        REQUEST_OUTPUT: 9,
+        CACHED_INPUT: None,
+    }
     assert c.primary_usable()
+
+
+def test_cached_counter_parses_exact_value():
+    # Cost-estimate plan D1: radiance:linear_cached_tokens_total -> cached_input.
+    text = body(
+        "# TYPE radiance:linear_cached_tokens_total counter",
+        'radiance:linear_cached_tokens_total{model_name="m",engine="0"} 600000',
+        'radiance:prefill_tokens_total{model_name="m",engine="0"} 1000',
+        'radiance:decode_tokens_total{model_name="m",engine="0"} 100',
+        'vllm:prompt_tokens_total{model_name="m",engine="0"} 7',
+        'vllm:generation_tokens_total{model_name="m",engine="0"} 9',
+    )
+    c = scrape_of(text).for_labels(M0)
+    assert c.values[CACHED_INPUT] == 600000
+    assert c.values[REQUEST_INPUT] == 7
+
+
+def test_missing_cached_counter_leaves_other_counters_valid():
+    # AC8: the cached metric is optional; absence never touches the primary pair.
+    text = body(
+        'radiance:prefill_tokens_total{model_name="m",engine="0"} 1000',
+        'radiance:decode_tokens_total{model_name="m",engine="0"} 100',
+        'vllm:prompt_tokens_total{model_name="m",engine="0"} 7',
+        'vllm:generation_tokens_total{model_name="m",engine="0"} 9',
+    )
+    res = scrape_of(text)
+    c = res.for_labels(M0)
+    assert c.primary_usable()
+    assert c.values[REQUEST_INPUT] == 7
+    assert c.values[REQUEST_OUTPUT] == 9
+    assert c.values[CACHED_INPUT] is None
+    assert c.problems[CACHED_INPUT] == "missing"
+    assert "radiance:linear_cached_tokens_total" in res.missing_metrics
+
+
+def test_invalid_cached_value_poisons_only_cached_input():
+    text = body(
+        'radiance:linear_cached_tokens_total{model_name="m",engine="0"} 1.5',
+        'radiance:prefill_tokens_total{model_name="m",engine="0"} 1000',
+        'radiance:decode_tokens_total{model_name="m",engine="0"} 100',
+        'vllm:prompt_tokens_total{model_name="m",engine="0"} 7',
+    )
+    c = scrape_of(text).for_labels(M0)
+    assert c.values[CACHED_INPUT] is None
+    assert c.problems[CACHED_INPUT] == "fractional_value"
+    assert c.primary_usable()
+    assert c.values[REQUEST_INPUT] == 7
+
+
+def test_duplicate_cached_sample_poisons_only_cached_input():
+    text = body(
+        'radiance:linear_cached_tokens_total{model_name="m",engine="0"} 5',
+        'radiance:linear_cached_tokens_total{model_name="m",engine="0"} 6',
+        'radiance:prefill_tokens_total{model_name="m",engine="0"} 1000',
+        'radiance:decode_tokens_total{model_name="m",engine="0"} 100',
+        'vllm:prompt_tokens_total{model_name="m",engine="0"} 7',
+    )
+    c = scrape_of(text).for_labels(M0)
+    assert c.values[CACHED_INPUT] is None
+    assert c.problems[CACHED_INPUT] == "duplicate_sample"
+    assert c.primary_usable()
+    assert c.values[REQUEST_INPUT] == 7
 
 
 def test_label_order_does_not_change_identity():

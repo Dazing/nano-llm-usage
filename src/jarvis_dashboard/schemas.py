@@ -56,6 +56,7 @@ class GapScopes(BaseModel):
     primary: float
     request_input: float
     request_output: float
+    cached_input: float
 
 
 class CounterBlock(BaseModel):
@@ -79,6 +80,7 @@ class CounterBlocks(BaseModel):
     generated_output: CounterBlock
     request_input: CounterBlock
     request_output: CounterBlock
+    cached_input: CounterBlock
 
 
 class Aggregates(BaseModel):
@@ -97,10 +99,45 @@ class Bucket(Aggregates):
     ended_at: str
 
 
+class CostRateConfig(BaseModel):
+    """Operator-configured prices per million tokens (null when unset)."""
+
+    currency: str
+    input_per_mtok: str
+    cached_input_per_mtok: str
+    output_per_mtok: str
+
+
+class CostTokens(BaseModel):
+    """Token totals over the priced hours only."""
+
+    uncached_input: str
+    cached_input: str
+    output: str
+
+
+class ApiEquivalent(BaseModel):
+    """Read-time API-equivalent estimate for a range (spec D4).
+
+    ``amount`` is null when rates are unset or no hour has every priced counter
+    observed; ``partial`` is true when priced hours are fewer than expected.
+    """
+
+    currency: str
+    amount: str | None = None
+    tokens: CostTokens
+    cache_hit_ratio: float | None = None
+    priced_hours: int
+    expected_hours: int
+    partial: bool
+    flags: list[str]
+
+
 class Range(Aggregates):
     started_at: str | None = None
     ended_at: str
     observed: bool
+    api_equivalent: ApiEquivalent
 
 
 class Rate(BaseModel):
@@ -145,6 +182,7 @@ class StatusResponse(Envelope):
     shutting_down: bool
     last_poll_at: str | None = None
     last_recorded_error_code: str | None = None
+    cost_rates: CostRateConfig | None = None
 
 
 class SeriesItem(BaseModel):

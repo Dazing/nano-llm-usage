@@ -28,18 +28,24 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 from typing import Any
 
 from . import storage
+from .config import CostRates
 from .domain import (
+    CACHED_INPUT,
     COMPUTED_INPUT,
     COUNTER_KEYS,
     GENERATED_OUTPUT,
     QUALITY_FLAGS,
+    REQUEST_INPUT,
+    REQUEST_OUTPUT,
     SCOPE_FOR_COUNTER,
     SCOPES,
     checked_add_int64,
+    hour_floor,
     hour_label,
     labels_from_canonical,
     parse_iso,
@@ -55,6 +61,15 @@ IMPLICIT_GAP_INTERVALS = 2  # downtime starts strictly after two poll intervals
 
 BUCKET_SECONDS = {"hour": 3600, "day": 86400}
 MAX_BUCKETS = {"hour": 744, "day": 366}
+
+# API-equivalent cost (cost plan D4): read-time only, over hours where every
+# priced counter was observed. Money is never stored, so a rate change reprices.
+PRICED_COUNTERS = (REQUEST_INPUT, REQUEST_OUTPUT, CACHED_INPUT)
+COST_CURRENCY = "USD"
+CACHE_EXCEEDS_INPUT = "cache_exceeds_input"
+_MILLION = Decimal(1_000_000)
+_AMOUNT_PLACES = Decimal("0.000001")
+_HOUR = timedelta(hours=1)
 
 
 class QueryError(Exception):
@@ -626,6 +641,92 @@ def _is_partial(payload: dict[str, Any], gaps: dict[str, float]) -> bool:
     return any(flag in PARTIAL_FLAGS for flag in payload["quality_flags"])
 
 
+def _is_priced_hour(per_hour: dict[str, dict[str, Any]]) -> bool:
+    """A hour is priced only when every priced counter was observed in it (D4)."""
+    for key in PRICED_COUNTERS:
+        row = per_hour.get(key)
+        if row is None or row["observed_intervals"] <= 0 or row["tokens"] is None:
+            return False
+    return True
+
+
+def _expected_hours(start: datetime, end: datetime, rows: dict[str, Any]) -> int:
+    """Complete hours in ``[start, end)``, plus the current hour once it has rows.
+
+    The trailing hour counts only after it has an hourly row, so a range never
+    reads as "partial" in the first seconds of a new hour.
+    """
+    first = hour_floor(start)
+    last = hour_floor(end)
+    hours = int((last - first).total_seconds() // 3600)
+    if hours < 0:
+        hours = 0
+    if hour_label(last) in rows:
+        hours += 1
+    return hours
+
+
+def _api_equivalent(
+    rows: dict[str, dict[str, dict[str, Any]]],
+    start: datetime,
+    end: datetime,
+    rates: CostRates | None,
+) -> dict[str, Any]:
+    """API-equivalent cost, cache share and coverage for one range (cost plan D4).
+
+    Only hours where the request counters *and* the cache counter were observed
+    are priced, so a period before cache tracking contributes no money and no
+    cache share; it lowers coverage instead. Nothing is stored: the answer is a
+    function of the hourly rows and the rates configured at startup.
+    """
+    priced = [per_hour for per_hour in rows.values() if _is_priced_hour(per_hour)]
+    request_input = cached_input = request_output = 0
+    for per_hour in priced:
+        request_input = checked_add_int64(
+            request_input, int(per_hour[REQUEST_INPUT]["tokens"])
+        )
+        cached_input = checked_add_int64(cached_input, int(per_hour[CACHED_INPUT]["tokens"]))
+        request_output = checked_add_int64(
+            request_output, int(per_hour[REQUEST_OUTPUT]["tokens"])
+        )
+    uncached = request_input - cached_input
+    flags: list[str] = []
+    if uncached < 0:
+        # AC5: cache tokens ahead of request tokens (timing skew). Price the
+        # uncached part as zero and say so -- never clamp it silently.
+        flags.append(CACHE_EXCEEDS_INPUT)
+        uncached = 0
+    amount = None
+    ratio = None
+    if priced:
+        if rates is not None:
+            total = (
+                Decimal(uncached) * rates.input_per_mtok
+                + Decimal(cached_input) * rates.cached_input_per_mtok
+                + Decimal(request_output) * rates.output_per_mtok
+            )
+            amount = str((total / _MILLION).quantize(_AMOUNT_PLACES, rounding=ROUND_HALF_EVEN))
+        if request_input > 0:
+            ratio = float(
+                (Decimal(cached_input) / Decimal(request_input)).quantize(_AMOUNT_PLACES)
+            )
+    expected = _expected_hours(start, end, rows)
+    return {
+        "currency": rates.currency if rates is not None else COST_CURRENCY,
+        "amount": amount,
+        "tokens": {
+            "uncached_input": str(uncached),
+            "cached_input": str(cached_input),
+            "output": str(request_output),
+        },
+        "cache_hit_ratio": ratio,
+        "priced_hours": len(priced),
+        "expected_hours": expected,
+        "partial": len(priced) < expected,
+        "flags": flags,
+    }
+
+
 def _range_payload(
     conn: sqlite3.Connection,
     source_id: str,
@@ -634,6 +735,7 @@ def _range_payload(
     now: datetime,
     poll_interval_seconds: int,
     last_success_at: str | None,
+    cost_rates: CostRates | None = None,
 ) -> dict[str, Any]:
     """Sum retained hourly rows through the current observed hour.
 
@@ -652,6 +754,7 @@ def _range_payload(
             "gap_seconds": {},
             "partial": False,
             "incomplete": True,
+            "api_equivalent": _api_equivalent({}, now, now, cost_rates),
         }
     label_to = hour_label(now + timedelta(hours=1))
     rows = _hourly_rows(conn, source_id, series.identity, hour_label(start), label_to)
@@ -672,6 +775,7 @@ def _range_payload(
             "gap_seconds": {scope: gaps[scope] for scope in sorted(gaps)},
             "partial": _is_partial(payload, gaps),
             "incomplete": True,
+            "api_equivalent": _api_equivalent(rows, start, now, cost_rates),
         }
     )
     return payload
@@ -806,6 +910,7 @@ def read_status(
     raw_retention_days: int,
     health: HealthSnapshot,
     now: datetime,
+    cost_rates: CostRates | None = None,
 ) -> dict[str, Any]:
     """Source-level status: no endpoint credentials, URLs, or raw payloads."""
     with _open(db_path) as conn:
@@ -845,6 +950,8 @@ def read_status(
         "shutting_down": health.shutting_down,
         "last_poll_at": runtime[storage.RUNTIME_LAST_POLL_AT],
         "last_recorded_error_code": runtime[storage.RUNTIME_LAST_ERROR_CODE] or None,
+        # Rates appear once, on status; null means the estimate is disabled (D5).
+        "cost_rates": None if cost_rates is None else cost_rates.as_wire(),
     }
 
 
@@ -945,6 +1052,7 @@ def read_summary(
     health: HealthSnapshot,
     now: datetime,
     poll_interval_seconds: int,
+    cost_rates: CostRates | None = None,
 ) -> dict[str, Any]:
     """Today / month / lifetime sums, latest rates, and bounded epoch diagnostics."""
     limit = min(max(1, epoch_limit), MAX_EPOCH_PAGE)
@@ -985,10 +1093,24 @@ def read_summary(
             "state": "stale" if (state and state[2]) else "active",
             "ranges": {
                 "today": _range_payload(
-                    conn, source_id, series, today_start, now, poll_interval_seconds, last_success
+                    conn,
+                    source_id,
+                    series,
+                    today_start,
+                    now,
+                    poll_interval_seconds,
+                    last_success,
+                    cost_rates,
                 ),
                 "month": _range_payload(
-                    conn, source_id, series, month_start, now, poll_interval_seconds, last_success
+                    conn,
+                    source_id,
+                    series,
+                    month_start,
+                    now,
+                    poll_interval_seconds,
+                    last_success,
+                    cost_rates,
                 ),
                 "lifetime": _range_payload(
                     conn,
@@ -998,6 +1120,7 @@ def read_summary(
                     now,
                     poll_interval_seconds,
                     last_success,
+                    cost_rates,
                 ),
             },
             "rates": _rates(conn, source_id, series.identity),
@@ -1036,9 +1159,11 @@ def read_history(
     health: HealthSnapshot,
     now: datetime,
     poll_interval_seconds: int,
+    cost_rates: CostRates | None = None,
 ) -> dict[str, Any]:
     """Every bucket in the range, including empty ones; the range is never clamped."""
     seconds = BUCKET_SECONDS[bucket]
+    cost_end = min(ended_at, now)
     with _open(db_path) as conn:
         series = _resolve(conn, source_id, series_id)
         _first, last_success, _attempt, _error = storage.source_activity(conn, source_id)
@@ -1052,6 +1177,10 @@ def read_history(
             now,
             poll_interval_seconds,
             last_success,
+        )
+        # Cost needs hourly resolution even when the chart is bucketed by day.
+        cost_rows = _hourly_rows(
+            conn, source_id, series.identity, hour_label(started_at), hour_label(cost_end + _HOUR)
         )
     blocks: dict[str, dict[str, Any]] = {}
     for item in buckets:
@@ -1103,6 +1232,7 @@ def read_history(
                 for item in buckets
                 for block in item["counters"].values()
             ),
+            "api_equivalent": _api_equivalent(cost_rows, started_at, cost_end, cost_rates),
         }
     )
     return {

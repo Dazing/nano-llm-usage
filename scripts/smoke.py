@@ -32,6 +32,7 @@ from fixture_server import FixtureServer, install_fixture  # noqa: E402
 
 from jarvis_dashboard import storage  # noqa: E402
 from jarvis_dashboard.domain import (  # noqa: E402
+    CACHED_INPUT,
     COMPUTED_INPUT,
     GENERATED_OUTPUT,
     REQUEST_INPUT,
@@ -40,6 +41,13 @@ from jarvis_dashboard.domain import (  # noqa: E402
 L = {"model_name": "fixture-model", "engine": "0"}
 CI, GO = "radiance:prefill_tokens_total", "radiance:decode_tokens_total"
 RI, RO = "vllm:prompt_tokens_total", "vllm:generation_tokens_total"
+CA = "radiance:linear_cached_tokens_total"
+# AC1 prices: $3 input / $0.30 cached / $15 output per million tokens.
+RATE_ENV = {
+    "COST_RATE_INPUT_PER_MTOK": "3",
+    "COST_RATE_CACHED_INPUT_PER_MTOK": "0.30",
+    "COST_RATE_OUTPUT_PER_MTOK": "15",
+}
 POLL = 5
 TWO_POLLS = 11  # > 2 * poll with slack
 BUDGET_START = time.monotonic()
@@ -146,7 +154,7 @@ def reset_state(server: FixtureServer) -> None:
 
 def set_counts(
     server: FixtureServer, ci: int, go: int,
-    ri: int | None = None, ro_: int | None = None,
+    ri: int | None = None, ro_: int | None = None, ca: int | None = None,
     uptime_start: float | None = None, uptime_fixed: float | None = None,
 ) -> None:
     """Publish a new upstream snapshot with a chainable uptime reading."""
@@ -160,6 +168,8 @@ def set_counts(
     if ri is not None:
         values[RI] = ri
         values[RO] = ro_
+    if ca is not None:
+        values[CA] = ca
     st.set_series(L, values)
 
 
@@ -775,6 +785,100 @@ def main() -> int:
     return 0
 
 
+def wait_ready(serve: "ServeProc", port: int, timeout: float = 40.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if get_path(port, "/health/ready")[0] == 200:
+            return
+        if serve.proc is not None and serve.proc.poll() is not None:
+            err = serve.proc.stderr.read() if serve.proc.stderr else ""
+            raise AssertionError(f"serve exited early rc={serve.proc.returncode}: {err[-400:]}")
+        time.sleep(0.5)
+    raise AssertionError(f"serve never became ready on port {port}")
+
+
+def scenario_cost_estimate(server: FixtureServer, tmp: Path) -> None:
+    """Cost plan AC1-AC6: prices come from rates at read time, never from storage.
+
+    Two accepted intervals of exactly 1,000,000 request input / 100,000 request
+    output / 600,000 cached input give a hand-checkable lifetime amount of
+    (800,000 x 3 + 1,200,000 x 0.30 + 200,000 x 15) / 1e6 = 5.76.
+    """
+    print("--- scenario 9: API-equivalent cost, cache share, coverage, repricing")
+    port = free_port()
+    db = tmp / "d9.sqlite3"
+    reset_state(server)
+    install_fixture(server.state, L, 1000, 100)
+    start = time.monotonic()
+    ticker = UptimeTicker(server)
+    serve = ServeProc(db, server.base_url, port)
+    serve.env.update(RATE_ENV)
+    serve.start()
+    wait_ready(serve, port)
+
+    # The first accepted poll baselines the three priced counters; each later
+    # poll adds exactly one priced interval.
+    set_counts(server, 1000, 100, 1_000_000, 100_000, 600_000, uptime_start=start)
+    time.sleep(TWO_POLLS)
+    set_counts(server, 1000, 100, 2_000_000, 200_000, 1_200_000, uptime_start=start)
+    time.sleep(TWO_POLLS)
+    set_counts(server, 1000, 100, 3_000_000, 300_000, 1_800_000, uptime_start=start)
+    assert wait_for(lambda: total(db, CACHED_INPUT) == 1_200_000, 40), "cached counter not collected"
+
+    series_id = api(port, "/series")[1]["items"][0]["series_id"]
+    status, summary, _ = api(port, "/summary", f"series_id={series_id}")
+    check("cost summary status", status, 200)
+    life = summary["ranges"]["lifetime"]
+    check("lifetime request_input tokens", life["counters"]["request_input"]["tokens"], "2000000")
+    check("lifetime request_output tokens", life["counters"]["request_output"]["tokens"], "200000")
+    check("lifetime cached_input tokens", life["counters"]["cached_input"]["tokens"], "1200000")
+    cost = life["api_equivalent"]
+    check("amount string (AC1)", cost["amount"], "5.760000")
+    check("currency", cost["currency"], "USD")
+    check("token split", cost["tokens"], {
+        "uncached_input": "800000", "cached_input": "1200000", "output": "200000",
+    })
+    check("cache hit ratio (AC1)", cost["cache_hit_ratio"], 0.6)
+    check("no cost flags", cost["flags"], [])
+    receipt("priced / expected hours", f"{cost['priced_hours']} / {cost['expected_hours']}")
+    check("coverage flag matches hour counts", cost["partial"],
+          cost["priced_hours"] < cost["expected_hours"])
+    assert cost["priced_hours"] >= 1, "nothing priced: AC1 requires a priced interval"
+    receipt("lifetime processed_total stays engine-only", life["processed_total"])
+
+    status, status_body, _ = api(port, "/status")
+    check("status publishes the configured prices", status_body["cost_rates"], {
+        "currency": "USD",
+        "input_per_mtok": "3",
+        "cached_input_per_mtok": "0.30",
+        "output_per_mtok": "15",
+    })
+
+    # AC6: the same volume repriced at startup-only rates. Money is not stored,
+    # so a rates-free reader keeps the share and coverage but reports no amount.
+    rc, _, _ = serve.stop()
+    check("cost serve exits cleanly", rc, 0)
+    ticker.stop()
+    plain = ServeProc(db, server.base_url, port)
+    plain.start()
+    wait_ready(plain, port)
+    status, unpriced, _ = api(port, "/summary", f"series_id={series_id}")
+    check("unpriced summary status", status, 200)
+    life = unpriced["ranges"]["lifetime"]
+    check("amount is null without rates (AC4)", life["api_equivalent"]["amount"], None)
+    check("cache share survives without rates", life["api_equivalent"]["cache_hit_ratio"], 0.6)
+    check("coverage survives without rates", life["api_equivalent"]["priced_hours"],
+          summary["ranges"]["lifetime"]["api_equivalent"]["priced_hours"])
+    status, status_body, _ = api(port, "/status")
+    check("status reports no prices when unset", status_body["cost_rates"], None)
+    receipt("stored money columns", [
+        row["name"] for row in q(db, "PRAGMA table_info(samples)")
+        if "cost" in row["name"] or "amount" in row["name"]
+    ])
+    rc, _, _ = plain.stop()
+    check("rates-free serve exits cleanly", rc, 0)
+
+
 def run_scenarios(tmp: Path) -> None:
     with FixtureServer() as server:
         install_fixture(server.state, L, 1000, 100)
@@ -786,6 +890,7 @@ def run_scenarios(tmp: Path) -> None:
         scenario_transport(server, tmp)
         scenario_serve_and_api(server, tmp)
         scenario_backup_restore(server, tmp)
+        scenario_cost_estimate(server, tmp)
 
 
 if __name__ == "__main__":

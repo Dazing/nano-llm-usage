@@ -45,6 +45,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests" / "fixtures"))
 
 from fixture_server import FixtureServer, install_fixture  # noqa: E402
+from jarvis_dashboard.config import COST_RATE_ENV_NAMES  # noqa: E402
 from jarvis_dashboard.domain import COUNTER_KEYS, hour_label, to_iso  # noqa: E402
 
 # --- D1 runtime contract ---------------------------------------------------
@@ -490,6 +491,9 @@ def compose_document(path: Path = ROOT / "compose.yaml") -> dict[str, str]:
         "environment_keys": sorted(
             line.strip().split(":", 1)[0] for line in env_block.splitlines() if ":" in line
         ),
+        "cost_rate_values": {
+            name: _scalar(env_block, name) for name in COST_RATE_ENV_NAMES
+        },
         "source_id_value": _scalar(env_block, "SOURCE_ID"),
         "user": _scalar(body.split("    environment:")[0], "user"),
         "build_args_present": "\n      args:" in body.split("    image:")[0],
@@ -955,6 +959,9 @@ def doc_consistency_check(path: Path = DEPLOYMENT_DOC) -> tuple[list[tuple[str, 
         "reader budget correction": "read_capacity = 4",
         'restore user flag': '--user "$jarvis_uid:$jarvis_gid"',
         "source id env name": '-e source_id="$jarvis_source_id"',
+        "cost rate input variable": "cost_rate_input_per_mtok",
+        "cost rate cached variable": "cost_rate_cached_input_per_mtok",
+        "cost rate output variable": "cost_rate_output_per_mtok",
     }
     for label, needle in required.items():
         want(f"deployment.md documents: {label}", needle in lower, True)
@@ -976,6 +983,12 @@ def compose_document_rows() -> list[tuple[str, object, object]]:
         ("SOURCE_ID default is the source identity", doc["source_id_value"],
          "${JARVIS_SOURCE_ID:-jarvis}"),
         ("runtime user comes from JARVIS_UID/GID", (doc["user"] or "").startswith("${JARVIS_UID:?"), True),
+        ("cost rate input price is an optional passthrough", doc["cost_rate_values"]["COST_RATE_INPUT_PER_MTOK"],
+         "${COST_RATE_INPUT_PER_MTOK:-}"),
+        ("cost rate cached price is an optional passthrough",
+         doc["cost_rate_values"]["COST_RATE_CACHED_INPUT_PER_MTOK"], "${COST_RATE_CACHED_INPUT_PER_MTOK:-}"),
+        ("cost rate output price is an optional passthrough",
+         doc["cost_rate_values"]["COST_RATE_OUTPUT_PER_MTOK"], "${COST_RATE_OUTPUT_PER_MTOK:-}"),
         ("no build args (the image is built once)", doc["build_args_present"], False),
         ("mem_limit", doc["mem_limit"], "512m"),
         ("cpus", doc["cpus"], "0.5"),
