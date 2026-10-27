@@ -38,7 +38,7 @@
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   --chart-height: 360px;
-  --live-height: 400px; /* the live grid at >=1000px: two rows of one height */
+  --live-height: 320px; /* the live grid at >=1000px: two rows of one height */
 }
 
 html {

@@ -619,6 +619,7 @@ button.is-active {
 .req-num {
   font: 700 40px/1.15 var(--font-mono);
   letter-spacing: -0.02em;
+  text-align: center;
 }
 
 .req-num .small {
@@ -1211,7 +1212,8 @@ tbody tr:hover {
 .card .big {
   font: 700 30px/1.05 var(--font-mono);
   letter-spacing: -0.02em;
-  margin: 2px 0 0;
+  margin: 14px 0;
+  text-align: center;
 }
 
 .split {
@@ -1241,8 +1243,9 @@ tbody tr:hover {
 .split .keys {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 1px var(--sp-2);
-  margin-top: var(--sp-1);
+  gap: 2px var(--sp-2);
+  margin-top: var(--sp-2);
+  margin-bottom: var(--sp-2);
   font: 13px/1.25 var(--font-mono);
 }
 

@@ -112,7 +112,6 @@ const observedAt = computed(() => formatUtc(snapshot.value?.observed_at));
           <span class="lab">Requests</span>
           <!-- The two slots joined is the text (D4); only the waiting part is styled. -->
           <div class="req-num num" data-testid="live-requests">{{ activeText }}<span class="small"> / {{ queuedText }}</span></div>
-          <div class="sub">running / waiting</div>
           <div class="req-bars">
             <div class="rrow bar-active">
               <span>Active</span>
@@ -146,7 +145,6 @@ const observedAt = computed(() => formatUtc(snapshot.value?.observed_at));
           </div>
           <div class="spark">
             <Sparkline class="tone-mtp" :values="samples.mtp5s" :height="34" />
-            <div class="sub">MTP 5s window · last 40 samples</div>
           </div>
         </div>
       </div>
