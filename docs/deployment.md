@@ -33,6 +33,42 @@ sudo install -d -o "$JARVIS_UID" -g "$JARVIS_GID" -m 0750 /mnt/cache/appdata/jar
 `chmod 777` is not required anywhere and must not be used: the app writes only
 inside `/data`, as its own UID/GID.
 
+## Disk footprint
+
+`RAW_RETENTION_DAYS` is the only time-bounded term an operator controls: detailed
+samples and events are deleted past the cutoff (one maintenance pass per 24 h of
+collector uptime — samples in batches of 500 rows, events in one pass), while
+hourly totals, epochs, baselines and collector state grow for the life of the
+volume.
+
+Measured on a schema-faithful volume at the default 15 s poll with every counter
+observed and every index counted (`VACUUM INTO` snapshot + `dbstat`):
+
+| Series | 30 days | 180 days (default) |
+| --- | --- | --- |
+| 1 | 66 MiB | ~400 MiB |
+| 8 | 534 MiB | ~3.2 GiB |
+| 16 | 1.1 GiB | ~6.5 GiB |
+
+That is ~400 B per retained sample (~2.25 MiB per series per day), so raw volume
+is `series × days × (86400 / POLL_INTERVAL_SECONDS) × 400 B` and scales linearly
+with both the retention window and the poll rate. The unbounded hourly rollup is
+the small term: ~115 MiB per year at eight series. Long label sets are the
+biggest multiplier, because `identity` is repeated in the `samples` table and in
+all three of its indexes: a 118-byte identity costs ~640 B per sample (+61%).
+
+Size the appdata directory for the window you run, plus the transient `-wal`
+sibling and one snapshot backup, which is roughly a full copy — see
+[Backup](#backup). Raising `RAW_RETENTION_DAYS` on a running volume only protects
+data from that point on: samples already purged under a shorter window are not
+recovered. Lowering it takes effect on the next daily maintenance pass, and the
+freed pages stay in the file — nothing runs a periodic `VACUUM`, and the backup
+API copies pages as they are, so reclaiming that space means an explicit `VACUUM`
+with the container stopped. When the volume is tight, lower `RAW_RETENTION_DAYS`
+(for example `30`): lifetime,
+monthly and daily answers keep coming from the hourly rollups and quality flags,
+and only detailed sample/event drill-down narrows.
+
 ## Runtime user
 
 The image bakes `APP_UID=10001` / `APP_GID=10001` as a fallback, and
@@ -89,7 +125,8 @@ RADIANCE_BASE_URL=http://192.168.1.228:8000
 | `RADIANCE_BASE_URL` | Required. Origin-only Jarvis base URL, e.g. `http://192.168.1.228:8000`. |
 | `JARVIS_SOURCE_ID` | Optional label for the collected series, default `jarvis`. Written into the database, not into the image; changing it starts a new series identity. |
 | `POLL_INTERVAL_SECONDS` | Optional, default `15`, accepted range `5..300`. |
-| `HTTP_TIMEOUT_SECONDS`, `RAW_RETENTION_DAYS`, `LOG_LEVEL` | Optional tuning; validated at startup, invalid values exit `2`. |
+| `RAW_RETENTION_DAYS` | Optional, default `180` (six months), accepted range `1..365`. Only detailed samples/events expire; see [Disk footprint](#disk-footprint). |
+| `HTTP_TIMEOUT_SECONDS`, `LOG_LEVEL` | Optional tuning; validated at startup, invalid values exit `2`. |
 | `COST_RATE_INPUT_PER_MTOK`, `COST_RATE_CACHED_INPUT_PER_MTOK`, `COST_RATE_OUTPUT_PER_MTOK` | Optional. List price per million tokens for the API-equivalent estimate, in USD. Set all three together or leave all three empty; a partial set exits `2` naming every missing variable. See [Cost rates](#cost-rates-the-api-equivalent-estimate). |
 
 Inside the container the API binds the container's own interface on the bridge
