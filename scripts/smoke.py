@@ -13,6 +13,7 @@ Usage: .venv/bin/python scripts/smoke.py
 from __future__ import annotations
 
 import datetime as _dt
+import fcntl
 import os
 import shutil
 import signal
@@ -235,6 +236,25 @@ def has_series(db: Path) -> bool:
         return len(q(db, "SELECT 1 FROM series WHERE source_id='s1'")) > 0
     except sqlite3.OperationalError:
         return False  # database still being created
+
+
+def volume_lock_held(db: Path) -> bool:
+    """True once a live writer holds the exclusive flock on ``<db>.lock``.
+
+    Series presence is not writer readiness: a restored volume already has
+    series, so a scenario that expects a busy-target refusal must observe the
+    lock itself (the same ``fcntl.flock`` ``storage.acquire_volume_lock`` uses).
+    """
+    lock_path = db.with_name(db.name + ".lock")
+    if not lock_path.exists():
+        return False
+    with lock_path.open("a+b") as fh:
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return True
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        return False
 
 
 def scenario_normal_and_restart(server: FixtureServer, db: Path) -> None:
@@ -505,6 +525,20 @@ def get_path(port: int, path: str) -> tuple[int, dict]:
         return 0, {"error": {"code": "unreachable"}}
 
 
+def raw_get(port: int, path: str) -> tuple[int, str]:
+    """Status and content-type for a path whose body is not JSON (the built UI)."""
+    import urllib.error
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=10) as r:
+            return r.status, r.headers.get("content-type", "")
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.headers.get("content-type", "")
+    except urllib.error.URLError:
+        return 0, "unreachable"
+
+
 def scenario_serve_and_api(server: FixtureServer, tmp: Path) -> None:
     print("--- scenario 7: real serve, bounded API, purge-stable history")
     port = free_port()
@@ -594,7 +628,8 @@ def scenario_serve_and_api(server: FixtureServer, tmp: Path) -> None:
     )
     receipt("events retention note", events["retention"]["note"])
     receipt("openapi paths", len(get_path(port, "/api/v1/openapi.json")[1]["paths"]))
-    receipt("root 404 code", get_path(port, "/")[1].get("error", {}).get("code"))
+    root_status, root_type = raw_get(port, "/")
+    receipt("root response", f"{root_status} {root_type.split(';')[0] or 'no content-type'}")
 
     # 32 concurrent reads against 4 admission slots: saturating requests are refused
     # promptly with the documented code, nothing queues, and the server stays usable.
@@ -709,7 +744,7 @@ def scenario_backup_restore(server: FixtureServer, tmp: Path) -> None:
     # A running target refuses restore: lock is held by the live writer.
     col2 = CollectorProc(target, server.base_url)
     col2.start()
-    assert wait_for(lambda: has_series(target)), "restored volume did not open"
+    assert wait_for(lambda: volume_lock_held(target)), "writer never took the volume lock"
     busy = subprocess.run(
         [sys.executable, "-m", "jarvis_dashboard.cli", "restore", "--input", str(snapshot)],
         cwd=ROOT, env=restore_env, capture_output=True, text=True,

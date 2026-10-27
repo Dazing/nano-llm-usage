@@ -44,6 +44,7 @@ class Config:
     port: int
     log_level: str
     bind_address: str = DEFAULT_BIND_ADDRESS
+    static_dir: str | None = None
 
     @property
     def metrics_url(self) -> str:
@@ -158,6 +159,10 @@ def from_env(environ: dict[str, str] | None = None) -> Config:
     if log_level not in _LOG_LEVELS:
         raise ConfigError(f"LOG_LEVEL must be one of {', '.join(_LOG_LEVELS)}, got {log_level!r}")
     bind_address = _parse_bind_address(env.get("JARVIS_BIND_ADDRESS", DEFAULT_BIND_ADDRESS))
+    raw_static = env.get("STATIC_DIR")
+    static_dir = raw_static.strip() if raw_static is not None and raw_static.strip() else None
+    if raw_static is not None and raw_static != "" and static_dir is None:
+        raise ConfigError("STATIC_DIR must not be empty")
     return Config(
         radiance_base_url=base_url,
         source_id=source_id,
@@ -168,4 +173,5 @@ def from_env(environ: dict[str, str] | None = None) -> Config:
         port=port,
         log_level=log_level,
         bind_address=bind_address,
+        static_dir=static_dir,
     )

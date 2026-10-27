@@ -575,6 +575,8 @@ def test_no_wildcard_cors_is_configured(db):
 
 
 def test_root_is_a_plain_404_until_the_delivery_3_ui(db):
+    # The API application alone has no page route; the built UI is served by the
+    # outer ASGI entry point (see tests/test_static.py).
     response = get(app_for(db), "/")
     assert response.status_code == 404
     body = response.json()

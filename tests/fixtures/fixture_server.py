@@ -22,12 +22,16 @@ SELECTED_METRICS = (
 
 
 class FixtureState:
-    def __init__(self, model: str = "fixture-model"):
+    def __init__(self, model: str = "fixture-model", clock: Callable[[], float] = time.monotonic):
         self.lock = threading.Lock()
         self.model = model
         # (metric, canonical label tuple string) -> raw value lexeme
         self.samples: dict[tuple[str, tuple[tuple[str, str], ...]], str] = {}
         self.uptime_s: float | None = 100.0
+        # When set, /stats reports uptime_s as clock() - uptime_origin: a process
+        # start time stays consistent across a seeded history and a live run.
+        self.uptime_origin: float | None = None
+        self.clock = clock
         self.stats_fail = False
         self.stats_body: str | None = None  # override whole /stats body
         self.metrics_status: int | None = None  # e.g. 500
@@ -37,7 +41,7 @@ class FixtureState:
         self.chunk_bytes = 65536
         self.oversize = False
         self.redirect = False
-        self.requests: list[str] = []
+        self.requests: dict[str, int] = {}
 
     def set_series(self, labels: dict[str, str], values: dict[str, object]) -> None:
         with self.lock:
@@ -77,7 +81,7 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         state = self.state
         with state.lock:
-            state.requests.append(self.path)
+            state.requests[self.path] = state.requests.get(self.path, 0) + 1
             delay = state.delay_s
             redirect = state.redirect
         if delay:
@@ -137,11 +141,14 @@ class _Handler(BaseHTTPRequestHandler):
             if state.stats_body is not None:
                 payload = state.stats_body.encode("utf-8")
             else:
-                if state.uptime_s is None:
+                uptime = state.uptime_s
+                if state.uptime_origin is not None:
+                    uptime = state.clock() - state.uptime_origin
+                if uptime is None:
                     self.send_response(500)
                     self.end_headers()
                     return
-                payload = json.dumps({"model": state.model, "uptime_s": state.uptime_s}).encode("utf-8")
+                payload = json.dumps({"model": state.model, "uptime_s": uptime}).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(payload)))
@@ -150,10 +157,18 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 class FixtureServer:
-    def __init__(self, model: str = "fixture-model"):
-        self.state = FixtureState(model=model)
+    def __init__(
+        self,
+        model: str = "fixture-model",
+        host: str = "127.0.0.1",
+        port: int = 0,
+        clock: Callable[[], float] = time.monotonic,
+    ):
+        """Loopback by default; `host`/`port` let a harness publish it on a
+        private bridge network so a container can reach it (qualification)."""
+        self.state = FixtureState(model=model, clock=clock)
         handler = type("BoundHandler", (_Handler,), {"state": self.state})
-        self._server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        self._server = ThreadingHTTPServer((host, port), handler)
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
 
     @property

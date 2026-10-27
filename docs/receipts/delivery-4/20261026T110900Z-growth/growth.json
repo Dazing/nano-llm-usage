@@ -1,0 +1,68 @@
+{
+  "assumptions": {
+    "counters_per_hourly_row": 1,
+    "expected_hourly_rows_per_day": 768,
+    "note": "raw samples stay bounded by the retention window; hourly rollups grow linearly with wall time and are the extrapolated term",
+    "observed_hourly_rows_per_day": 769.0,
+    "poll_seconds": 15,
+    "retention_days": 30,
+    "row_bytes_include_indexes": true,
+    "series_count": 8
+  },
+  "bytes_per_hourly_row": 411.81,
+  "bytes_per_sample": 376.67,
+  "extrapolation": {
+    "hourly_bytes_per_day": 316270.1,
+    "projected_10_years_bytes": 1154385792,
+    "projected_1_year_bytes": 115438579,
+    "projected_5_years_bytes": 577192896,
+    "raw_bytes_retained": 518195466
+  },
+  "index_bytes": {
+    "hourly_totals": 116228096,
+    "samples": 518201344
+  },
+  "per_table_bytes": {
+    "collector_state": 4096,
+    "epochs": 4096,
+    "events": 4096,
+    "gap_spans": 20480,
+    "hourly_totals": 60657664,
+    "idx_epochs_series": 4096,
+    "idx_epochs_series_order": 4096,
+    "idx_events_series_order": 4096,
+    "idx_events_time": 4096,
+    "idx_gap_open": 16384,
+    "idx_gap_scope": 16384,
+    "idx_hourly_hour": 6512640,
+    "idx_hourly_series": 22216704,
+    "idx_samples_series": 128208896,
+    "idx_samples_time": 66371584,
+    "idx_series_enum": 4096,
+    "latest_interval": 12288,
+    "maintenance_cursor": 4096,
+    "samples": 217214976,
+    "series": 4096,
+    "series_state": 4096,
+    "sources": 4096,
+    "sqlite_autoindex_collector_state_1": 4096,
+    "sqlite_autoindex_hourly_totals_1": 26841088,
+    "sqlite_autoindex_latest_interval_1": 4096,
+    "sqlite_autoindex_maintenance_cursor_1": 4096,
+    "sqlite_autoindex_samples_1": 106405888,
+    "sqlite_autoindex_series_1": 4096,
+    "sqlite_autoindex_series_state_1": 4096,
+    "sqlite_autoindex_sources_1": 4096,
+    "sqlite_sequence": 4096,
+    "sqlite_stat1": 4096
+  },
+  "per_table_source": "dbstat",
+  "row_counts": {
+    "events": 1,
+    "gap_spans": 109,
+    "hourly_totals": 282236,
+    "samples": 1375728,
+    "series": 8
+  },
+  "scratch_bytes": 634585088
+}

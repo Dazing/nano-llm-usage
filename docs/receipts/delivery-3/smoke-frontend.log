@@ -1,0 +1,120 @@
+[receipt] workdir = /tmp/jarvis-frontend-smoke-y54suejf
+--- phase 1: preflight
+[ok ] openapi snapshot current: 0 (expected 0)
+[ok ] frontend build present: True (expected True)
+[ok ] chromium present: True (expected True)
+--- phase 2: fixture collector and real serve process
+[ok ] serve ready on port 54097: True (expected True)
+--- phase 3: A2 accounting through the API
+[ok ] api_processed_total: '960' (expected '960')
+[ok ] api_lifetime_input: '900' (expected '900')
+[ok ] api_lifetime_output: '60' (expected '60')
+[receipt] api_series_id = v1.WyJzbW9rZ…
+[receipt] chromium_pid = 11412
+[receipt] root_response = 200 text/html
+--- phase 4: built bundle renders the API values
+[receipt] dom_first_paint_seconds = 1.0
+[ok ] dom_renders_lifetime_total: True (expected True)
+[ok ] product name: 'Jarvis Token Dashboard' (expected 'Jarvis Token Dashboard')
+[ok ] dom_lifetime_total: '960' (expected '960')
+[ok ] dom_lifetime_input: '900' (expected '900')
+[ok ] dom_lifetime_output: '60' (expected '60')
+[receipt] dom_lifetime_start = Collecting since 2026-10-26
+[ok ] dom_lifetime_start_rendered: True (expected True)
+[ok ] dom_utc_labelled: True (expected True)
+[receipt] dom_series_name = fixture-model · engine 0
+[receipt] dom_status_badge = Healthy
+[receipt] dom_last_update = Last successful update 2026-10-26 08:40 UTC
+[receipt] screenshot desktop-1440-normal.png = /workspace/docs/receipts/delivery-3/desktop-1440-normal.png (68957 bytes)
+--- phase 5: range presets and the exclusive custom end
+[receipt] wait[history-after-24h] = ok in 0.0s
+[ok ] range_24h_bucket: 'hour' (expected 'hour')
+[receipt] wait[day-bucket-7d] = ok in 1.0s
+[receipt] wait[midnight-aligned-30d] = ok in 0.0s
+[ok ] range_30d_bucket: 'day' (expected 'day')
+[ok ] custom_end_label: True (expected True)
+[receipt] wait[custom-range-fetch] = ok in 1.0s
+[ok ] custom_bucket: 'day' (expected 'day')
+[ok ] custom_from_midnight: True (expected True)
+[ok ] custom_end_exclusive: '2026-10-27T00:00:00.000Z' (expected '2026-10-27T00:00:00.000Z')
+[receipt] screenshot desktop-1440-custom-range.png = /workspace/docs/receipts/delivery-3/desktop-1440-custom-range.png (75913 bytes)
+[ok ] custom_over_limit_blocked: 5 (expected 5)
+[ok ] range_error_names_the_limit: True (expected True)
+[receipt] wait[back-to-hour-buckets] = ok in 1.0s
+--- phase 6: null buckets, one canvas, incomplete bucket note
+[ok ] chart_table_rows_rendered: True (expected True)
+[ok ] null_bucket_label: True (expected True)
+[ok ] null_bucket_never_zero: False (expected False)
+[receipt] null_bucket_row = no data | no data | no data | complete
+[ok ] canvas_count: 1 (expected 1)
+[ok ] incomplete_note: True (expected True)
+[receipt] screenshot desktop-1440-chart-table.png = /workspace/docs/receipts/delivery-3/desktop-1440-chart-table.png (88400 bytes)
+[ok ] diagnostics_populated: True (expected True)
+[receipt] screenshot desktop-1440-diagnostics.png = /workspace/docs/receipts/delivery-3/desktop-1440-diagnostics.png (88378 bytes)
+--- phase 7a/7b: empty database and baseline-only series
+[ok ] serve ready on port 47677: True (expected True)
+[ok ] state_empty: True (expected True)
+[receipt] screenshot mobile-390-empty.png = /workspace/docs/receipts/delivery-3/mobile-390-empty.png (21159 bytes)
+[ok ] baseline_series_collected: True (expected True)
+[receipt] wait[baseline-note] = ok in 10.0s
+[ok ] state_baseline: True (expected True)
+[ok ] baseline_total_is_not_zero: 'no data' (expected 'no data')
+[receipt] wait[two unavailable notes] = ok in 0.0s
+[ok ] state_optional_unavailable: 2 (expected 2)
+--- phase 7c: fixture disconnect keeps history, restores cleanly
+[receipt] offline_seconds = 15.0
+[ok ] offline_banner: True (expected True)
+[ok ] state_offline_history_kept: '974' (expected '974')
+[receipt] screenshot desktop-1440-offline.png = /workspace/docs/receipts/delivery-3/desktop-1440-offline.png (95064 bytes)
+[receipt] recovered_badge = Healthy
+[ok ] offline_recovers: True (expected True)
+--- phase 7d: API failure shows the stale notice, restart recovers
+[ok ] state_api_failure_stale: True (expected True)
+[ok ] api_failure_history_kept: '974' (expected '974')
+[receipt] screenshot mobile-390-stale.png = /workspace/docs/receipts/delivery-3/mobile-390-stale.png (62557 bytes)
+[ok ] api_failure_recovers: True (expected True)
+--- phase 7e: request-accounted counters absent -> unavailable
+[ok ] requests_history_kept_when_absent: 0 (expected 0)
+[ok ] requests_panel_has_no_engine_total: False (expected False)
+--- phase 8: one 15 s poll timer, paused when hidden, resumes on focus
+[ok ] poll_timers: 1 (expected 1)
+[ok ] poll_interval_ms: 15000 (expected 15000)
+[ok ] polls_paused_when_hidden: 66 (expected 66)
+[ok ] poll_resumes: True (expected True)
+--- phase 10: theme persistence, reduced motion, visible keyboard focus
+[ok ] theme_applied: 'light' (expected 'light')
+[ok ] theme_persisted: 'light' (expected 'light')
+[ok ] theme_after_reload: 'light' (expected 'light')
+[ok ] theme_cycles_to_dark: 'dark' (expected 'dark')
+[receipt] screenshot desktop-1440-dark.png = /workspace/docs/receipts/delivery-3/desktop-1440-dark.png (22637 bytes)
+[ok ] reduced_motion: '0s' (expected '0s')
+[receipt] keyboard_focus_sequence = ['theme-toggle', 'range-24h', 'range-7d', 'range-30d', 'range-custom', 'chart-disclosure']
+[ok ] keyboard_focus_order: ['theme-toggle', 'range-24h', 'range-7d', 'range-30d', 'range-custom', 'chart-disclosure'] (expected ['theme-toggle', 'range-24h', 'range-7d', 'range-30d', 'range-custom', 'chart-disclosure'])
+[ok ] keyboard_focus_visible: ['2px', '2px', '2px', '2px', '2px', '2px'] (expected ['2px', '2px', '2px', '2px', '2px', '2px'])
+--- phase 9: a delayed response for the old series cannot overwrite
+[ok ] second_series_collected: True (expected True)
+[receipt] series_fetches_on_load = 2
+[receipt] wait[series picker] = ok in 0.0s
+[receipt] second_series_lifetime_total = None
+[ok ] picker_lists_second_series: True (expected True)
+[receipt] wait[range chips] = ok in 7.0s
+[ok ] race_series_name: True (expected True)
+[ok ] race_no_stale_overwrite: True (expected True)
+[ok ] race_lifetime_matches_selection: '0' (expected '0')
+--- phase 11: same-origin traffic only, clean console, fixture untouched
+[receipt] inline_data_urls = 2
+[ok ] browser_requests_local_only: [] (expected [])
+[ok ] probe_fetches_local_only: [] (expected [])
+[ok ] no_fixture_traffic: [] (expected [])
+[receipt] console_errors = 0
+[ok ] console_clean: [] (expected [])
+[ok ] no_page_exceptions: [] (expected [])
+[receipt] browser_log_entries = [('log', 'error', 'Failed to load resource: net::ERR_CONNECTION_REFUSED'), ('log', 'error', 'Failed to load resource: net::ERR_CONNECTION_REFUSED')]
+[receipt] fixture_paths = ['/metrics', '/stats']
+[receipt] fixture_requests_delta = 2
+[ok ] fixture_delta_is_collector_polls: True (expected True)
+[ok ] fixture_sees_no_browser_traffic: [] (expected [])
+[receipt] screenshot mobile-390-normal.png = /workspace/docs/receipts/delivery-3/mobile-390-normal.png (58127 bytes)
+[receipt] screenshots_written = 9
+[receipt] browser_requests = 115
+FRONTEND SMOKE PASSED

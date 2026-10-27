@@ -1,0 +1,28 @@
+# Test-only Compose override for local release qualification
+# (docs/delivery-4-implementation-plan.md D2).
+#
+# The production `compose.yaml` is what gets qualified, so this file adds ONE
+# thing a host-loopback test harness cannot get any other way: attachment to
+# the private `jarvis-qual` bridge network the fixture is published on.
+#
+# It deliberately sets no limits, no `read_only`, no `tmpfs`, no logging, no
+# healthcheck, no `cap_drop` and no `security_opt`. Every other qualification
+# knob is an environment variable the harness passes on the command line:
+#   DASHBOARD_BIND_ADDRESS=127.0.0.1, DASHBOARD_HOST_PORT=<free port>,
+#   JARVIS_APPDATA_DIR=<temporary appdata>, JARVIS_UID/JARVIS_GID=<host user>,
+#   RADIANCE_BASE_URL=http://<network gateway>:<fixture port>,
+#   JARVIS_SOURCE_ID=qual-jarvis, POLL_INTERVAL_SECONDS=5 (cases) / 15 (workload).
+# `scripts/qualify_image.py` asserts the production fields are unchanged.
+name: jarvis-qual
+
+services:
+  dashboard:
+    # `default` keeps the published host port; `jarvis-qual` (created by
+    # scripts/qualify_common.py) is the only path to the fixture.
+    networks:
+      - default
+      - jarvis-qual
+
+networks:
+  jarvis-qual:
+    external: true

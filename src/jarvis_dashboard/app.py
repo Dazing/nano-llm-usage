@@ -15,12 +15,13 @@ import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .api import ApiFailure, ReadAdmission, build_router
@@ -50,9 +51,101 @@ __all__ = [
     "SCHEMA_VERSION",
     "create_app",
     "create_asgi_app",
+    "install_static",
 ]
 
 logger = logging.getLogger("jarvis_dashboard.api")
+
+# Cache policy for the built dashboard (Delivery 3 D3). The API keeps NO_STORE.
+INDEX_CACHE = "no-cache"
+ASSET_CACHE = "public, max-age=31536000, immutable"
+
+
+def _is_api_path(path: str) -> bool:
+    """The API/health namespace owns ``no-store``; static content keeps its own header."""
+    return (
+        path == "/api"
+        or path.startswith("/api/")
+        or path == "/health"
+        or path.startswith("/health/")
+    )
+
+
+class _HeaderStamper:
+    """Set one response header on the way out, replacing any earlier value.
+
+    Pure ASGI on purpose. `BaseHTTPMiddleware` wraps the receive channel, and the
+    static build's `FileResponse` probes that channel for a disconnect; the
+    wrapper rejects the resulting `http.request` message (`starlette/middleware
+    /base.py`). `starlette.staticfiles.StaticFiles` in the pinned release also
+    takes no header list, so cache values are applied here, not at construction.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        name: str,
+        value: str,
+        only: Callable[[str], bool] | None = None,
+    ) -> None:
+        self.app = app
+        self._name = name.lower().encode()
+        self._value = value.encode()
+        self._only = only
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+        if scope["type"] != "http" or (self._only is not None and not self._only(path)):
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = [
+                    (name, value)
+                    for name, value in message["headers"]
+                    if name.lower() != self._name
+                ]
+                headers.append((self._name, self._value))
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
+class _PageLayer:
+    """Serve built pages for page paths; hand every other path to the API app.
+
+    The API app is consulted first for the API/health namespace and for anything
+    the build does not contain, so API semantics survive untouched: method-not-
+    allowed stays 405, an unknown endpoint stays a JSON `not_found` with
+    `no-store`, and a route registered after `create_app` is never shadowed.
+    There is no SPA fallback — an unknown page path is a JSON 404, never a shell.
+    """
+
+    def __init__(self, static: StaticFiles, api: ASGIApp) -> None:
+        self.static = static
+        self.api = api
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+        if (
+            scope["type"] != "http"
+            or _is_api_path(path)
+            or scope.get("method", "GET") not in ("GET", "HEAD")
+        ):
+            await self.api(scope, receive, send)
+            return
+        try:
+            response = await self.static.get_response(self.static.get_path(scope), scope)
+        except StarletteHTTPException:
+            await self.api(scope, receive, send)
+            return
+        # Hashed assets are content-addressed and safe to cache forever; the page
+        # that lists them must never be cached.
+        cached = ASSET_CACHE if path.startswith("/assets/") else INDEX_CACHE
+        response.headers["Cache-Control"] = cached
+        await response(scope, receive, send)
 
 
 @dataclass
@@ -100,12 +193,7 @@ def create_app(state: AppState) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.dashboard = state
-
-    @app.middleware("http")
-    async def no_store(request: Request, call_next):  # type: ignore[no-untyped-def]
-        response = await call_next(request)
-        response.headers["Cache-Control"] = NO_STORE
-        return response
+    app.add_middleware(_HeaderStamper, name="cache-control", value=NO_STORE, only=_is_api_path)
 
     @app.get("/health/live", response_model=LivenessResponse, tags=["health"])
     def health_live() -> JSONResponse:
@@ -182,6 +270,31 @@ def create_app(state: AppState) -> FastAPI:
     return app
 
 
+def install_static(app: ASGIApp, static_dir: Path) -> ASGIApp:
+    """Wrap an ASGI app with the built dashboard, when a build is present.
+
+    The page layer sits outside the API application: the API keeps its own routes,
+    status codes, and `no-store`, and only page paths the build actually contains
+    are served. `index.html` is `no-cache`, hashed assets are `immutable`.
+    """
+    if not (static_dir / "index.html").is_file():
+        return app
+    return _PageLayer(StaticFiles(directory=static_dir, html=True), app)
+
+
+def _static_dir_of(state: AppState) -> Path:
+    return Path(state.config.static_dir) if state.config.static_dir else Path(__file__).parent / "static"
+
+
+def create_asgi_app(state: AppState) -> ASGIApp:
+    """ASGI entry point: the no-store header must also cover the generic 500.
+
+    Uvicorn/Starlette generate that response in ServerErrorMiddleware, which sits
+    outside every in-application middleware, so the wrapper has to be outermost.
+    """
+    return NoStoreMiddleware(install_static(create_app(state), _static_dir_of(state)))
+
+
 def _normalise_openapi(spec: dict[str, Any]) -> dict[str, Any]:
     for path in spec.get("paths", {}).values():
         for operation in path.values():
@@ -199,30 +312,20 @@ def _error_response(status: int, code: str, message: str, **extra: Any) -> JSONR
         error=ErrorDetail(code=code, message=message),
         **extra,
     )
-    return JSONResponse(body.model_dump(), status_code=status)
+    # Errors can be produced for non-API paths (an unknown page); they are never
+    # cacheable.
+    return JSONResponse(
+        body.model_dump(), status_code=status, headers={"Cache-Control": NO_STORE}
+    )
 
 
-def create_asgi_app(state: AppState) -> ASGIApp:
-    """ASGI entry point: the no-store header must also cover the generic 500.
+class NoStoreMiddleware(_HeaderStamper):
+    """Outermost pure-ASGI middleware: the API namespace is marked no-store.
 
-    Uvicorn/Starlette generate that response in ServerErrorMiddleware, which sits
-    outside every in-application middleware, so the wrapper has to be outermost.
+    It stays outermost so the generic 500 generated by ServerErrorMiddleware is
+    covered; static responses keep the header their own handler set.
     """
-    return NoStoreMiddleware(create_app(state))
-
-
-class NoStoreMiddleware:
-    """Outermost pure-ASGI middleware: every response is marked no-store."""
 
     def __init__(self, app: ASGIApp) -> None:
-        self.app = app
+        super().__init__(app, "cache-control", NO_STORE, only=_is_api_path)
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        async def send_wrapper(message: Message) -> None:
-            if message["type"] == "http.response.start":
-                headers = dict(message["headers"])
-                headers[b"cache-control"] = NO_STORE.encode()
-                message = {**message, "headers": list(headers.items())}
-            await send(message)
-
-        await self.app(scope, receive, send_wrapper)

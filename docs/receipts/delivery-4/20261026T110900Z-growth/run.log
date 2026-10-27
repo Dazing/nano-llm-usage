@@ -1,0 +1,13 @@
+[receipt] run_id = growth2
+[receipt] duration_minutes = 30
+[ok ] per_table_source: 'dbstat' (expected 'dbstat')
+[ok ] bytes per sample measured: True (expected True)
+[ok ] bytes per hourly row measured: True (expected True)
+[receipt] scratch_bytes = 634585088
+[receipt] row_counts = {'samples': 1375728, 'hourly_totals': 282236, 'gap_spans': 109, 'events': 1, 'series': 8}
+[receipt] bytes_per_sample = 376.67
+[receipt] bytes_per_hourly_row = 411.81
+[receipt] assumptions = {'retention_days': 30, 'poll_seconds': 15, 'series_count': 8, 'counters_per_hourly_row': 1, 'row_bytes_include_indexes': True, 'expected_hourly_rows_per_day': 768, 'observed_hourly_rows_per_day': 769.0, 'note': 'raw samples stay bounded by the retention window; hourly rollups grow linearly with wall time and are the extrapolated term'}
+[receipt] extrapolation = {'hourly_bytes_per_day': 316270.1, 'raw_bytes_retained': 518195466, 'projected_1_year_bytes': 115438579, 'projected_5_years_bytes': 577192896, 'projected_10_years_bytes': 1154385792}
+[receipt] checks=3 failures=0
+[receipt] checks=3 failures=0

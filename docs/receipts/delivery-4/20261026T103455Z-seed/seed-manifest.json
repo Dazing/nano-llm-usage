@@ -1,0 +1,2658 @@
+{
+  "base_url": "http://127.0.0.1:42641",
+  "cases": [
+    {
+      "end": "2026-10-26T00:20:00.000000Z",
+      "key": "outage_compatible",
+      "note": "upstream /metrics outage across the most recent midnight, recovered with compatible uptime",
+      "start": "2026-10-25T22:55:00.000000Z"
+    },
+    {
+      "end": "2026-10-25T00:30:00.000000Z",
+      "key": "outage_restart",
+      "note": "outage across the previous midnight with changed uptime evidence (restart)",
+      "start": "2026-10-24T22:55:00.000000Z"
+    },
+    {
+      "end": "2026-09-16T06:01:00.000000Z",
+      "key": "primary_reset",
+      "note": "primary counter reset",
+      "start": "2026-09-16T06:00:00.000000Z"
+    },
+    {
+      "end": "2026-07-18T15:00:00.000000Z",
+      "key": "stats_only",
+      "note": "stats-only outage (engine continuity unverified)",
+      "start": "2026-07-18T09:00:00.000000Z"
+    },
+    {
+      "end": "2026-06-05T00:00:00.000000Z",
+      "key": "request_absent",
+      "note": "request counters absent for seven days",
+      "start": "2026-05-29T00:00:00.000000Z"
+    },
+    {
+      "end": "2026-10-07T00:00:00.000000Z",
+      "key": "idle_day",
+      "note": "fully idle day (valid zero strings)",
+      "start": "2026-10-06T00:00:00.000000Z"
+    },
+    {
+      "end": "2026-08-28T00:00:00.000000Z",
+      "key": "collector_downtime",
+      "note": "collector downtime: no polls for a whole UTC day (gap-only null day)",
+      "start": "2026-08-27T00:00:00.000000Z"
+    }
+  ],
+  "daily": {
+    "2025-10-24": {
+      "computed_input": "1922618",
+      "generated_output": "134786",
+      "request_input": "1719232",
+      "request_output": "114349"
+    },
+    "2025-10-25": {
+      "computed_input": "1906746",
+      "generated_output": "133229",
+      "request_input": "1722929",
+      "request_output": "115116"
+    },
+    "2025-10-26": {
+      "computed_input": "1900055",
+      "generated_output": "135299",
+      "request_input": "1715095",
+      "request_output": "115010"
+    },
+    "2025-10-27": {
+      "computed_input": "1894549",
+      "generated_output": "132758",
+      "request_input": "1698778",
+      "request_output": "114120"
+    },
+    "2025-10-28": {
+      "computed_input": "1921396",
+      "generated_output": "135026",
+      "request_input": "1718498",
+      "request_output": "116106"
+    },
+    "2025-10-29": {
+      "computed_input": "1892890",
+      "generated_output": "131947",
+      "request_input": "1696898",
+      "request_output": "114536"
+    },
+    "2025-10-30": {
+      "computed_input": "1903388",
+      "generated_output": "133081",
+      "request_input": "1712483",
+      "request_output": "114470"
+    },
+    "2025-10-31": {
+      "computed_input": "1912372",
+      "generated_output": "134756",
+      "request_input": "1736424",
+      "request_output": "115437"
+    },
+    "2025-11-01": {
+      "computed_input": "1905003",
+      "generated_output": "131832",
+      "request_input": "1705793",
+      "request_output": "113512"
+    },
+    "2025-11-02": {
+      "computed_input": "1926651",
+      "generated_output": "134173",
+      "request_input": "1734869",
+      "request_output": "114809"
+    },
+    "2025-11-03": {
+      "computed_input": "1900632",
+      "generated_output": "133929",
+      "request_input": "1714435",
+      "request_output": "114089"
+    },
+    "2025-11-04": {
+      "computed_input": "1921316",
+      "generated_output": "134494",
+      "request_input": "1740224",
+      "request_output": "114327"
+    },
+    "2025-11-05": {
+      "computed_input": "1885084",
+      "generated_output": "132218",
+      "request_input": "1706435",
+      "request_output": "114384"
+    },
+    "2025-11-06": {
+      "computed_input": "1901362",
+      "generated_output": "133086",
+      "request_input": "1706178",
+      "request_output": "114463"
+    },
+    "2025-11-07": {
+      "computed_input": "1919015",
+      "generated_output": "133930",
+      "request_input": "1738811",
+      "request_output": "115448"
+    },
+    "2025-11-08": {
+      "computed_input": "1926648",
+      "generated_output": "133726",
+      "request_input": "1723300",
+      "request_output": "116509"
+    },
+    "2025-11-09": {
+      "computed_input": "1909957",
+      "generated_output": "133696",
+      "request_input": "1717940",
+      "request_output": "114445"
+    },
+    "2025-11-10": {
+      "computed_input": "1875960",
+      "generated_output": "133306",
+      "request_input": "1703158",
+      "request_output": "113210"
+    },
+    "2025-11-11": {
+      "computed_input": "1887900",
+      "generated_output": "132527",
+      "request_input": "1703124",
+      "request_output": "113605"
+    },
+    "2025-11-12": {
+      "computed_input": "1895996",
+      "generated_output": "131935",
+      "request_input": "1700539",
+      "request_output": "113374"
+    },
+    "2025-11-13": {
+      "computed_input": "1912279",
+      "generated_output": "132955",
+      "request_input": "1719727",
+      "request_output": "114203"
+    },
+    "2025-11-14": {
+      "computed_input": "1935109",
+      "generated_output": "134005",
+      "request_input": "1741203",
+      "request_output": "114756"
+    },
+    "2025-11-15": {
+      "computed_input": "1912828",
+      "generated_output": "132974",
+      "request_input": "1720179",
+      "request_output": "114039"
+    },
+    "2025-11-16": {
+      "computed_input": "1902647",
+      "generated_output": "132108",
+      "request_input": "1706302",
+      "request_output": "113518"
+    },
+    "2025-11-17": {
+      "computed_input": "1909253",
+      "generated_output": "133723",
+      "request_input": "1713685",
+      "request_output": "114720"
+    },
+    "2025-11-18": {
+      "computed_input": "1921989",
+      "generated_output": "134291",
+      "request_input": "1725343",
+      "request_output": "114439"
+    },
+    "2025-11-19": {
+      "computed_input": "1909393",
+      "generated_output": "133623",
+      "request_input": "1724421",
+      "request_output": "114052"
+    },
+    "2025-11-20": {
+      "computed_input": "1914269",
+      "generated_output": "133475",
+      "request_input": "1706775",
+      "request_output": "113997"
+    },
+    "2025-11-21": {
+      "computed_input": "1940956",
+      "generated_output": "134553",
+      "request_input": "1733735",
+      "request_output": "115733"
+    },
+    "2025-11-22": {
+      "computed_input": "1896357",
+      "generated_output": "132568",
+      "request_input": "1708247",
+      "request_output": "114151"
+    },
+    "2025-11-23": {
+      "computed_input": "1928189",
+      "generated_output": "135442",
+      "request_input": "1728789",
+      "request_output": "116261"
+    },
+    "2025-11-24": {
+      "computed_input": "1914948",
+      "generated_output": "134177",
+      "request_input": "1718199",
+      "request_output": "114436"
+    },
+    "2025-11-25": {
+      "computed_input": "1911226",
+      "generated_output": "134084",
+      "request_input": "1721931",
+      "request_output": "114417"
+    },
+    "2025-11-26": {
+      "computed_input": "1928214",
+      "generated_output": "132662",
+      "request_input": "1741897",
+      "request_output": "113798"
+    },
+    "2025-11-27": {
+      "computed_input": "1897516",
+      "generated_output": "133071",
+      "request_input": "1695836",
+      "request_output": "114762"
+    },
+    "2025-11-28": {
+      "computed_input": "1920948",
+      "generated_output": "135587",
+      "request_input": "1739896",
+      "request_output": "114944"
+    },
+    "2025-11-29": {
+      "computed_input": "1908260",
+      "generated_output": "133652",
+      "request_input": "1727106",
+      "request_output": "114220"
+    },
+    "2025-11-30": {
+      "computed_input": "1908028",
+      "generated_output": "133588",
+      "request_input": "1725557",
+      "request_output": "113909"
+    },
+    "2025-12-01": {
+      "computed_input": "1922397",
+      "generated_output": "134863",
+      "request_input": "1736950",
+      "request_output": "115429"
+    },
+    "2025-12-02": {
+      "computed_input": "1900467",
+      "generated_output": "131865",
+      "request_input": "1712827",
+      "request_output": "114152"
+    },
+    "2025-12-03": {
+      "computed_input": "1932518",
+      "generated_output": "135088",
+      "request_input": "1741702",
+      "request_output": "115848"
+    },
+    "2025-12-04": {
+      "computed_input": "1898555",
+      "generated_output": "133213",
+      "request_input": "1715700",
+      "request_output": "114926"
+    },
+    "2025-12-05": {
+      "computed_input": "1908552",
+      "generated_output": "134448",
+      "request_input": "1716843",
+      "request_output": "115625"
+    },
+    "2025-12-06": {
+      "computed_input": "1911785",
+      "generated_output": "133284",
+      "request_input": "1725430",
+      "request_output": "114551"
+    },
+    "2025-12-07": {
+      "computed_input": "1879821",
+      "generated_output": "133349",
+      "request_input": "1712280",
+      "request_output": "113537"
+    },
+    "2025-12-08": {
+      "computed_input": "1893724",
+      "generated_output": "132679",
+      "request_input": "1714167",
+      "request_output": "113696"
+    },
+    "2025-12-09": {
+      "computed_input": "1906574",
+      "generated_output": "133249",
+      "request_input": "1722137",
+      "request_output": "114560"
+    },
+    "2025-12-10": {
+      "computed_input": "1898440",
+      "generated_output": "133007",
+      "request_input": "1712024",
+      "request_output": "113874"
+    },
+    "2025-12-11": {
+      "computed_input": "1909853",
+      "generated_output": "132487",
+      "request_input": "1705649",
+      "request_output": "114393"
+    },
+    "2025-12-12": {
+      "computed_input": "1920804",
+      "generated_output": "134404",
+      "request_input": "1709030",
+      "request_output": "114914"
+    },
+    "2025-12-13": {
+      "computed_input": "1894743",
+      "generated_output": "131973",
+      "request_input": "1705230",
+      "request_output": "112380"
+    },
+    "2025-12-14": {
+      "computed_input": "1906394",
+      "generated_output": "133038",
+      "request_input": "1697604",
+      "request_output": "114055"
+    },
+    "2025-12-15": {
+      "computed_input": "1923109",
+      "generated_output": "134789",
+      "request_input": "1738763",
+      "request_output": "114723"
+    },
+    "2025-12-16": {
+      "computed_input": "1916834",
+      "generated_output": "132587",
+      "request_input": "1714771",
+      "request_output": "114514"
+    },
+    "2025-12-17": {
+      "computed_input": "1899988",
+      "generated_output": "134316",
+      "request_input": "1726280",
+      "request_output": "114372"
+    },
+    "2025-12-18": {
+      "computed_input": "1929314",
+      "generated_output": "136002",
+      "request_input": "1732812",
+      "request_output": "115527"
+    },
+    "2025-12-19": {
+      "computed_input": "1931589",
+      "generated_output": "135141",
+      "request_input": "1738004",
+      "request_output": "116848"
+    },
+    "2025-12-20": {
+      "computed_input": "1935934",
+      "generated_output": "134169",
+      "request_input": "1736815",
+      "request_output": "114858"
+    },
+    "2025-12-21": {
+      "computed_input": "1922190",
+      "generated_output": "133300",
+      "request_input": "1746541",
+      "request_output": "114983"
+    },
+    "2025-12-22": {
+      "computed_input": "1897063",
+      "generated_output": "132664",
+      "request_input": "1705750",
+      "request_output": "114164"
+    },
+    "2025-12-23": {
+      "computed_input": "1919192",
+      "generated_output": "133430",
+      "request_input": "1729114",
+      "request_output": "113573"
+    },
+    "2025-12-24": {
+      "computed_input": "1898554",
+      "generated_output": "133269",
+      "request_input": "1716163",
+      "request_output": "114786"
+    },
+    "2025-12-25": {
+      "computed_input": "1895493",
+      "generated_output": "133640",
+      "request_input": "1706390",
+      "request_output": "115106"
+    },
+    "2025-12-26": {
+      "computed_input": "1920272",
+      "generated_output": "134340",
+      "request_input": "1724236",
+      "request_output": "114384"
+    },
+    "2025-12-27": {
+      "computed_input": "1916930",
+      "generated_output": "133925",
+      "request_input": "1726326",
+      "request_output": "114759"
+    },
+    "2025-12-28": {
+      "computed_input": "1893940",
+      "generated_output": "134344",
+      "request_input": "1720215",
+      "request_output": "115334"
+    },
+    "2025-12-29": {
+      "computed_input": "1929261",
+      "generated_output": "134667",
+      "request_input": "1746059",
+      "request_output": "115968"
+    },
+    "2025-12-30": {
+      "computed_input": "1914059",
+      "generated_output": "133717",
+      "request_input": "1735895",
+      "request_output": "114609"
+    },
+    "2025-12-31": {
+      "computed_input": "1907198",
+      "generated_output": "134126",
+      "request_input": "1710695",
+      "request_output": "114006"
+    },
+    "2026-01-01": {
+      "computed_input": "1873052",
+      "generated_output": "132462",
+      "request_input": "1691000",
+      "request_output": "113526"
+    },
+    "2026-01-02": {
+      "computed_input": "1898494",
+      "generated_output": "131940",
+      "request_input": "1687167",
+      "request_output": "113505"
+    },
+    "2026-01-03": {
+      "computed_input": "1888635",
+      "generated_output": "132967",
+      "request_input": "1701260",
+      "request_output": "113038"
+    },
+    "2026-01-04": {
+      "computed_input": "1928813",
+      "generated_output": "132304",
+      "request_input": "1723125",
+      "request_output": "114605"
+    },
+    "2026-01-05": {
+      "computed_input": "1939463",
+      "generated_output": "134203",
+      "request_input": "1725994",
+      "request_output": "114923"
+    },
+    "2026-01-06": {
+      "computed_input": "1889043",
+      "generated_output": "132930",
+      "request_input": "1713196",
+      "request_output": "114630"
+    },
+    "2026-01-07": {
+      "computed_input": "1931184",
+      "generated_output": "135520",
+      "request_input": "1731447",
+      "request_output": "115809"
+    },
+    "2026-01-08": {
+      "computed_input": "1918007",
+      "generated_output": "134753",
+      "request_input": "1721016",
+      "request_output": "115992"
+    },
+    "2026-01-09": {
+      "computed_input": "1912174",
+      "generated_output": "133452",
+      "request_input": "1710796",
+      "request_output": "114538"
+    },
+    "2026-01-10": {
+      "computed_input": "1906765",
+      "generated_output": "132940",
+      "request_input": "1708976",
+      "request_output": "115378"
+    },
+    "2026-01-11": {
+      "computed_input": "1895888",
+      "generated_output": "133076",
+      "request_input": "1718395",
+      "request_output": "114424"
+    },
+    "2026-01-12": {
+      "computed_input": "1870529",
+      "generated_output": "131424",
+      "request_input": "1696940",
+      "request_output": "113440"
+    },
+    "2026-01-13": {
+      "computed_input": "1906567",
+      "generated_output": "134085",
+      "request_input": "1713034",
+      "request_output": "114445"
+    },
+    "2026-01-14": {
+      "computed_input": "1908603",
+      "generated_output": "132861",
+      "request_input": "1728913",
+      "request_output": "115587"
+    },
+    "2026-01-15": {
+      "computed_input": "1936018",
+      "generated_output": "135192",
+      "request_input": "1740680",
+      "request_output": "116631"
+    },
+    "2026-01-16": {
+      "computed_input": "1923014",
+      "generated_output": "132687",
+      "request_input": "1732259",
+      "request_output": "113784"
+    },
+    "2026-01-17": {
+      "computed_input": "1897056",
+      "generated_output": "132805",
+      "request_input": "1706099",
+      "request_output": "114559"
+    },
+    "2026-01-18": {
+      "computed_input": "1918211",
+      "generated_output": "134068",
+      "request_input": "1716849",
+      "request_output": "114734"
+    },
+    "2026-01-19": {
+      "computed_input": "1935740",
+      "generated_output": "134179",
+      "request_input": "1730498",
+      "request_output": "115309"
+    },
+    "2026-01-20": {
+      "computed_input": "1900100",
+      "generated_output": "134793",
+      "request_input": "1717163",
+      "request_output": "114028"
+    },
+    "2026-01-21": {
+      "computed_input": "1915861",
+      "generated_output": "132479",
+      "request_input": "1739535",
+      "request_output": "114964"
+    },
+    "2026-01-22": {
+      "computed_input": "1918551",
+      "generated_output": "135088",
+      "request_input": "1737227",
+      "request_output": "114346"
+    },
+    "2026-01-23": {
+      "computed_input": "1913408",
+      "generated_output": "133183",
+      "request_input": "1721126",
+      "request_output": "114893"
+    },
+    "2026-01-24": {
+      "computed_input": "1914885",
+      "generated_output": "133464",
+      "request_input": "1708162",
+      "request_output": "114774"
+    },
+    "2026-01-25": {
+      "computed_input": "1915729",
+      "generated_output": "133372",
+      "request_input": "1723450",
+      "request_output": "115257"
+    },
+    "2026-01-26": {
+      "computed_input": "1888144",
+      "generated_output": "134015",
+      "request_input": "1718020",
+      "request_output": "115463"
+    },
+    "2026-01-27": {
+      "computed_input": "1896829",
+      "generated_output": "133138",
+      "request_input": "1718750",
+      "request_output": "114443"
+    },
+    "2026-01-28": {
+      "computed_input": "1903053",
+      "generated_output": "133689",
+      "request_input": "1721122",
+      "request_output": "114798"
+    },
+    "2026-01-29": {
+      "computed_input": "1899999",
+      "generated_output": "132677",
+      "request_input": "1696859",
+      "request_output": "113586"
+    },
+    "2026-01-30": {
+      "computed_input": "1917260",
+      "generated_output": "134181",
+      "request_input": "1727394",
+      "request_output": "114862"
+    },
+    "2026-01-31": {
+      "computed_input": "1906550",
+      "generated_output": "134080",
+      "request_input": "1727265",
+      "request_output": "114573"
+    },
+    "2026-02-01": {
+      "computed_input": "1907041",
+      "generated_output": "133865",
+      "request_input": "1725207",
+      "request_output": "114264"
+    },
+    "2026-02-02": {
+      "computed_input": "1932670",
+      "generated_output": "135197",
+      "request_input": "1725317",
+      "request_output": "115030"
+    },
+    "2026-02-03": {
+      "computed_input": "1923979",
+      "generated_output": "135281",
+      "request_input": "1738946",
+      "request_output": "116001"
+    },
+    "2026-02-04": {
+      "computed_input": "1896519",
+      "generated_output": "133501",
+      "request_input": "1731203",
+      "request_output": "114840"
+    },
+    "2026-02-05": {
+      "computed_input": "1922890",
+      "generated_output": "134853",
+      "request_input": "1725193",
+      "request_output": "114926"
+    },
+    "2026-02-06": {
+      "computed_input": "1934871",
+      "generated_output": "135266",
+      "request_input": "1729149",
+      "request_output": "114807"
+    },
+    "2026-02-07": {
+      "computed_input": "1907813",
+      "generated_output": "132360",
+      "request_input": "1728327",
+      "request_output": "114345"
+    },
+    "2026-02-08": {
+      "computed_input": "1909669",
+      "generated_output": "133133",
+      "request_input": "1710149",
+      "request_output": "114606"
+    },
+    "2026-02-09": {
+      "computed_input": "1912568",
+      "generated_output": "135189",
+      "request_input": "1720588",
+      "request_output": "114869"
+    },
+    "2026-02-10": {
+      "computed_input": "1911345",
+      "generated_output": "135365",
+      "request_input": "1712975",
+      "request_output": "115246"
+    },
+    "2026-02-11": {
+      "computed_input": "1920787",
+      "generated_output": "134486",
+      "request_input": "1731107",
+      "request_output": "116019"
+    },
+    "2026-02-12": {
+      "computed_input": "1929660",
+      "generated_output": "133772",
+      "request_input": "1716688",
+      "request_output": "113571"
+    },
+    "2026-02-13": {
+      "computed_input": "1929060",
+      "generated_output": "133178",
+      "request_input": "1723612",
+      "request_output": "116148"
+    },
+    "2026-02-14": {
+      "computed_input": "1905922",
+      "generated_output": "132613",
+      "request_input": "1707387",
+      "request_output": "114470"
+    },
+    "2026-02-15": {
+      "computed_input": "1906781",
+      "generated_output": "133698",
+      "request_input": "1725677",
+      "request_output": "113879"
+    },
+    "2026-02-16": {
+      "computed_input": "1908409",
+      "generated_output": "134412",
+      "request_input": "1724104",
+      "request_output": "115023"
+    },
+    "2026-02-17": {
+      "computed_input": "1926928",
+      "generated_output": "134125",
+      "request_input": "1730721",
+      "request_output": "113888"
+    },
+    "2026-02-18": {
+      "computed_input": "1920508",
+      "generated_output": "133996",
+      "request_input": "1733857",
+      "request_output": "114503"
+    },
+    "2026-02-19": {
+      "computed_input": "1891587",
+      "generated_output": "132056",
+      "request_input": "1699235",
+      "request_output": "113731"
+    },
+    "2026-02-20": {
+      "computed_input": "1934940",
+      "generated_output": "135428",
+      "request_input": "1745973",
+      "request_output": "115720"
+    },
+    "2026-02-21": {
+      "computed_input": "1904196",
+      "generated_output": "133301",
+      "request_input": "1715769",
+      "request_output": "114244"
+    },
+    "2026-02-22": {
+      "computed_input": "1942795",
+      "generated_output": "136385",
+      "request_input": "1749617",
+      "request_output": "116685"
+    },
+    "2026-02-23": {
+      "computed_input": "1910459",
+      "generated_output": "134732",
+      "request_input": "1725826",
+      "request_output": "114670"
+    },
+    "2026-02-24": {
+      "computed_input": "1924773",
+      "generated_output": "134394",
+      "request_input": "1722814",
+      "request_output": "115954"
+    },
+    "2026-02-25": {
+      "computed_input": "1918742",
+      "generated_output": "133580",
+      "request_input": "1707641",
+      "request_output": "115402"
+    },
+    "2026-02-26": {
+      "computed_input": "1919945",
+      "generated_output": "133033",
+      "request_input": "1707593",
+      "request_output": "114699"
+    },
+    "2026-02-27": {
+      "computed_input": "1920315",
+      "generated_output": "134344",
+      "request_input": "1732996",
+      "request_output": "114934"
+    },
+    "2026-02-28": {
+      "computed_input": "1914703",
+      "generated_output": "135096",
+      "request_input": "1723087",
+      "request_output": "115514"
+    },
+    "2026-03-01": {
+      "computed_input": "1905127",
+      "generated_output": "132685",
+      "request_input": "1707401",
+      "request_output": "113396"
+    },
+    "2026-03-02": {
+      "computed_input": "1944393",
+      "generated_output": "136204",
+      "request_input": "1759333",
+      "request_output": "116455"
+    },
+    "2026-03-03": {
+      "computed_input": "1907430",
+      "generated_output": "134034",
+      "request_input": "1730904",
+      "request_output": "115569"
+    },
+    "2026-03-04": {
+      "computed_input": "1896741",
+      "generated_output": "132912",
+      "request_input": "1712228",
+      "request_output": "114868"
+    },
+    "2026-03-05": {
+      "computed_input": "1886169",
+      "generated_output": "132948",
+      "request_input": "1714827",
+      "request_output": "115104"
+    },
+    "2026-03-06": {
+      "computed_input": "1900474",
+      "generated_output": "133014",
+      "request_input": "1711246",
+      "request_output": "113745"
+    },
+    "2026-03-07": {
+      "computed_input": "1913982",
+      "generated_output": "135014",
+      "request_input": "1711393",
+      "request_output": "114722"
+    },
+    "2026-03-08": {
+      "computed_input": "1927191",
+      "generated_output": "132793",
+      "request_input": "1722741",
+      "request_output": "114472"
+    },
+    "2026-03-09": {
+      "computed_input": "1899752",
+      "generated_output": "133269",
+      "request_input": "1716726",
+      "request_output": "114261"
+    },
+    "2026-03-10": {
+      "computed_input": "1911255",
+      "generated_output": "132562",
+      "request_input": "1703247",
+      "request_output": "113657"
+    },
+    "2026-03-11": {
+      "computed_input": "1898203",
+      "generated_output": "133412",
+      "request_input": "1713073",
+      "request_output": "114818"
+    },
+    "2026-03-12": {
+      "computed_input": "1901091",
+      "generated_output": "133128",
+      "request_input": "1725857",
+      "request_output": "114240"
+    },
+    "2026-03-13": {
+      "computed_input": "1927995",
+      "generated_output": "132281",
+      "request_input": "1717223",
+      "request_output": "114343"
+    },
+    "2026-03-14": {
+      "computed_input": "1908998",
+      "generated_output": "135275",
+      "request_input": "1742506",
+      "request_output": "115552"
+    },
+    "2026-03-15": {
+      "computed_input": "1879038",
+      "generated_output": "131202",
+      "request_input": "1714422",
+      "request_output": "113539"
+    },
+    "2026-03-16": {
+      "computed_input": "1896594",
+      "generated_output": "133312",
+      "request_input": "1696811",
+      "request_output": "113807"
+    },
+    "2026-03-17": {
+      "computed_input": "1941422",
+      "generated_output": "134893",
+      "request_input": "1747606",
+      "request_output": "115111"
+    },
+    "2026-03-18": {
+      "computed_input": "1929269",
+      "generated_output": "135368",
+      "request_input": "1731410",
+      "request_output": "114768"
+    },
+    "2026-03-19": {
+      "computed_input": "1903666",
+      "generated_output": "133189",
+      "request_input": "1708133",
+      "request_output": "113359"
+    },
+    "2026-03-20": {
+      "computed_input": "1908110",
+      "generated_output": "132228",
+      "request_input": "1724655",
+      "request_output": "114030"
+    },
+    "2026-03-21": {
+      "computed_input": "1921983",
+      "generated_output": "133091",
+      "request_input": "1714895",
+      "request_output": "114487"
+    },
+    "2026-03-22": {
+      "computed_input": "1902993",
+      "generated_output": "133882",
+      "request_input": "1717668",
+      "request_output": "115438"
+    },
+    "2026-03-23": {
+      "computed_input": "1902720",
+      "generated_output": "133968",
+      "request_input": "1735772",
+      "request_output": "114493"
+    },
+    "2026-03-24": {
+      "computed_input": "1897557",
+      "generated_output": "134381",
+      "request_input": "1715576",
+      "request_output": "114866"
+    },
+    "2026-03-25": {
+      "computed_input": "1899954",
+      "generated_output": "134342",
+      "request_input": "1719505",
+      "request_output": "115245"
+    },
+    "2026-03-26": {
+      "computed_input": "1922514",
+      "generated_output": "134956",
+      "request_input": "1724584",
+      "request_output": "114888"
+    },
+    "2026-03-27": {
+      "computed_input": "1916120",
+      "generated_output": "135015",
+      "request_input": "1734102",
+      "request_output": "115492"
+    },
+    "2026-03-28": {
+      "computed_input": "1909736",
+      "generated_output": "133114",
+      "request_input": "1732255",
+      "request_output": "115097"
+    },
+    "2026-03-29": {
+      "computed_input": "1897008",
+      "generated_output": "133881",
+      "request_input": "1716175",
+      "request_output": "114330"
+    },
+    "2026-03-30": {
+      "computed_input": "1920933",
+      "generated_output": "134381",
+      "request_input": "1712792",
+      "request_output": "114562"
+    },
+    "2026-03-31": {
+      "computed_input": "1934228",
+      "generated_output": "134744",
+      "request_input": "1737264",
+      "request_output": "115258"
+    },
+    "2026-04-01": {
+      "computed_input": "1917648",
+      "generated_output": "134230",
+      "request_input": "1721008",
+      "request_output": "115347"
+    },
+    "2026-04-02": {
+      "computed_input": "1911868",
+      "generated_output": "134488",
+      "request_input": "1724916",
+      "request_output": "114259"
+    },
+    "2026-04-03": {
+      "computed_input": "1916160",
+      "generated_output": "133987",
+      "request_input": "1716365",
+      "request_output": "113879"
+    },
+    "2026-04-04": {
+      "computed_input": "1925336",
+      "generated_output": "134882",
+      "request_input": "1736014",
+      "request_output": "114216"
+    },
+    "2026-04-05": {
+      "computed_input": "1906072",
+      "generated_output": "133163",
+      "request_input": "1722658",
+      "request_output": "114150"
+    },
+    "2026-04-06": {
+      "computed_input": "1938586",
+      "generated_output": "134884",
+      "request_input": "1735955",
+      "request_output": "115676"
+    },
+    "2026-04-07": {
+      "computed_input": "1904029",
+      "generated_output": "132418",
+      "request_input": "1719041",
+      "request_output": "115577"
+    },
+    "2026-04-08": {
+      "computed_input": "1904704",
+      "generated_output": "132967",
+      "request_input": "1719906",
+      "request_output": "113744"
+    },
+    "2026-04-09": {
+      "computed_input": "1918980",
+      "generated_output": "134542",
+      "request_input": "1724207",
+      "request_output": "114917"
+    },
+    "2026-04-10": {
+      "computed_input": "1924898",
+      "generated_output": "134535",
+      "request_input": "1726914",
+      "request_output": "115597"
+    },
+    "2026-04-11": {
+      "computed_input": "1923744",
+      "generated_output": "134557",
+      "request_input": "1745067",
+      "request_output": "115587"
+    },
+    "2026-04-12": {
+      "computed_input": "1920471",
+      "generated_output": "132933",
+      "request_input": "1724973",
+      "request_output": "114595"
+    },
+    "2026-04-13": {
+      "computed_input": "1918438",
+      "generated_output": "134305",
+      "request_input": "1725691",
+      "request_output": "115830"
+    },
+    "2026-04-14": {
+      "computed_input": "1925151",
+      "generated_output": "134436",
+      "request_input": "1723642",
+      "request_output": "114555"
+    },
+    "2026-04-15": {
+      "computed_input": "1912662",
+      "generated_output": "135108",
+      "request_input": "1721575",
+      "request_output": "114684"
+    },
+    "2026-04-16": {
+      "computed_input": "1939324",
+      "generated_output": "133934",
+      "request_input": "1732812",
+      "request_output": "114562"
+    },
+    "2026-04-17": {
+      "computed_input": "1908360",
+      "generated_output": "134445",
+      "request_input": "1733388",
+      "request_output": "113979"
+    },
+    "2026-04-18": {
+      "computed_input": "1903293",
+      "generated_output": "133257",
+      "request_input": "1718122",
+      "request_output": "114658"
+    },
+    "2026-04-19": {
+      "computed_input": "1904654",
+      "generated_output": "135070",
+      "request_input": "1719855",
+      "request_output": "115777"
+    },
+    "2026-04-20": {
+      "computed_input": "1898143",
+      "generated_output": "132997",
+      "request_input": "1713533",
+      "request_output": "113689"
+    },
+    "2026-04-21": {
+      "computed_input": "1930990",
+      "generated_output": "135674",
+      "request_input": "1743227",
+      "request_output": "115813"
+    },
+    "2026-04-22": {
+      "computed_input": "1883313",
+      "generated_output": "133065",
+      "request_input": "1688215",
+      "request_output": "114419"
+    },
+    "2026-04-23": {
+      "computed_input": "1900939",
+      "generated_output": "133184",
+      "request_input": "1703004",
+      "request_output": "113919"
+    },
+    "2026-04-24": {
+      "computed_input": "1926507",
+      "generated_output": "133611",
+      "request_input": "1718984",
+      "request_output": "115508"
+    },
+    "2026-04-25": {
+      "computed_input": "1911055",
+      "generated_output": "134530",
+      "request_input": "1724314",
+      "request_output": "114999"
+    },
+    "2026-04-26": {
+      "computed_input": "1940237",
+      "generated_output": "134893",
+      "request_input": "1723475",
+      "request_output": "115903"
+    },
+    "2026-04-27": {
+      "computed_input": "1913103",
+      "generated_output": "132960",
+      "request_input": "1729751",
+      "request_output": "115478"
+    },
+    "2026-04-28": {
+      "computed_input": "1922748",
+      "generated_output": "134089",
+      "request_input": "1723515",
+      "request_output": "113671"
+    },
+    "2026-04-29": {
+      "computed_input": "1911112",
+      "generated_output": "134497",
+      "request_input": "1721483",
+      "request_output": "114392"
+    },
+    "2026-04-30": {
+      "computed_input": "1903197",
+      "generated_output": "133750",
+      "request_input": "1713798",
+      "request_output": "113892"
+    },
+    "2026-05-01": {
+      "computed_input": "1909621",
+      "generated_output": "134583",
+      "request_input": "1744190",
+      "request_output": "114696"
+    },
+    "2026-05-02": {
+      "computed_input": "1913339",
+      "generated_output": "134732",
+      "request_input": "1722541",
+      "request_output": "114813"
+    },
+    "2026-05-03": {
+      "computed_input": "1912996",
+      "generated_output": "134056",
+      "request_input": "1722298",
+      "request_output": "114744"
+    },
+    "2026-05-04": {
+      "computed_input": "1897434",
+      "generated_output": "131780",
+      "request_input": "1711554",
+      "request_output": "112687"
+    },
+    "2026-05-05": {
+      "computed_input": "1891497",
+      "generated_output": "133131",
+      "request_input": "1713982",
+      "request_output": "113385"
+    },
+    "2026-05-06": {
+      "computed_input": "1911185",
+      "generated_output": "134465",
+      "request_input": "1717442",
+      "request_output": "115167"
+    },
+    "2026-05-07": {
+      "computed_input": "1903496",
+      "generated_output": "131792",
+      "request_input": "1703706",
+      "request_output": "113501"
+    },
+    "2026-05-08": {
+      "computed_input": "1899634",
+      "generated_output": "134332",
+      "request_input": "1734626",
+      "request_output": "113777"
+    },
+    "2026-05-09": {
+      "computed_input": "1914276",
+      "generated_output": "133371",
+      "request_input": "1707709",
+      "request_output": "115146"
+    },
+    "2026-05-10": {
+      "computed_input": "1914743",
+      "generated_output": "133618",
+      "request_input": "1733515",
+      "request_output": "115028"
+    },
+    "2026-05-11": {
+      "computed_input": "1899992",
+      "generated_output": "132125",
+      "request_input": "1710580",
+      "request_output": "112764"
+    },
+    "2026-05-12": {
+      "computed_input": "1941803",
+      "generated_output": "133873",
+      "request_input": "1724763",
+      "request_output": "114772"
+    },
+    "2026-05-13": {
+      "computed_input": "1882486",
+      "generated_output": "131666",
+      "request_input": "1689555",
+      "request_output": "113525"
+    },
+    "2026-05-14": {
+      "computed_input": "1913751",
+      "generated_output": "134787",
+      "request_input": "1730220",
+      "request_output": "115136"
+    },
+    "2026-05-15": {
+      "computed_input": "1929364",
+      "generated_output": "132607",
+      "request_input": "1728873",
+      "request_output": "114830"
+    },
+    "2026-05-16": {
+      "computed_input": "1926244",
+      "generated_output": "135646",
+      "request_input": "1736668",
+      "request_output": "115613"
+    },
+    "2026-05-17": {
+      "computed_input": "1897096",
+      "generated_output": "134209",
+      "request_input": "1712079",
+      "request_output": "114254"
+    },
+    "2026-05-18": {
+      "computed_input": "1923042",
+      "generated_output": "134642",
+      "request_input": "1713496",
+      "request_output": "115180"
+    },
+    "2026-05-19": {
+      "computed_input": "1916651",
+      "generated_output": "133281",
+      "request_input": "1722754",
+      "request_output": "114340"
+    },
+    "2026-05-20": {
+      "computed_input": "1907293",
+      "generated_output": "134788",
+      "request_input": "1717275",
+      "request_output": "116007"
+    },
+    "2026-05-21": {
+      "computed_input": "1909898",
+      "generated_output": "134937",
+      "request_input": "1724915",
+      "request_output": "114283"
+    },
+    "2026-05-22": {
+      "computed_input": "1894975",
+      "generated_output": "131766",
+      "request_input": "1699283",
+      "request_output": "113552"
+    },
+    "2026-05-23": {
+      "computed_input": "1907324",
+      "generated_output": "133485",
+      "request_input": "1711423",
+      "request_output": "114117"
+    },
+    "2026-05-24": {
+      "computed_input": "1907778",
+      "generated_output": "133762",
+      "request_input": "1714107",
+      "request_output": "114312"
+    },
+    "2026-05-25": {
+      "computed_input": "1907078",
+      "generated_output": "132650",
+      "request_input": "1703117",
+      "request_output": "112851"
+    },
+    "2026-05-26": {
+      "computed_input": "1907768",
+      "generated_output": "133588",
+      "request_input": "1716248",
+      "request_output": "115207"
+    },
+    "2026-05-27": {
+      "computed_input": "1907147",
+      "generated_output": "134220",
+      "request_input": "1716365",
+      "request_output": "114804"
+    },
+    "2026-05-28": {
+      "computed_input": "1896679",
+      "generated_output": "133920",
+      "request_input": "1706829",
+      "request_output": "115083"
+    },
+    "2026-05-29": {
+      "computed_input": "1912142",
+      "generated_output": "134796",
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-05-30": {
+      "computed_input": "1907842",
+      "generated_output": "134789",
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-05-31": {
+      "computed_input": "1925934",
+      "generated_output": "133619",
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-06-01": {
+      "computed_input": "1923904",
+      "generated_output": "133277",
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-06-02": {
+      "computed_input": "1909244",
+      "generated_output": "133821",
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-06-03": {
+      "computed_input": "1907844",
+      "generated_output": "133966",
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-06-04": {
+      "computed_input": "1920522",
+      "generated_output": "132820",
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-06-05": {
+      "computed_input": "1938744",
+      "generated_output": "134228",
+      "request_input": "13770577",
+      "request_output": "918031"
+    },
+    "2026-06-06": {
+      "computed_input": "1922315",
+      "generated_output": "134126",
+      "request_input": "1712146",
+      "request_output": "115147"
+    },
+    "2026-06-07": {
+      "computed_input": "1909206",
+      "generated_output": "132896",
+      "request_input": "1728514",
+      "request_output": "114100"
+    },
+    "2026-06-08": {
+      "computed_input": "1918105",
+      "generated_output": "135013",
+      "request_input": "1714143",
+      "request_output": "115750"
+    },
+    "2026-06-09": {
+      "computed_input": "1915685",
+      "generated_output": "134963",
+      "request_input": "1720246",
+      "request_output": "115315"
+    },
+    "2026-06-10": {
+      "computed_input": "1918424",
+      "generated_output": "135137",
+      "request_input": "1722550",
+      "request_output": "114149"
+    },
+    "2026-06-11": {
+      "computed_input": "1904228",
+      "generated_output": "132862",
+      "request_input": "1717771",
+      "request_output": "114146"
+    },
+    "2026-06-12": {
+      "computed_input": "1910466",
+      "generated_output": "132972",
+      "request_input": "1717287",
+      "request_output": "114264"
+    },
+    "2026-06-13": {
+      "computed_input": "1915832",
+      "generated_output": "134171",
+      "request_input": "1727913",
+      "request_output": "113526"
+    },
+    "2026-06-14": {
+      "computed_input": "1920982",
+      "generated_output": "134518",
+      "request_input": "1717703",
+      "request_output": "116180"
+    },
+    "2026-06-15": {
+      "computed_input": "1924435",
+      "generated_output": "134000",
+      "request_input": "1717010",
+      "request_output": "115075"
+    },
+    "2026-06-16": {
+      "computed_input": "1902423",
+      "generated_output": "134139",
+      "request_input": "1723031",
+      "request_output": "115122"
+    },
+    "2026-06-17": {
+      "computed_input": "1895557",
+      "generated_output": "133196",
+      "request_input": "1713681",
+      "request_output": "114306"
+    },
+    "2026-06-18": {
+      "computed_input": "1899910",
+      "generated_output": "133440",
+      "request_input": "1711358",
+      "request_output": "114569"
+    },
+    "2026-06-19": {
+      "computed_input": "1909014",
+      "generated_output": "133185",
+      "request_input": "1701764",
+      "request_output": "114494"
+    },
+    "2026-06-20": {
+      "computed_input": "1917718",
+      "generated_output": "134522",
+      "request_input": "1728279",
+      "request_output": "115969"
+    },
+    "2026-06-21": {
+      "computed_input": "1921023",
+      "generated_output": "133462",
+      "request_input": "1708431",
+      "request_output": "114342"
+    },
+    "2026-06-22": {
+      "computed_input": "1911360",
+      "generated_output": "133255",
+      "request_input": "1718083",
+      "request_output": "114107"
+    },
+    "2026-06-23": {
+      "computed_input": "1886750",
+      "generated_output": "132196",
+      "request_input": "1691290",
+      "request_output": "113873"
+    },
+    "2026-06-24": {
+      "computed_input": "1890794",
+      "generated_output": "134284",
+      "request_input": "1735116",
+      "request_output": "114399"
+    },
+    "2026-06-25": {
+      "computed_input": "1913415",
+      "generated_output": "134438",
+      "request_input": "1726762",
+      "request_output": "113946"
+    },
+    "2026-06-26": {
+      "computed_input": "1913097",
+      "generated_output": "134278",
+      "request_input": "1702823",
+      "request_output": "114668"
+    },
+    "2026-06-27": {
+      "computed_input": "1899941",
+      "generated_output": "132900",
+      "request_input": "1703173",
+      "request_output": "114859"
+    },
+    "2026-06-28": {
+      "computed_input": "1947867",
+      "generated_output": "135906",
+      "request_input": "1753197",
+      "request_output": "116863"
+    },
+    "2026-06-29": {
+      "computed_input": "1898771",
+      "generated_output": "132921",
+      "request_input": "1695193",
+      "request_output": "113912"
+    },
+    "2026-06-30": {
+      "computed_input": "1919999",
+      "generated_output": "135154",
+      "request_input": "1736414",
+      "request_output": "116353"
+    },
+    "2026-07-01": {
+      "computed_input": "1920000",
+      "generated_output": "133140",
+      "request_input": "1720555",
+      "request_output": "114325"
+    },
+    "2026-07-02": {
+      "computed_input": "1906975",
+      "generated_output": "134249",
+      "request_input": "1731378",
+      "request_output": "115592"
+    },
+    "2026-07-03": {
+      "computed_input": "1911427",
+      "generated_output": "133256",
+      "request_input": "1722060",
+      "request_output": "115079"
+    },
+    "2026-07-04": {
+      "computed_input": "1931114",
+      "generated_output": "134330",
+      "request_input": "1733199",
+      "request_output": "114624"
+    },
+    "2026-07-05": {
+      "computed_input": "1917453",
+      "generated_output": "133817",
+      "request_input": "1714598",
+      "request_output": "115187"
+    },
+    "2026-07-06": {
+      "computed_input": "1905792",
+      "generated_output": "132476",
+      "request_input": "1724629",
+      "request_output": "115109"
+    },
+    "2026-07-07": {
+      "computed_input": "1895314",
+      "generated_output": "134206",
+      "request_input": "1725191",
+      "request_output": "113303"
+    },
+    "2026-07-08": {
+      "computed_input": "1904206",
+      "generated_output": "133022",
+      "request_input": "1712716",
+      "request_output": "115516"
+    },
+    "2026-07-09": {
+      "computed_input": "1931871",
+      "generated_output": "134737",
+      "request_input": "1721561",
+      "request_output": "115502"
+    },
+    "2026-07-10": {
+      "computed_input": "1900503",
+      "generated_output": "132366",
+      "request_input": "1707004",
+      "request_output": "114185"
+    },
+    "2026-07-11": {
+      "computed_input": "1920510",
+      "generated_output": "135407",
+      "request_input": "1732935",
+      "request_output": "114489"
+    },
+    "2026-07-12": {
+      "computed_input": "1917076",
+      "generated_output": "133593",
+      "request_input": "1720609",
+      "request_output": "114597"
+    },
+    "2026-07-13": {
+      "computed_input": "1917646",
+      "generated_output": "135152",
+      "request_input": "1716707",
+      "request_output": "115121"
+    },
+    "2026-07-14": {
+      "computed_input": "1909759",
+      "generated_output": "133414",
+      "request_input": "1713245",
+      "request_output": "113694"
+    },
+    "2026-07-15": {
+      "computed_input": "1898907",
+      "generated_output": "133052",
+      "request_input": "1708788",
+      "request_output": "114707"
+    },
+    "2026-07-16": {
+      "computed_input": "1921333",
+      "generated_output": "134802",
+      "request_input": "1734376",
+      "request_output": "115076"
+    },
+    "2026-07-17": {
+      "computed_input": "1906509",
+      "generated_output": "133421",
+      "request_input": "1708083",
+      "request_output": "114523"
+    },
+    "2026-07-18": {
+      "computed_input": "1917460",
+      "generated_output": "133354",
+      "request_input": "1723975",
+      "request_output": "115085"
+    },
+    "2026-07-19": {
+      "computed_input": "1909708",
+      "generated_output": "132593",
+      "request_input": "1703332",
+      "request_output": "113882"
+    },
+    "2026-07-20": {
+      "computed_input": "1918994",
+      "generated_output": "133738",
+      "request_input": "1729802",
+      "request_output": "115938"
+    },
+    "2026-07-21": {
+      "computed_input": "1905568",
+      "generated_output": "134066",
+      "request_input": "1723415",
+      "request_output": "114778"
+    },
+    "2026-07-22": {
+      "computed_input": "1924863",
+      "generated_output": "134955",
+      "request_input": "1720775",
+      "request_output": "115096"
+    },
+    "2026-07-23": {
+      "computed_input": "1906296",
+      "generated_output": "133785",
+      "request_input": "1704782",
+      "request_output": "113568"
+    },
+    "2026-07-24": {
+      "computed_input": "1928090",
+      "generated_output": "134594",
+      "request_input": "1739955",
+      "request_output": "114691"
+    },
+    "2026-07-25": {
+      "computed_input": "1890581",
+      "generated_output": "133628",
+      "request_input": "1715587",
+      "request_output": "114006"
+    },
+    "2026-07-26": {
+      "computed_input": "1899440",
+      "generated_output": "132391",
+      "request_input": "1695444",
+      "request_output": "114333"
+    },
+    "2026-07-27": {
+      "computed_input": "1916526",
+      "generated_output": "133907",
+      "request_input": "1722832",
+      "request_output": "114375"
+    },
+    "2026-07-28": {
+      "computed_input": "1901869",
+      "generated_output": "132594",
+      "request_input": "1723829",
+      "request_output": "114464"
+    },
+    "2026-07-29": {
+      "computed_input": "1905082",
+      "generated_output": "134059",
+      "request_input": "1738026",
+      "request_output": "114322"
+    },
+    "2026-07-30": {
+      "computed_input": "1892904",
+      "generated_output": "133511",
+      "request_input": "1711062",
+      "request_output": "113952"
+    },
+    "2026-07-31": {
+      "computed_input": "1914334",
+      "generated_output": "134408",
+      "request_input": "1717243",
+      "request_output": "113690"
+    },
+    "2026-08-01": {
+      "computed_input": "1903951",
+      "generated_output": "133048",
+      "request_input": "1722198",
+      "request_output": "114758"
+    },
+    "2026-08-02": {
+      "computed_input": "1933082",
+      "generated_output": "135595",
+      "request_input": "1725817",
+      "request_output": "115939"
+    },
+    "2026-08-03": {
+      "computed_input": "1914900",
+      "generated_output": "132421",
+      "request_input": "1710028",
+      "request_output": "113950"
+    },
+    "2026-08-04": {
+      "computed_input": "1924855",
+      "generated_output": "134054",
+      "request_input": "1736857",
+      "request_output": "114537"
+    },
+    "2026-08-05": {
+      "computed_input": "1925958",
+      "generated_output": "134077",
+      "request_input": "1730214",
+      "request_output": "114982"
+    },
+    "2026-08-06": {
+      "computed_input": "1893622",
+      "generated_output": "132396",
+      "request_input": "1699855",
+      "request_output": "114504"
+    },
+    "2026-08-07": {
+      "computed_input": "1918347",
+      "generated_output": "133585",
+      "request_input": "1716641",
+      "request_output": "115211"
+    },
+    "2026-08-08": {
+      "computed_input": "1914436",
+      "generated_output": "133146",
+      "request_input": "1735495",
+      "request_output": "113835"
+    },
+    "2026-08-09": {
+      "computed_input": "1889511",
+      "generated_output": "133910",
+      "request_input": "1709786",
+      "request_output": "115276"
+    },
+    "2026-08-10": {
+      "computed_input": "1893180",
+      "generated_output": "132089",
+      "request_input": "1695927",
+      "request_output": "113113"
+    },
+    "2026-08-11": {
+      "computed_input": "1905296",
+      "generated_output": "133387",
+      "request_input": "1712269",
+      "request_output": "115156"
+    },
+    "2026-08-12": {
+      "computed_input": "1894088",
+      "generated_output": "133473",
+      "request_input": "1718047",
+      "request_output": "113851"
+    },
+    "2026-08-13": {
+      "computed_input": "1922331",
+      "generated_output": "133305",
+      "request_input": "1735328",
+      "request_output": "114421"
+    },
+    "2026-08-14": {
+      "computed_input": "1905401",
+      "generated_output": "133841",
+      "request_input": "1733000",
+      "request_output": "114966"
+    },
+    "2026-08-15": {
+      "computed_input": "1922111",
+      "generated_output": "134695",
+      "request_input": "1729460",
+      "request_output": "115350"
+    },
+    "2026-08-16": {
+      "computed_input": "1909153",
+      "generated_output": "134381",
+      "request_input": "1725413",
+      "request_output": "114280"
+    },
+    "2026-08-17": {
+      "computed_input": "1907868",
+      "generated_output": "133696",
+      "request_input": "1708095",
+      "request_output": "114336"
+    },
+    "2026-08-18": {
+      "computed_input": "1907201",
+      "generated_output": "132805",
+      "request_input": "1718101",
+      "request_output": "113930"
+    },
+    "2026-08-19": {
+      "computed_input": "1910930",
+      "generated_output": "135536",
+      "request_input": "1727744",
+      "request_output": "115734"
+    },
+    "2026-08-20": {
+      "computed_input": "1918554",
+      "generated_output": "134869",
+      "request_input": "1730930",
+      "request_output": "115992"
+    },
+    "2026-08-21": {
+      "computed_input": "1926167",
+      "generated_output": "133819",
+      "request_input": "1710256",
+      "request_output": "114952"
+    },
+    "2026-08-22": {
+      "computed_input": "1911848",
+      "generated_output": "135348",
+      "request_input": "1736193",
+      "request_output": "116128"
+    },
+    "2026-08-23": {
+      "computed_input": "1901311",
+      "generated_output": "134716",
+      "request_input": "1700433",
+      "request_output": "114628"
+    },
+    "2026-08-24": {
+      "computed_input": "1906197",
+      "generated_output": "133409",
+      "request_input": "1716322",
+      "request_output": "115157"
+    },
+    "2026-08-25": {
+      "computed_input": "1904337",
+      "generated_output": "132636",
+      "request_input": "1713616",
+      "request_output": "113852"
+    },
+    "2026-08-26": {
+      "computed_input": "1895519",
+      "generated_output": "132210",
+      "request_input": "1716603",
+      "request_output": "113984"
+    },
+    "2026-08-27": {
+      "computed_input": null,
+      "generated_output": null,
+      "request_input": null,
+      "request_output": null
+    },
+    "2026-08-28": {
+      "computed_input": "3855756",
+      "generated_output": "269965",
+      "request_input": "3464664",
+      "request_output": "230446"
+    },
+    "2026-08-29": {
+      "computed_input": "1903981",
+      "generated_output": "133063",
+      "request_input": "1719970",
+      "request_output": "114635"
+    },
+    "2026-08-30": {
+      "computed_input": "1929020",
+      "generated_output": "135621",
+      "request_input": "1726671",
+      "request_output": "115110"
+    },
+    "2026-08-31": {
+      "computed_input": "1909001",
+      "generated_output": "133845",
+      "request_input": "1723626",
+      "request_output": "114248"
+    },
+    "2026-09-01": {
+      "computed_input": "1936975",
+      "generated_output": "135864",
+      "request_input": "1751284",
+      "request_output": "116415"
+    },
+    "2026-09-02": {
+      "computed_input": "1905809",
+      "generated_output": "134188",
+      "request_input": "1712498",
+      "request_output": "114472"
+    },
+    "2026-09-03": {
+      "computed_input": "1905810",
+      "generated_output": "133263",
+      "request_input": "1716676",
+      "request_output": "114178"
+    },
+    "2026-09-04": {
+      "computed_input": "1917300",
+      "generated_output": "134164",
+      "request_input": "1696856",
+      "request_output": "114630"
+    },
+    "2026-09-05": {
+      "computed_input": "1884640",
+      "generated_output": "132063",
+      "request_input": "1728873",
+      "request_output": "113900"
+    },
+    "2026-09-06": {
+      "computed_input": "1895980",
+      "generated_output": "132774",
+      "request_input": "1713541",
+      "request_output": "114136"
+    },
+    "2026-09-07": {
+      "computed_input": "1910109",
+      "generated_output": "134722",
+      "request_input": "1714960",
+      "request_output": "114223"
+    },
+    "2026-09-08": {
+      "computed_input": "1928957",
+      "generated_output": "134729",
+      "request_input": "1729436",
+      "request_output": "115648"
+    },
+    "2026-09-09": {
+      "computed_input": "1911211",
+      "generated_output": "133681",
+      "request_input": "1717843",
+      "request_output": "114703"
+    },
+    "2026-09-10": {
+      "computed_input": "1925413",
+      "generated_output": "133746",
+      "request_input": "1715254",
+      "request_output": "115013"
+    },
+    "2026-09-11": {
+      "computed_input": "1907636",
+      "generated_output": "134125",
+      "request_input": "1715768",
+      "request_output": "114937"
+    },
+    "2026-09-12": {
+      "computed_input": "1891797",
+      "generated_output": "134423",
+      "request_input": "1708523",
+      "request_output": "113912"
+    },
+    "2026-09-13": {
+      "computed_input": "1905527",
+      "generated_output": "132772",
+      "request_input": "1710320",
+      "request_output": "114714"
+    },
+    "2026-09-14": {
+      "computed_input": "1919192",
+      "generated_output": "135085",
+      "request_input": "1724805",
+      "request_output": "115070"
+    },
+    "2026-09-15": {
+      "computed_input": "1915511",
+      "generated_output": "134728",
+      "request_input": "1732764",
+      "request_output": "114900"
+    },
+    "2026-09-16": {
+      "computed_input": "1903584",
+      "generated_output": "132522",
+      "request_input": "1719031",
+      "request_output": "114398"
+    },
+    "2026-09-17": {
+      "computed_input": "1913127",
+      "generated_output": "132328",
+      "request_input": "1724155",
+      "request_output": "113476"
+    },
+    "2026-09-18": {
+      "computed_input": "1952869",
+      "generated_output": "135409",
+      "request_input": "1748793",
+      "request_output": "115992"
+    },
+    "2026-09-19": {
+      "computed_input": "1922084",
+      "generated_output": "134045",
+      "request_input": "1737426",
+      "request_output": "114742"
+    },
+    "2026-09-20": {
+      "computed_input": "1931318",
+      "generated_output": "133619",
+      "request_input": "1722973",
+      "request_output": "114510"
+    },
+    "2026-09-21": {
+      "computed_input": "1891186",
+      "generated_output": "133334",
+      "request_input": "1705817",
+      "request_output": "113513"
+    },
+    "2026-09-22": {
+      "computed_input": "1905375",
+      "generated_output": "134284",
+      "request_input": "1719207",
+      "request_output": "114044"
+    },
+    "2026-09-23": {
+      "computed_input": "1892989",
+      "generated_output": "134310",
+      "request_input": "1719302",
+      "request_output": "114337"
+    },
+    "2026-09-24": {
+      "computed_input": "1896716",
+      "generated_output": "132770",
+      "request_input": "1700513",
+      "request_output": "113720"
+    },
+    "2026-09-25": {
+      "computed_input": "1919429",
+      "generated_output": "133980",
+      "request_input": "1716873",
+      "request_output": "115021"
+    },
+    "2026-09-26": {
+      "computed_input": "1922852",
+      "generated_output": "133960",
+      "request_input": "1725037",
+      "request_output": "114678"
+    },
+    "2026-09-27": {
+      "computed_input": "1918027",
+      "generated_output": "133914",
+      "request_input": "1725948",
+      "request_output": "115006"
+    },
+    "2026-09-28": {
+      "computed_input": "1910867",
+      "generated_output": "133882",
+      "request_input": "1722397",
+      "request_output": "114703"
+    },
+    "2026-09-29": {
+      "computed_input": "1910870",
+      "generated_output": "133535",
+      "request_input": "1718637",
+      "request_output": "114791"
+    },
+    "2026-09-30": {
+      "computed_input": "1911164",
+      "generated_output": "134009",
+      "request_input": "1717477",
+      "request_output": "114735"
+    },
+    "2026-10-01": {
+      "computed_input": "1913470",
+      "generated_output": "133743",
+      "request_input": "1722212",
+      "request_output": "114671"
+    },
+    "2026-10-02": {
+      "computed_input": "1914820",
+      "generated_output": "134007",
+      "request_input": "1722127",
+      "request_output": "114663"
+    },
+    "2026-10-03": {
+      "computed_input": "1908619",
+      "generated_output": "133683",
+      "request_input": "1721079",
+      "request_output": "114488"
+    },
+    "2026-10-04": {
+      "computed_input": "1911706",
+      "generated_output": "133636",
+      "request_input": "1717920",
+      "request_output": "114464"
+    },
+    "2026-10-05": {
+      "computed_input": "1914837",
+      "generated_output": "134066",
+      "request_input": "1721357",
+      "request_output": "114835"
+    },
+    "2026-10-06": {
+      "computed_input": "0",
+      "generated_output": "0",
+      "request_input": "0",
+      "request_output": "0"
+    },
+    "2026-10-07": {
+      "computed_input": "1910905",
+      "generated_output": "133600",
+      "request_input": "1722059",
+      "request_output": "114400"
+    },
+    "2026-10-08": {
+      "computed_input": "1911360",
+      "generated_output": "133639",
+      "request_input": "1720819",
+      "request_output": "114642"
+    },
+    "2026-10-09": {
+      "computed_input": "1903021",
+      "generated_output": "133089",
+      "request_input": "1713782",
+      "request_output": "114010"
+    },
+    "2026-10-10": {
+      "computed_input": "1909299",
+      "generated_output": "133990",
+      "request_input": "1722966",
+      "request_output": "114664"
+    },
+    "2026-10-11": {
+      "computed_input": "1914148",
+      "generated_output": "133861",
+      "request_input": "1723700",
+      "request_output": "114918"
+    },
+    "2026-10-12": {
+      "computed_input": "1904417",
+      "generated_output": "133449",
+      "request_input": "1719349",
+      "request_output": "114650"
+    },
+    "2026-10-13": {
+      "computed_input": "1909617",
+      "generated_output": "133422",
+      "request_input": "1717854",
+      "request_output": "114492"
+    },
+    "2026-10-14": {
+      "computed_input": "1908655",
+      "generated_output": "133605",
+      "request_input": "1714720",
+      "request_output": "114434"
+    },
+    "2026-10-15": {
+      "computed_input": "1907078",
+      "generated_output": "133557",
+      "request_input": "1713529",
+      "request_output": "114233"
+    },
+    "2026-10-16": {
+      "computed_input": "1917317",
+      "generated_output": "134113",
+      "request_input": "1724336",
+      "request_output": "114863"
+    },
+    "2026-10-17": {
+      "computed_input": "1911188",
+      "generated_output": "133942",
+      "request_input": "1723087",
+      "request_output": "114633"
+    },
+    "2026-10-18": {
+      "computed_input": "1913400",
+      "generated_output": "134060",
+      "request_input": "1716969",
+      "request_output": "114785"
+    },
+    "2026-10-19": {
+      "computed_input": "1914868",
+      "generated_output": "134117",
+      "request_input": "1719876",
+      "request_output": "114728"
+    },
+    "2026-10-20": {
+      "computed_input": "1909804",
+      "generated_output": "133903",
+      "request_input": "1722914",
+      "request_output": "114695"
+    },
+    "2026-10-21": {
+      "computed_input": "1911418",
+      "generated_output": "134051",
+      "request_input": "1722156",
+      "request_output": "114796"
+    },
+    "2026-10-22": {
+      "computed_input": "1914120",
+      "generated_output": "134165",
+      "request_input": "1725356",
+      "request_output": "114687"
+    },
+    "2026-10-23": {
+      "computed_input": "1907919",
+      "generated_output": "133820",
+      "request_input": "1717592",
+      "request_output": "114556"
+    },
+    "2026-10-24": {
+      "computed_input": "1882838",
+      "generated_output": "131519",
+      "request_input": "1684969",
+      "request_output": "112710"
+    },
+    "2026-10-25": {
+      "computed_input": "1904536",
+      "generated_output": "133232",
+      "request_input": "1716117",
+      "request_output": "114491"
+    },
+    "2026-10-26": {
+      "computed_input": "553115",
+      "generated_output": "38829",
+      "request_input": "498658",
+      "request_output": "33281"
+    }
+  },
+  "database": "/tmp/d4/full2/dashboard.sqlite3",
+  "duration_seconds": 1766.75,
+  "epoch_cases": {
+    "2026-09-16T06Z": {
+      "counter_reset": "qual-model-0"
+    },
+    "2026-10-25T00Z": {
+      "restart_evidence": "qual-model-0"
+    }
+  },
+  "final_counters": [
+    {
+      "counters": {
+        "computed_input": "11100281",
+        "generated_output": "777575",
+        "request_input": "93338423",
+        "request_output": "6225319"
+      },
+      "engine": "0",
+      "model_name": "qual-model-0"
+    },
+    {
+      "counters": {
+        "computed_input": "116172945",
+        "generated_output": "8162944",
+        "request_input": "104663537",
+        "request_output": "6994399"
+      },
+      "engine": "0",
+      "model_name": "qual-model-1"
+    },
+    {
+      "counters": {
+        "computed_input": "68248569",
+        "generated_output": "4802465",
+        "request_input": "61395632",
+        "request_output": "4132081"
+      },
+      "engine": "0",
+      "model_name": "qual-model-2"
+    },
+    {
+      "counters": {
+        "computed_input": "52823159",
+        "generated_output": "3720551",
+        "request_input": "47454168",
+        "request_output": "3184446"
+      },
+      "engine": "0",
+      "model_name": "qual-model-3"
+    },
+    {
+      "counters": {
+        "computed_input": "65259629",
+        "generated_output": "4570252",
+        "request_input": "58804087",
+        "request_output": "3922583"
+      },
+      "engine": "0",
+      "model_name": "qual-model-4"
+    },
+    {
+      "counters": {
+        "computed_input": "107401207",
+        "generated_output": "7543422",
+        "request_input": "96730767",
+        "request_output": "6484373"
+      },
+      "engine": "0",
+      "model_name": "qual-model-5"
+    },
+    {
+      "counters": {
+        "computed_input": "64296107",
+        "generated_output": "4523703",
+        "request_input": "57885877",
+        "request_output": "3868752"
+      },
+      "engine": "0",
+      "model_name": "qual-model-6"
+    },
+    {
+      "counters": {
+        "computed_input": "122374582",
+        "generated_output": "8589982",
+        "request_input": "110010839",
+        "request_output": "7348232"
+      },
+      "engine": "0",
+      "model_name": "qual-model-7"
+    }
+  ],
+  "gap_only_hours": {
+    "2026-10-24T22Z": "outage_no_sample",
+    "2026-10-24T23Z": "outage_no_sample",
+    "2026-10-25T00Z": "recovered_after_outage",
+    "2026-10-25T22Z": "outage_no_sample",
+    "2026-10-25T23Z": "outage_no_sample",
+    "2026-10-26T00Z": "recovered_after_outage"
+  },
+  "generated_at": "2026-10-26T10:34:55.000000Z",
+  "hourly_cases": {
+    "2026-10-24T22Z": {
+      "computed_input": {
+        "qual-model-0": "5466",
+        "qual-model-1": "5965",
+        "qual-model-2": "3392",
+        "qual-model-3": "2640",
+        "qual-model-4": "3348",
+        "qual-model-5": "5463",
+        "qual-model-6": "3217",
+        "qual-model-7": "6312"
+      },
+      "generated_output": {
+        "qual-model-0": "383",
+        "qual-model-1": "413",
+        "qual-model-2": "239",
+        "qual-model-3": "192",
+        "qual-model-4": "235",
+        "qual-model-5": "383",
+        "qual-model-6": "227",
+        "qual-model-7": "443"
+      },
+      "request_input": {
+        "qual-model-0": "4829",
+        "qual-model-1": "5362",
+        "qual-model-2": "3071",
+        "qual-model-3": "2443",
+        "qual-model-4": "3052",
+        "qual-model-5": "4912",
+        "qual-model-6": "2825",
+        "qual-model-7": "5691"
+      },
+      "request_output": {
+        "qual-model-0": "321",
+        "qual-model-1": "350",
+        "qual-model-2": "203",
+        "qual-model-3": "161",
+        "qual-model-4": "201",
+        "qual-model-5": "323",
+        "qual-model-6": "194",
+        "qual-model-7": "384"
+      }
+    },
+    "2026-10-25T00Z": {
+      "computed_input": {
+        "qual-model-0": "1216",
+        "qual-model-1": "8025",
+        "qual-model-2": "4679",
+        "qual-model-3": "3574",
+        "qual-model-4": "4425",
+        "qual-model-5": "7398",
+        "qual-model-6": "4389",
+        "qual-model-7": "8572"
+      },
+      "generated_output": {
+        "qual-model-0": "84",
+        "qual-model-1": "557",
+        "qual-model-2": "327",
+        "qual-model-3": "256",
+        "qual-model-4": "318",
+        "qual-model-5": "518",
+        "qual-model-6": "301",
+        "qual-model-7": "594"
+      },
+      "request_input": {
+        "qual-model-0": "1125",
+        "qual-model-1": "7165",
+        "qual-model-2": "4194",
+        "qual-model-3": "3242",
+        "qual-model-4": "4034",
+        "qual-model-5": "6605",
+        "qual-model-6": "3986",
+        "qual-model-7": "7618"
+      },
+      "request_output": {
+        "qual-model-0": "72",
+        "qual-model-1": "482",
+        "qual-model-2": "275",
+        "qual-model-3": "217",
+        "qual-model-4": "270",
+        "qual-model-5": "440",
+        "qual-model-6": "264",
+        "qual-model-7": "503"
+      }
+    },
+    "2026-10-25T22Z": {
+      "computed_input": {
+        "qual-model-0": "5382",
+        "qual-model-1": "6030",
+        "qual-model-2": "3548",
+        "qual-model-3": "2605",
+        "qual-model-4": "3372",
+        "qual-model-5": "5520",
+        "qual-model-6": "3305",
+        "qual-model-7": "6562"
+      },
+      "generated_output": {
+        "qual-model-0": "381",
+        "qual-model-1": "414",
+        "qual-model-2": "245",
+        "qual-model-3": "185",
+        "qual-model-4": "235",
+        "qual-model-5": "382",
+        "qual-model-6": "236",
+        "qual-model-7": "453"
+      },
+      "request_input": {
+        "qual-model-0": "4895",
+        "qual-model-1": "5401",
+        "qual-model-2": "3117",
+        "qual-model-3": "2398",
+        "qual-model-4": "2992",
+        "qual-model-5": "4965",
+        "qual-model-6": "2961",
+        "qual-model-7": "5815"
+      },
+      "request_output": {
+        "qual-model-0": "332",
+        "qual-model-1": "360",
+        "qual-model-2": "204",
+        "qual-model-3": "157",
+        "qual-model-4": "200",
+        "qual-model-5": "327",
+        "qual-model-6": "197",
+        "qual-model-7": "389"
+      }
+    },
+    "2026-10-26T00Z": {
+      "computed_input": {
+        "qual-model-0": "7159",
+        "qual-model-1": "7876",
+        "qual-model-2": "4680",
+        "qual-model-3": "3572",
+        "qual-model-4": "4460",
+        "qual-model-5": "7194",
+        "qual-model-6": "4517",
+        "qual-model-7": "8329"
+      },
+      "generated_output": {
+        "qual-model-0": "499",
+        "qual-model-1": "549",
+        "qual-model-2": "328",
+        "qual-model-3": "253",
+        "qual-model-4": "314",
+        "qual-model-5": "506",
+        "qual-model-6": "309",
+        "qual-model-7": "578"
+      },
+      "request_input": {
+        "qual-model-0": "6479",
+        "qual-model-1": "7013",
+        "qual-model-2": "4141",
+        "qual-model-3": "3220",
+        "qual-model-4": "4034",
+        "qual-model-5": "6498",
+        "qual-model-6": "4041",
+        "qual-model-7": "7467"
+      },
+      "request_output": {
+        "qual-model-0": "437",
+        "qual-model-1": "468",
+        "qual-model-2": "286",
+        "qual-model-3": "214",
+        "qual-model-4": "267",
+        "qual-model-5": "428",
+        "qual-model-6": "267",
+        "qual-model-7": "490"
+      }
+    }
+  },
+  "hourly_cases_full_sha256": "d8aade6a7a5eaa59079beddbe111931ac23772f846eda077e179616663b12bd1",
+  "hourly_cases_note": "Trimmed for the receipt directory: 4 of 8769 simulated hours are kept, namely the hours the verifier asserts (designed outage/recovery hours plus every gap-only hour). The complete map is in the harness working directory; its SHA-256 is recorded here.",
+  "hourly_cases_total_hours": 8769,
+  "integrity_check": "ok",
+  "kind": "jarvis-qualification-seed",
+  "lifetime": {
+    "computed_input": "700184266",
+    "generated_output": "49002512",
+    "request_input": "630118896",
+    "request_output": "41997619"
+  },
+  "models": [
+    "qual-model-0",
+    "qual-model-1",
+    "qual-model-2",
+    "qual-model-3",
+    "qual-model-4",
+    "qual-model-5",
+    "qual-model-6",
+    "qual-model-7"
+  ],
+  "per_model": [
+    {
+      "counters": {
+        "computed_input": "103763560",
+        "generated_output": "7251286",
+        "request_input": "93321856",
+        "request_output": "6221152"
+      },
+      "engine": "0",
+      "model_name": "qual-model-0"
+    },
+    {
+      "counters": {
+        "computed_input": "116140145",
+        "generated_output": "8139154",
+        "request_input": "104647897",
+        "request_output": "6975402"
+      },
+      "engine": "0",
+      "model_name": "qual-model-1"
+    },
+    {
+      "counters": {
+        "computed_input": "68224343",
+        "generated_output": "4770700",
+        "request_input": "61372225",
+        "request_output": "4092562"
+      },
+      "engine": "0",
+      "model_name": "qual-model-2"
+    },
+    {
+      "counters": {
+        "computed_input": "52803282",
+        "generated_output": "3691559",
+        "request_input": "47432451",
+        "request_output": "3164964"
+      },
+      "engine": "0",
+      "model_name": "qual-model-3"
+    },
+    {
+      "counters": {
+        "computed_input": "65232726",
+        "generated_output": "4568062",
+        "request_input": "58781952",
+        "request_output": "3916250"
+      },
+      "engine": "0",
+      "model_name": "qual-model-4"
+    },
+    {
+      "counters": {
+        "computed_input": "107383926",
+        "generated_output": "7521864",
+        "request_input": "96708046",
+        "request_output": "6445887"
+      },
+      "engine": "0",
+      "model_name": "qual-model-5"
+    },
+    {
+      "counters": {
+        "computed_input": "64293065",
+        "generated_output": "4496561",
+        "request_input": "57858543",
+        "request_output": "3855704"
+      },
+      "engine": "0",
+      "model_name": "qual-model-6"
+    },
+    {
+      "counters": {
+        "computed_input": "122343219",
+        "generated_output": "8563326",
+        "request_input": "109995926",
+        "request_output": "7325698"
+      },
+      "engine": "0",
+      "model_name": "qual-model-7"
+    }
+  ],
+  "polls": {
+    "applied": 2151800,
+    "failed": 720,
+    "simulated": 269695
+  },
+  "purged_rows": 775153,
+  "raw_samples_older_than_retention": 0,
+  "schema": 1,
+  "seed": 20260426,
+  "source_id": "qual-jarvis",
+  "tables": {
+    "epochs": 10,
+    "events": 1,
+    "gap_spans": 109,
+    "hourly_totals": 282204,
+    "samples": 1376640,
+    "series": 8
+  },
+  "uptime_origin": 1761264000.0,
+  "window": {
+    "cadence_early_seconds": 300,
+    "cadence_recent_seconds": 15,
+    "end": "2026-10-26T10:34:55.000000Z",
+    "retention_days": 30,
+    "start": "2025-10-24T00:00:00.000000Z",
+    "window_days": 367
+  }
+}

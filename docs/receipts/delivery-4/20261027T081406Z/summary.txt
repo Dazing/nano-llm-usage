@@ -1,0 +1,2 @@
+[receipt] checks=50 failures=1
+[receipt] FAILED Dockerfile: no RUN in a stage FROM a shell-less base image: "actual=['FROM ghcr.io/astral-sh/uv:0.13.5@sha256:32a7bb39b496babbd997b0a39a4d66c126bdaf5661b302bf6f06abda8deca6ff'] expected=[]" (expected 'match')

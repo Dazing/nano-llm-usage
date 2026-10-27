@@ -1,6 +1,13 @@
 # Jarvis Token Dashboard — portable implementation packet
 
-This repository contains the application specification and the implemented Delivery 1 durable collector plus the Delivery 2 bounded API, service lifecycle, backup/restore and backend-only packaging. The dashboard and release qualification are subsequent deliveries; no verified live deployment is claimed. Keep the specification packet together and preserve its relative links.
+This repository contains the application specification and the implemented Delivery 1 durable
+collector, the Delivery 2 bounded API, service lifecycle, backup/restore and packaging, and the
+Delivery 3 dashboard: the production image builds the Vue bundle and serves it from the same origin
+as the API, so one container is the whole product. Delivery 4 is release qualification: the harness
+and the measured evidence live in [`docs/receipts/delivery-4/`](docs/receipts/delivery-4/) and
+[`docs/delivery-4-status.md`](docs/delivery-4-status.md), which states plainly which gates ran and
+which the qualification host could not run. No verified live deployment is claimed. Keep the
+specification packet together and preserve its relative links.
 
 ## Files and authority
 
@@ -8,7 +15,7 @@ This repository contains the application specification and the implemented Deliv
 2. **[acceptance-scenarios.md](docs/acceptance-scenarios.md)** — normative numeric and failure examples to turn into regression tests and production smoke scenarios.
 3. **This README** — context, kickoff prompt and delivery expectations. It does not override the specification.
 
-Selected stack: Python 3.13 + FastAPI/Uvicorn + SQLite; Vue 3 + TypeScript + Vite + Chart.js compiled into static assets. One runtime container, one Python worker, no Node.js runtime. RAM target: 256 MiB hard limit, preferred steady-state process RSS below 100 MiB; both require measurement.
+Selected stack: Python 3.13 + FastAPI/Uvicorn + SQLite; Vue 3 + TypeScript + Vite + Chart.js compiled into static assets. One runtime container, one Python worker, no Node.js runtime. The dashboard is that build-time bundle: `frontend/` is compiled during the image build into `src/jarvis_dashboard/static/` (baked to `/opt/static`), and the running container ships no Node.js, no build tools and no CDN reference. RAM target: 256 MiB hard limit, preferred steady-state process RSS below 100 MiB; both require measurement.
 
 The user chose a DIY application after considering VictoriaMetrics/Grafana because their Unraid NAS is short on RAM. The goal is durable aggregate token history with an attractive simple dashboard, not per-request logs or a general monitoring platform. Earlier RAM estimates were unmeasured and must not become advertised benchmark results.
 
@@ -19,9 +26,16 @@ The user chose a DIY application after considering VictoriaMetrics/Grafana becau
 - **[Delivery 1 status](docs/delivery-1-status.md)** — implemented collector: executed environment, install/run/test/smoke commands, configuration, storage/locking/migration/retention behavior and numeric smoke receipts.
 - **[Delivery 2 implementation plan](docs/delivery-2-implementation-plan.md)** — bounded HTTP contracts, actual-core prerequisite repairs, non-root runtime, online backup/stopped restore and local verification gates.
 - **[Delivery 2 status](docs/delivery-2-status.md)** — implemented API/lifecycle/recovery/packaging: executed environment, commands, wire contract, bounded reads, schema version 2, smoke receipts and the explicitly unexecuted container gates.
-- **[Deployment](docs/deployment.md)** — build, run, backup, restore and upgrade operations for the backend-only image (operator-supplied paths, UID/GID and bind address).
+- **[Delivery 3 implementation plan](docs/delivery-3-implementation-plan.md)** — contract-generated TypeScript client, dashboard views/states, exact UTC formatting, token system, static-serving/cache split, browser driver and image build stage.
+- **[Delivery 3 status](docs/delivery-3-status.md)** — implemented dashboard: executed environment, 65 browser smoke checks, receipts and screenshots, the cache/snapshot contract table, and the explicitly unexecuted image and resource gates.
+- **[Delivery 4 implementation plan](docs/delivery-4-implementation-plan.md)** — release qualification of the production image: container harness, one-year history seeder, image end-to-end cases, the specification D9 resource workload and pass/target criteria, packaging/documentation fixes and evidence publication.
+- **[Delivery 4 status](docs/delivery-4-status.md)** — qualification results: executed host gates (durable-recovery smoke, Compose/configuration contract, the seeded 367-day year verified through the real API, documentation consistency, AC7 growth math), the image and resource gates recorded NOT EXECUTED with their exact missing prerequisites, the `READ_CAPACITY` documentation correction, and the open items.
+- **[Deployment](docs/deployment.md)** — build, run, serve, backup, restore and upgrade operations for the self-contained image (collector, API and bundled dashboard; operator-supplied paths, UID/GID and bind address).
 
-The specification and acceptance scenarios remain authoritative. These plans sequence the complete scope; they contain planned verification, not executed application or deployment results.
+The specification and acceptance scenarios remain authoritative. The plans sequence the complete
+scope and contain planned verification; the status files carry executed receipts, and
+[Delivery 4 status](docs/delivery-4-status.md) names every gate its host could not execute and the
+live checks that remain an operator gate.
 
 ## Paste into the new repository's agent session
 

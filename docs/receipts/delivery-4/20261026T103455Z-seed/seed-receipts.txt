@@ -1,0 +1,12 @@
+[receipt] seed duration s = 1766.8
+[receipt] seed polls = 269695 (applied=2151800, failed=720)
+[receipt] seed rows series = 8
+[receipt] seed rows samples = 1376640
+[receipt] seed rows hourly_totals = 282204
+[receipt] seed rows gap_spans = 109
+[receipt] seed rows events = 1
+[receipt] seed rows epochs = 10
+[receipt] seed integrity_check = ok
+[receipt] seed raw samples older than retention = 0
+[receipt] seed lifetime processed = 749186778
+[receipt] manifest = /tmp/d4/full2/seed-manifest.json

@@ -64,9 +64,18 @@ async def call(
     server logs it. Set it when asserting on that generated response.
     """
     state: dict[str, Any] = {"status": 500, "headers": {}, "chunks": []}
+    delivered = False
 
     async def receive() -> dict:
-        return {"type": "http.request", "body": body, "more_body": False}
+        nonlocal delivered
+        if not delivered:
+            delivered = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        # A live connection: block until the app finishes, like a real server.
+        # Returning instantly would starve a response that polls for a disconnect
+        # (FileResponse under the ASGI spec 2.3 that uvicorn advertises).
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")
 
     async def send(message: dict) -> None:
         if message["type"] == "http.response.start":

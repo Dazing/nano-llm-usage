@@ -1,0 +1,430 @@
+/* Layout for the single delivery-3 screen. Colours, spacing, radius and type
+   scale come from tokens.css only — no raw hex here. */
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Header ------------------------------------------------------------- */
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+.header-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.series-name {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.875rem;
+}
+
+.header-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.last-update {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+.badge {
+  padding: 2px var(--sp-2);
+  border-radius: 999px;
+  border: var(--border-width) solid var(--border);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.badge.is-ok {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.badge.is-warn {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.badge.is-bad {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.theme-toggle,
+.chip {
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--panel);
+  color: var(--fg);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--panel);
+}
+
+.series-picker-label {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.series-picker,
+.custom-fields input {
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--panel);
+  color: var(--fg);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+/* Panels ------------------------------------------------------------- */
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.panel,
+.card {
+  background: var(--panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+}
+
+.panel h2,
+.card-title {
+  margin: 0 0 var(--sp-3);
+  font-size: 0.9375rem;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.utc-tag {
+  padding: 0 var(--sp-1);
+  border: var(--border-width) solid var(--border);
+  border-radius: 4px;
+  color: var(--fg-muted);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.label-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+}
+
+.lv-label {
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+.lv-value {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.is-muted .lv-value {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.lifetime-start,
+.request-meta,
+.rate-interval,
+.note {
+  margin: var(--sp-1) 0 0;
+  color: var(--fg-muted);
+  font-size: 0.8125rem;
+}
+
+.flag {
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-2);
+  border-left: 3px solid var(--warning);
+  color: var(--fg);
+  font-size: 0.8125rem;
+}
+
+/* Trend -------------------------------------------------------------- */
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.custom-range summary,
+.chart-disclosure summary,
+.requests-disclosure summary,
+.diagnostics summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--fg-muted);
+}
+
+.custom-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.custom-fields label {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.chart-shell {
+  position: relative;
+  height: var(--chart-height);
+  margin-top: var(--sp-3);
+}
+
+.range-error {
+  margin: var(--sp-3) 0 0;
+  color: var(--error);
+  font-size: 0.875rem;
+}
+
+.chart-disclosure,
+.requests-disclosure {
+  margin-top: var(--sp-3);
+}
+
+.chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--sp-2);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-table caption {
+  text-align: left;
+  color: var(--fg-muted);
+  padding-bottom: var(--sp-2);
+}
+
+.chart-table th,
+.chart-table td {
+  text-align: left;
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: var(--border-width) solid var(--border);
+  font-weight: 500;
+}
+
+/* Rates -------------------------------------------------------------- */
+
+.rate-grid,
+.request-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.rate-cell,
+.request-cell {
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+}
+
+.request-title {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.stale-notice {
+  margin: 0 0 var(--sp-3);
+  color: var(--warning);
+  font-size: 0.875rem;
+}
+
+/* Diagnostics -------------------------------------------------------- */
+
+.diagnostics {
+  background: var(--panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+}
+
+.diagnostics-block {
+  margin-top: var(--sp-3);
+}
+
+.diagnostics-block h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.875rem;
+}
+
+.diagnostics-block ul {
+  margin: 0;
+  padding-left: var(--sp-4);
+  font-size: 0.8125rem;
+}
+
+.diagnostics-block li + li {
+  margin-top: var(--sp-1);
+}
+
+/* Banners and states -------------------------------------------------- */
+
+.banner {
+  margin: 0;
+  padding: var(--sp-3);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.banner p + p {
+  margin-top: var(--sp-1);
+}
+
+.banner-warn {
+  border-color: var(--warning);
+}
+
+.banner-error {
+  border-color: var(--error);
+}
+
+.banner-error .stale-notice {
+  margin: 0;
+}
+
+.empty-state {
+  margin: 0;
+  padding: var(--sp-6);
+  text-align: center;
+  background: var(--panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius);
+  color: var(--fg-muted);
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.skeleton-block,
+.skeleton-chart {
+  background: var(--border);
+  border-radius: var(--radius);
+  min-height: 120px;
+}
+
+.skeleton-chart {
+  min-height: var(--chart-height);
+}
+
+/* Responsive ---------------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .shell {
+    padding: var(--sp-3);
+    gap: var(--sp-3);
+  }
+
+  .summary-grid,
+  .rate-grid,
+  .request-grid,
+  .skeleton-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chart-shell {
+    height: 280px;
+  }
+
+  .app-header {
+    flex-direction: column;
+  }
+
+  .panel,
+  .card,
+  .diagnostics {
+    padding: var(--sp-3);
+    overflow-wrap: anywhere;
+  }
+}

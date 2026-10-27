@@ -1,0 +1,12 @@
+[receipt] run_id = 20261026T100630Z-refusal-workload
+[receipt] duration_minutes = 30
+[FAIL] qualification prerequisites missing:
+  - docker (the `docker` CLI is not on PATH)
+  - docker compose v2 (`docker compose version` needs the docker CLI)
+  - a container runtime: install Docker Engine (rootless is acceptable)
+  - root privileges (the harness must chown appdata to $JARVIS_UID:$JARVIS_GID and bind-mount the ENOSPC tmpfs)
+[receipt] missing_prerequisites = ['docker (the `docker` CLI is not on PATH)', 'docker compose v2 (`docker compose version` needs the docker CLI)', 'a container runtime: install Docker Engine (rootless is acceptable)', 'root privileges (the harness must chown appdata to $JARVIS_UID:$JARVIS_GID and bind-mount the ENOSPC tmpfs)']
+[FAIL] preflight refused: the workload requires a container runtime: False (expected True)
+[receipt] checks=1 failures=1
+[receipt] FAILED preflight refused: the workload requires a container runtime: False (expected True)
+[receipt] checks=1 failures=1

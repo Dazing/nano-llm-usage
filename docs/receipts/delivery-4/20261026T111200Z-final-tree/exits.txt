@@ -1,0 +1,3 @@
+pytest exit=0
+smoke exit=0
+frontend exit=0

@@ -1,0 +1,103 @@
+smoke workdir: /tmp/jarvis-smoke-ganwwpf9
+--- scenario 1: normal deltas, restart independence, optionals separate
+[ok ] D1-AC2 computed_input total: 900 (expected 900)
+[ok ] D1-AC2 generated_output total: 60 (expected 60)
+[ok ] D1-AC2 processed total: 960 (expected 960)
+[ok ] D1-AC6 SIGTERM exit code: 0 (expected 0)
+[receipt] D1-AC6 SIGTERM stop seconds = 0.11
+[receipt] volume lock re-acquired after exit = True
+[ok ] restart: totals unchanged (no restart credit): 900 (expected 900)
+[receipt] restart: observed-zero samples (D1-AC2 zero-not-missing) = 5
+[ok ] D1-AC5 request_input total (separate accounting): 1000 (expected 1000)
+[ok ] D1-AC5 primary stays engine-only: 900 (expected 900)
+[ok ] scenario 1 clean exit: 0 (expected 0)
+--- scenario 2: gap recovery credits once; disjoint evidence credits nothing
+[ok ] D1-AC3 gap recovery credited once: 300 (expected 300)
+[receipt] gap-flagged recovery samples = 1
+[ok ] gap-flagged samples are never rate-eligible: 0 (expected 0)
+[ok ] gap recovery not re-credited: 300 (expected 300)
+[ok ] D1-AC3 disjoint evidence credits nothing: 300 (expected 300)
+[receipt] epoch reasons = ['new_series', 'restart_evidence', 'restart_evidence']
+[ok ] scenario 2 clean exit: 0 (expected 0)
+--- scenario 3: hard crash leaves no partial write; restart resumes
+[ok ] D1-AC4 crash: no partial sample write: 0 (expected 0)
+[ok ] D1-AC4 crash: hourly unchanged: 0 (expected 0)
+[ok ] D1-AC4 crash: integrity_check: 'ok' (expected 'ok')
+[ok ] crash: resumed collection: True (expected True)
+[ok ] scenario 3 clean exit: 0 (expected 0)
+--- scenario 4: second collector refused; corrupt/foreign files refused
+[receipt] second collector exit code = 3
+[ok ] second collector refused: True (expected True)
+[ok ] corrupt db refused: 3 (expected 3)
+[receipt] corrupt db stderr head = ['2026-10-26 09:34:45,762 ERROR jarvis_dashboard.service storage failure: database_not_mine']
+[ok ] foreign file refused: 3 (expected 3)
+--- scenario 5: endpoint change keeps history; retention keeps hourly
+[receipt] epoch reasons after endpoint change = ['new_series', 'restart_evidence', 'restart_evidence', 'endpoint_change', 'restart_evidence', 'restart_evidence']
+[ok ] lifetime totals preserved across endpoint change: 300 (expected 300)
+[ok ] scenario 5 clean exit: 0 (expected 0)
+[receipt] retention removed raw rows = 13
+[ok ] D1-AC5 retention purges raw samples: 0 (expected 0)
+[ok ] D1-AC5 retention keeps hourly rows: 2 (expected 2)
+--- scenario 6: oversized response bounded; stats-only failure credited
+[ok ] oversize bounded transport: 'response_too_large' (expected 'response_too_large')
+[ok ] no series fabricated from oversize: 0 (expected 0)
+[ok ] B10 stats outage: deltas still credited: 150 (expected 150)
+[receipt] continuity_unverified samples = 2
+[ok ] scenario 6 clean exit: 0 (expected 0)
+--- scenario 7: real serve, bounded API, purge-stable history
+[ok ] readiness turned ready: True (expected True)
+[receipt] readiness first state = (0, 'unreachable')
+[receipt] seconds to ready = 1.03
+[receipt] live during startup (1 = served, 0 = not listening yet) = 200
+[ok ] series page: 200 (expected 200)
+[ok ] no-store on API: 'no-store' (expected 'no-store')
+[receipt] series items = 1
+[ok ] summary status: 200 (expected 200)
+[ok ] lifetime computed_input over HTTP: '900' (expected '900')
+[ok ] lifetime generated_output over HTTP: '60' (expected '60')
+[ok ] lifetime processed_total over HTTP: '960' (expected '960')
+[receipt] summary schema_version = 1
+[receipt] collection_status = healthy
+[ok ] history status: 200 (expected 200)
+[ok ] history generates every bucket in range: 1 (expected 1)
+[receipt] history buckets = 1
+[ok ] history buckets sum to the lifetime total: '900' (expected '900')
+[receipt] history trailing bucket gap_seconds = 0.0
+[receipt] epoch reasons (newest first) = ['counter_reset', 'new_series']
+[ok ] events page: 200 (expected 200)
+[ok ] events describe the real reset: ['counter_reset'] (expected ['counter_reset'])
+[receipt] events retention note = events and raw samples are retained for 30 days; hourly totals and gap spans are retained indefinitely
+[receipt] openapi paths = 7
+[receipt] root response = 200 text/html
+[receipt] concurrent status codes = [200, 503]
+[receipt] concurrent served / refused = (10, 22)
+[ok ] usable again after the burst: 200 (expected 200)
+[receipt] raw rows purged = 5
+[ok ] lifetime after raw purge: '900' (expected '900')
+[ok ] history coverage metadata survives purge: [True] (expected [True])
+[ok ] history first/last observations survive purge: True (expected True)
+[ok ] serve SIGTERM exit: 0 (expected 0)
+[ok ] serve shutdown under 15 s: True (expected True)
+[receipt] serve shutdown seconds = 0.26
+--- scenario 8: live snapshot, stopped restore, gap-free continuation
+[ok ] backup exit code: 0 (expected 0)
+[receipt] backup receipt = backup complete: /tmp/jarvis-smoke-ganwwpf9/snap.sqlite3 (schema 2, 34 pages, 
+[receipt] live volume has WAL while running = True
+[ok ] snapshot ships without WAL: False (expected False)
+[ok ] backup refuses to overwrite: 3 (expected 3)
+[receipt] overwrite refusal = 2026-10-26 09:35:59,423 ERROR jarvis_dashboard.cli backup refused: out
+[ok ] restore exit code: 0 (expected 0)
+[receipt] restore receipt = restored 34 pages (schema 2) from /tmp/jarvis-smoke-ganwwpf9/snap.sqlite3 to /
+[ok ] restored lifetime matches snapshot: 900 (expected 900)
+[ok ] restored processed pair: 60 (expected 60)
+[ok ] restore event recorded once: 1 (expected 1)
+[ok ] restore event is source-wide: None (expected None)
+[receipt] restore provenance keys = ['digest', 'page_count', 'previous_set', 'schema_version', 'snapshot']
+[ok ] collector stopped before running-target check: 0 (expected 0)
+[ok ] restore refuses a running target: 3 (expected 3)
+[receipt] running-target refusal = 2026-10-26 09:36:01,422 ERROR jarvis_dashboard.service restore refused
+[ok ] continuation adds one interval: 1000 (expected 1000)
+[ok ] no duplicated generated output: 70 (expected 70)
+[ok ] optional counters unchanged: 0 (expected 0)
+[ok ] restored volume collector exits: 0 (expected 0)
+SMOKE PASS

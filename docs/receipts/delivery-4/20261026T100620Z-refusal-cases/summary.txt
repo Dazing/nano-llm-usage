@@ -1,0 +1,2 @@
+[receipt] checks=1 failures=1
+[receipt] FAILED preflight refused: image gates require a container runtime: False (expected True)

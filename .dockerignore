@@ -5,10 +5,15 @@
 .pytest_cache
 .ruff_cache
 
-# Build outputs (the image builds its own wheel from src/)
+# Build outputs (the image builds its own wheel from src/ and its own assets
+# from frontend/ — a stale local build must never reach the image)
 dist
 build
 *.egg-info
+frontend/node_modules
+frontend/dist
+src/jarvis_dashboard/static
+docs/receipts
 
 # Python caches: the image disables bytecode writes
 __pycache__

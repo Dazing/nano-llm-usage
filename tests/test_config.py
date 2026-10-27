@@ -110,3 +110,20 @@ def test_retention_and_port_bounds():
 def test_unknown_log_level_rejected():
     with pytest.raises(ConfigError):
         Config.from_env(env(LOG_LEVEL="TRACE"))
+
+
+def test_static_dir_defaults_to_the_packaged_build():
+    # Absent and empty both mean "use the directory beside the package" (D1).
+    assert Config.from_env(env()).static_dir is None
+    assert Config.from_env(env(STATIC_DIR="")).static_dir is None
+
+
+def test_static_dir_override_is_stripped():
+    assert Config.from_env(env(STATIC_DIR=" /srv/static ")).static_dir == "/srv/static"
+
+
+def test_blank_static_dir_rejected_with_actionable_message():
+    # Whitespace-only would silently serve the packaged build instead of the
+    # operator's mount, so it is a configuration error, not a default.
+    with pytest.raises(ConfigError, match="STATIC_DIR"):
+        Config.from_env(env(STATIC_DIR="   "))

@@ -1,0 +1,8 @@
+[
+  {
+    "actual": false,
+    "expected": true,
+    "name": "preflight refused: the workload requires a container runtime",
+    "ok": false
+  }
+]

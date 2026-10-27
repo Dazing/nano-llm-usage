@@ -1,0 +1,20 @@
+[
+  {
+    "actual": "dbstat",
+    "expected": "dbstat",
+    "name": "per_table_source",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "bytes per sample measured",
+    "ok": true
+  },
+  {
+    "actual": true,
+    "expected": true,
+    "name": "bytes per hourly row measured",
+    "ok": true
+  }
+]

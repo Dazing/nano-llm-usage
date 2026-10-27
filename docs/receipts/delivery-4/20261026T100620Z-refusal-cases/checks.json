@@ -1,0 +1,8 @@
+[
+  {
+    "actual": false,
+    "expected": true,
+    "name": "preflight refused: image gates require a container runtime",
+    "ok": false
+  }
+]

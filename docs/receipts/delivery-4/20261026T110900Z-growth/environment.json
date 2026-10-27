@@ -1,0 +1,62 @@
+{
+  "appdata_filesystem": "overlay",
+  "cgroup_controllers": [
+    "cpuset",
+    "cpu",
+    "io",
+    "memory",
+    "hugetlb",
+    "pids",
+    "rdma",
+    "misc",
+    "dmem"
+  ],
+  "cgroup_v2": true,
+  "chromium_version": "Chromium 156.0.8078.47 built on Debian GNU/Linux 12 (bookworm)",
+  "collected_at": "2026-10-26T11:08:49Z",
+  "cpu_cores": 16,
+  "cpu_model": "AMD Ryzen 7 1800X Eight-Core Processor",
+  "docker_version": null,
+  "git": {
+    "diff_head_sha256": "5dc04bd095e5769dacf8234448e47b7565de0e02aa54bea5ac0b33b2428b1727",
+    "dirty_files": [
+      "M .dockerignore",
+      " M .gitignore",
+      " M Dockerfile",
+      " M README.md",
+      " M compose.yaml",
+      " M docs/delivery-map.md",
+      " M docs/deployment.md",
+      " M scripts/smoke.py",
+      " M src/jarvis_dashboard/app.py",
+      " M src/jarvis_dashboard/config.py",
+      " M tests/asgi_client.py",
+      " M tests/fixtures/fixture_server.py",
+      " M tests/test_api.py",
+      " M tests/test_config.py",
+      "?? docs/delivery-3-status.md",
+      "?? docs/delivery-4-implementation-plan.md",
+      "?? docs/delivery-4-status.md",
+      "?? docs/receipts/",
+      "?? frontend/",
+      "?? scripts/browser_driver.py",
+      "?? scripts/export_openapi.py",
+      "?? scripts/qualify_common.py",
+      "?? scripts/qualify_image.py",
+      "?? scripts/qualify_resources.py",
+      "?? scripts/seed_history.py",
+      "?? scripts/smoke_frontend.py",
+      "?? tests/fixtures/compose.qualification.yaml",
+      "?? tests/test_static.py",
+      "?? tests/test_ui_tokens.py"
+    ],
+    "head": "249a741ebc28f77ed408c5d72045de30dc9664ff"
+  },
+  "kernel": "7.2.11-1-cachyos",
+  "locks": {
+    "package_lock": "e4b07c85a5ef77f68a12163de1c18c6706dc787a1e0dfae5489f1f3ab60f5711",
+    "uv_lock": "6a4cbcaafad24019d5a9e07488aa3f4cb4c8fd2301457b21c2019efc6611f8f5"
+  },
+  "mem_total_kb": 32776308,
+  "os": "Linux 7.2.11-1-cachyos (x86_64)"
+}

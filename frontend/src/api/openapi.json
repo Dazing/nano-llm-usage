@@ -1,0 +1,1745 @@
+{
+  "components": {
+    "schemas": {
+      "Bucket": {
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "counters": {
+            "$ref": "#/components/schemas/CounterBlocks"
+          },
+          "ended_at": {
+            "title": "Ended At",
+            "type": "string"
+          },
+          "gap_seconds": {
+            "$ref": "#/components/schemas/GapScopes"
+          },
+          "incomplete": {
+            "title": "Incomplete",
+            "type": "boolean"
+          },
+          "metadata_complete": {
+            "title": "Metadata Complete",
+            "type": "boolean"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "processed_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed Total"
+          },
+          "quality_flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quality Flags",
+            "type": "array"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "counters",
+          "quality_flags",
+          "metadata_complete",
+          "gap_seconds",
+          "partial",
+          "incomplete",
+          "bucket",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "Bucket",
+        "type": "object"
+      },
+      "CounterBlock": {
+        "description": "One counter's coverage for a bucket or range.\n\n``tokens`` is null when the counter was not observed at all; a real zero\ntotal is the string ``\"0\"`` with a non-zero observed-interval count.",
+        "properties": {
+          "first_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Observed At"
+          },
+          "gap_seconds": {
+            "title": "Gap Seconds",
+            "type": "number"
+          },
+          "last_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Observed At"
+          },
+          "metadata_complete": {
+            "title": "Metadata Complete",
+            "type": "boolean"
+          },
+          "observed_intervals": {
+            "title": "Observed Intervals",
+            "type": "integer"
+          },
+          "quality_flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quality Flags",
+            "type": "array"
+          },
+          "tokens": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens"
+          }
+        },
+        "required": [
+          "observed_intervals",
+          "gap_seconds",
+          "quality_flags",
+          "metadata_complete"
+        ],
+        "title": "CounterBlock",
+        "type": "object"
+      },
+      "CounterBlocks": {
+        "properties": {
+          "computed_input": {
+            "$ref": "#/components/schemas/CounterBlock"
+          },
+          "generated_output": {
+            "$ref": "#/components/schemas/CounterBlock"
+          },
+          "request_input": {
+            "$ref": "#/components/schemas/CounterBlock"
+          },
+          "request_output": {
+            "$ref": "#/components/schemas/CounterBlock"
+          }
+        },
+        "required": [
+          "computed_input",
+          "generated_output",
+          "request_input",
+          "request_output"
+        ],
+        "title": "CounterBlocks",
+        "type": "object"
+      },
+      "Epoch": {
+        "properties": {
+          "epoch_id": {
+            "title": "Epoch Id",
+            "type": "integer"
+          },
+          "opening_computed_input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Computed Input"
+          },
+          "opening_generated_output": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Generated Output"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "epoch_id",
+          "reason",
+          "started_at"
+        ],
+        "title": "Epoch",
+        "type": "object"
+      },
+      "EpochPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Epoch"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "EpochPage",
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorDetail",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generated_at",
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EventItem": {
+        "properties": {
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "integer"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "series_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Id"
+          }
+        },
+        "required": [
+          "event_id",
+          "kind",
+          "occurred_at",
+          "details"
+        ],
+        "title": "EventItem",
+        "type": "object"
+      },
+      "EventsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EventItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "retention": {
+            "$ref": "#/components/schemas/Retention"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "series_id",
+          "items",
+          "page_size",
+          "retention"
+        ],
+        "title": "EventsResponse",
+        "type": "object"
+      },
+      "GapScopes": {
+        "description": "Unobserved seconds per collection scope inside a bucket or range.",
+        "properties": {
+          "primary": {
+            "title": "Primary",
+            "type": "number"
+          },
+          "request_input": {
+            "title": "Request Input",
+            "type": "number"
+          },
+          "request_output": {
+            "title": "Request Output",
+            "type": "number"
+          }
+        },
+        "required": [
+          "primary",
+          "request_input",
+          "request_output"
+        ],
+        "title": "GapScopes",
+        "type": "object"
+      },
+      "HistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "bucket_count": {
+            "title": "Bucket Count",
+            "type": "integer"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/Bucket"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "collection_status": {
+            "title": "Collection Status",
+            "type": "string"
+          },
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "range": {
+            "$ref": "#/components/schemas/Range"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "string"
+          },
+          "storage_status": {
+            "title": "Storage Status",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "series_id",
+          "model_name",
+          "engine",
+          "bucket",
+          "from",
+          "to",
+          "bucket_count",
+          "buckets",
+          "range",
+          "collection_status",
+          "storage_status"
+        ],
+        "title": "HistoryResponse",
+        "type": "object"
+      },
+      "LivenessResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "status"
+        ],
+        "title": "LivenessResponse",
+        "type": "object"
+      },
+      "Range": {
+        "properties": {
+          "counters": {
+            "$ref": "#/components/schemas/CounterBlocks"
+          },
+          "ended_at": {
+            "title": "Ended At",
+            "type": "string"
+          },
+          "gap_seconds": {
+            "$ref": "#/components/schemas/GapScopes"
+          },
+          "incomplete": {
+            "title": "Incomplete",
+            "type": "boolean"
+          },
+          "metadata_complete": {
+            "title": "Metadata Complete",
+            "type": "boolean"
+          },
+          "observed": {
+            "title": "Observed",
+            "type": "boolean"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "processed_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed Total"
+          },
+          "quality_flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quality Flags",
+            "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "required": [
+          "counters",
+          "quality_flags",
+          "metadata_complete",
+          "gap_seconds",
+          "partial",
+          "incomplete",
+          "ended_at",
+          "observed"
+        ],
+        "title": "Range",
+        "type": "object"
+      },
+      "Rate": {
+        "description": "Latest accepted interval per counter; null when not eligible.",
+        "properties": {
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "interval_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Seconds"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "quality_flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Quality Flags",
+            "type": "array"
+          },
+          "tokens": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens"
+          },
+          "tokens_per_second": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokens Per Second"
+          }
+        },
+        "required": [
+          "eligible",
+          "quality_flags"
+        ],
+        "title": "Rate",
+        "type": "object"
+      },
+      "ReadinessErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "collector_status": {
+            "title": "Collector Status",
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Code"
+          },
+          "storage_status": {
+            "title": "Storage Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "status",
+          "storage_status",
+          "collector_status",
+          "error"
+        ],
+        "title": "ReadinessErrorResponse",
+        "type": "object"
+      },
+      "ReadinessResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "collector_status": {
+            "title": "Collector Status",
+            "type": "string"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "storage_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Code"
+          },
+          "storage_status": {
+            "title": "Storage Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "status",
+          "storage_status",
+          "collector_status"
+        ],
+        "title": "ReadinessResponse",
+        "type": "object"
+      },
+      "Retention": {
+        "properties": {
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "raw_retention_days": {
+            "title": "Raw Retention Days",
+            "type": "integer"
+          },
+          "raw_samples_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Samples From"
+          },
+          "raw_samples_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Samples Until"
+          }
+        },
+        "required": [
+          "raw_retention_days",
+          "note"
+        ],
+        "title": "Retention",
+        "type": "object"
+      },
+      "SeriesItem": {
+        "properties": {
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "first_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen At"
+          },
+          "first_valid_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Valid At"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "last_valid_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Valid At"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "string"
+          },
+          "stale_since": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Since"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "series_id",
+          "labels",
+          "model_name",
+          "engine",
+          "state"
+        ],
+        "title": "SeriesItem",
+        "type": "object"
+      },
+      "SeriesListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "collection_status": {
+            "title": "Collection Status",
+            "type": "string"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "storage_status": {
+            "title": "Storage Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "items",
+          "page_size",
+          "collection_status",
+          "storage_status"
+        ],
+        "title": "SeriesListResponse",
+        "type": "object"
+      },
+      "StatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "collector_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collector Code"
+          },
+          "collector_status": {
+            "title": "Collector Status",
+            "type": "string"
+          },
+          "first_observation_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Observation At"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "last_attempt_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Attempt At"
+          },
+          "last_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Code"
+          },
+          "last_poll_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Poll At"
+          },
+          "last_recorded_error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Recorded Error Code"
+          },
+          "last_success_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Success At"
+          },
+          "latest_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Observed At"
+          },
+          "poll_interval_seconds": {
+            "title": "Poll Interval Seconds",
+            "type": "integer"
+          },
+          "raw_retention_days": {
+            "title": "Raw Retention Days",
+            "type": "integer"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "series_count": {
+            "title": "Series Count",
+            "type": "integer"
+          },
+          "server_time": {
+            "title": "Server Time",
+            "type": "string"
+          },
+          "shutting_down": {
+            "title": "Shutting Down",
+            "type": "boolean"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "storage_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storage Code"
+          },
+          "storage_status": {
+            "title": "Storage Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "source_id",
+          "poll_interval_seconds",
+          "raw_retention_days",
+          "server_time",
+          "series_count",
+          "storage_status",
+          "collector_status",
+          "shutting_down"
+        ],
+        "title": "StatusResponse",
+        "type": "object"
+      },
+      "SummaryRanges": {
+        "properties": {
+          "lifetime": {
+            "$ref": "#/components/schemas/Range"
+          },
+          "month": {
+            "$ref": "#/components/schemas/Range"
+          },
+          "today": {
+            "$ref": "#/components/schemas/Range"
+          }
+        },
+        "required": [
+          "today",
+          "month",
+          "lifetime"
+        ],
+        "title": "SummaryRanges",
+        "type": "object"
+      },
+      "SummaryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "collection_status": {
+            "title": "Collection Status",
+            "type": "string"
+          },
+          "engine": {
+            "title": "Engine",
+            "type": "string"
+          },
+          "epoch": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Epoch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "epochs": {
+            "$ref": "#/components/schemas/EpochPage"
+          },
+          "first_observation_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Observation At"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "last_accepted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Accepted At"
+          },
+          "last_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Observed At"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "ranges": {
+            "$ref": "#/components/schemas/SummaryRanges"
+          },
+          "rates": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Rate"
+            },
+            "title": "Rates",
+            "type": "object"
+          },
+          "schema_version": {
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "series_id": {
+            "title": "Series Id",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "storage_status": {
+            "title": "Storage Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "generated_at",
+          "series_id",
+          "labels",
+          "model_name",
+          "engine",
+          "state",
+          "ranges",
+          "rates",
+          "epochs",
+          "collection_status",
+          "storage_status"
+        ],
+        "title": "SummaryResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Jarvis Dashboard API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/events": {
+      "get": {
+        "description": "Newest-first event page with the raw-retention disclosure.",
+        "operationId": "events_api_v1_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "maxLength": 1024,
+              "minLength": 4,
+              "title": "Series Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters, range, or cursor."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown series."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; no upstream detail."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Storage unavailable, not migrated, or read capacity exhausted."
+          }
+        },
+        "summary": "Events",
+        "tags": [
+          "dashboard",
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/history": {
+      "get": {
+        "description": "Every bucket in a UTC half-open range; ranges are never clamped.",
+        "operationId": "history_api_v1_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "maxLength": 1024,
+              "minLength": 4,
+              "title": "Series Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "minLength": 10,
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "minLength": 10,
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bucket",
+            "required": true,
+            "schema": {
+              "maxLength": 8,
+              "minLength": 3,
+              "title": "Bucket",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters, range, or cursor."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown series."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; no upstream detail."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Storage unavailable, not migrated, or read capacity exhausted."
+          }
+        },
+        "summary": "History",
+        "tags": [
+          "dashboard",
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/series": {
+      "get": {
+        "description": "Deterministic keyset page of series (default 100, maximum 100).",
+        "operationId": "series_api_v1_series_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters, range, or cursor."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown series."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; no upstream detail."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Storage unavailable, not migrated, or read capacity exhausted."
+          }
+        },
+        "summary": "Series",
+        "tags": [
+          "dashboard",
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "description": "Source state and collection health; never endpoint credentials.",
+        "operationId": "status_api_v1_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters, range, or cursor."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown series."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; no upstream detail."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Storage unavailable, not migrated, or read capacity exhausted."
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "dashboard",
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/summary": {
+      "get": {
+        "description": "Today / month / lifetime totals, latest rates, epoch diagnostics.",
+        "operationId": "summary_api_v1_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "maxLength": 1024,
+              "minLength": 4,
+              "title": "Series Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "epoch_limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Epoch Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "epoch_cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Epoch Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid parameters, range, or cursor."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unknown series."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unexpected failure; no upstream detail."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Storage unavailable, not migrated, or read capacity exhausted."
+          }
+        },
+        "summary": "Summary",
+        "tags": [
+          "dashboard",
+          "dashboard"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "description": "200 whenever the event loop serves; never queries storage or Jarvis.",
+        "operationId": "health_live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Live",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "200 only after writable storage and collection start (spec D6).",
+        "operationId": "health_ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Health Ready",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

@@ -71,14 +71,14 @@ Delivery 1's collector, storage, migrations, fixtures and smoke tools and Delive
 
 | Specification criterion | Implementation owner | Final proof gate |
 |---|---|---|
-| AC1 — independent canonical series and counter semantics | Delivery 1 | Delivery 1 parsing/accounting receipts; Delivery 4 integrated regression |
-| AC2 — baseline, zero, gaps, resets and continuity | Delivery 1; presentation in Deliveries 2–3 | Delivery 1 state/persistence proof; Delivery 4 API/browser agreement |
-| AC3 — restart safety, migrations and retention | Delivery 1 durable core; Delivery 2 container recovery | Delivery 2 recreation/migration receipts; Delivery 4 integrated recovery |
-| AC4 — UTC API/UI agreement and responsive states | Delivery 2 API; Delivery 3 UI | Delivery 3 production-browser receipts; Delivery 4 integrated checks |
-| AC5 — self-contained production image, no proxy | Delivery 2 runtime; Delivery 3 bundled frontend | Delivery 3 image/browser network inspection; Delivery 4 final image |
-| AC6 — bounded measured resource workload | Delivery 4, with early smoke in Delivery 2 | Delivery 4 local workload; target NAS fit recorded separately at operator gate |
-| AC7 — consistent restore and failed-write safety | Delivery 1 failed-write safety; Delivery 2 backup/restore/readiness | Delivery 2 live-backup/restore proof; Delivery 4 concurrent-workload recovery |
-| AC8 — real metric discovery and known-generation comparison | Delivery 4 operating instructions | Authorized live operator gate; cannot pass using fixtures |
+| AC1 — independent canonical series and counter semantics | Delivery 1 | Delivery 1 parsing/accounting receipts; Delivery 4 integrated regression — **NOT EXECUTED locally** (no container runtime; see [Delivery 4 status](delivery-4-status.md) §4) |
+| AC2 — baseline, zero, gaps, resets and continuity | Delivery 1; presentation in Deliveries 2–3 | Delivery 1 state/persistence proof; Delivery 4 API/browser agreement — executed on the host through the real `serve` over a seeded 367-day volume, 1,518 checks (`docs/receipts/delivery-4/20261026T103455Z-seed/verify.log`); image half pending |
+| AC3 — restart safety, migrations and retention | Delivery 1 durable core; Delivery 2 container recovery | Delivery 2 recreation/migration receipts; Delivery 4 integrated recovery — retention/integrity half executed (`…/20261026T103455Z-seed/seed-receipts.txt`: 0 raw rows past the 30-day cutoff, 775,153 purged, `integrity_check ok`); lock/ENOSPC/schema-1-migration cases are image gates, pending |
+| AC4 — UTC API/UI agreement and responsive states | Delivery 2 API; Delivery 3 UI | Delivery 3 production-browser receipts; Delivery 4 integrated checks — executed on the host (final-tree `scripts/smoke_frontend.py` against the real `serve`, plus the seeded-year API agreement above); production-image browser pass pending |
+| AC5 — self-contained production image, no proxy | Delivery 2 runtime; Delivery 3 bundled frontend | Delivery 3 image/browser network inspection; Delivery 4 final image — **NOT EXECUTED locally** (no container runtime) |
+| AC6 — bounded measured resource workload | Delivery 4, with early smoke in Delivery 2 | Delivery 4 local workload — **NOT EXECUTED locally** (no container runtime; refusal recorded in `docs/receipts/delivery-4/20261026T100630Z-refusal-workload/`); target NAS fit recorded separately at the operator gate |
+| AC7 — consistent restore and failed-write safety | Delivery 1 failed-write safety; Delivery 2 backup/restore/readiness | Delivery 2 live-backup/restore proof; Delivery 4 concurrent-workload recovery — growth math measured (`docs/receipts/delivery-4/20261026T110900Z-growth/growth.json`); backup/restore/ENOSPC under load are image gates, pending |
+| AC8 — real metric discovery and known-generation comparison | Delivery 4 operating instructions | Authorized live operator gate; cannot pass using fixtures. The procedure and its exact command blocks are machine-checked (49 checks, `docs/receipts/delivery-4/20261026T100400Z-docs/`) |
 
 ### Companion scenario ownership
 
@@ -91,13 +91,13 @@ Scenario numbers refer to [acceptance-scenarios.md](acceptance-scenarios.md). La
 | 17–19: attribution, midnight gaps, null versus zero | Delivery 1 hourly storage and coverage | Delivery 2 ranges/rollups; Delivery 3 charts/cards |
 | 20: API range contract/current bucket | Delivery 2 HTTP contract | Delivery 3 visibly incomplete current bucket |
 | 21–23: parser, precision, retention | Delivery 1 exact parsing and durable sums | Delivery 2 decimal-string JSON; Delivery 3 BigInt labels and retained-history view |
-| 24–26: commit crashes, replay, unchanged observations | Delivery 1 subprocess fault/restart proof | Delivery 2 container recreation; Delivery 4 integrated recovery |
-| 27–28: second writer and storage failure | Delivery 1 process lock and durable failure behavior | Delivery 2 readiness and production mounts; Delivery 4 final image |
-| 29: backup consistency | Delivery 2 online backup and snapshot comparison | Delivery 4 concurrent production workload |
-| 30: restore, migration, endpoint change | Delivery 1 migration/endpoint semantics; Delivery 2 full restore | Delivery 4 final production recovery |
-| 31: real production UI | Delivery 3 production container/browser | Delivery 4 final image smoke |
-| 32: frontend lifetime and races | Delivery 3 browser lifecycle scenarios | Delivery 4 two-tab workload |
-| 33: resource qualification | Delivery 4 | Operator gate adds target-host evidence if local machine differs |
+| 24–26: commit crashes, replay, unchanged observations | Delivery 1 subprocess fault/restart proof | Delivery 2 container recreation; Delivery 4 integrated recovery — image gate pending |
+| 27–28: second writer and storage failure | Delivery 1 process lock and durable failure behavior | Delivery 2 readiness and production mounts; Delivery 4 final image — second-writer/restore-refusal proof executed in `scripts/smoke.py` scenario 8 (3 exit-0 runs, `docs/receipts/delivery-4/20261026T093900Z-smoke/`); container lock and ENOSPC gates pending |
+| 29: backup consistency | Delivery 2 online backup and snapshot comparison | Delivery 4 concurrent production workload — pending (image gate) |
+| 30: restore, migration, endpoint change | Delivery 1 migration/endpoint semantics; Delivery 2 full restore | Delivery 4 final production recovery — pending (image gate) |
+| 31: real production UI | Delivery 3 production container/browser | Delivery 4 final image smoke — pending (image gate) |
+| 32: frontend lifetime and races | Delivery 3 browser lifecycle scenarios | Delivery 4 two-tab workload — pending (image gate) |
+| 33: resource qualification | Delivery 4 | **NOT EXECUTED locally** (no container runtime); operator gate adds target-host evidence |
 | 34: Unraid and real Radiance | Delivery 4 instructions only | Authorized operator gate |
 
 ## 4. Implementation steps
@@ -119,13 +119,14 @@ Scenario numbers refer to [acceptance-scenarios.md](acceptance-scenarios.md). La
 - **Code area:** `frontend/`, `frontend/src/`, generated `src/jarvis_dashboard/static/`, backend static serving, Dockerfile, `scripts/`, `docs/`, README.
 - **Change:** Write and execute the Delivery 3 plan against real API response models. Implement all D7 states, accessibility, UTC controls, exact formatting, selected-series consistency and bounded polling lifecycle. Add locked frontend build and self-hosted hashed assets to the existing image; implement static caching without caching API responses.
 - **Depends on:** Step 2.
-- **Verification:** Use the production image and controlled HTTP fixture in a real browser at 390px and 1440px. Capture relevant states and exact 960 total; inspect requests/console, theme/keyboard behavior, timers/charts, selection races and tab visibility. No CDN or direct upstream browser traffic. Distinguish screenshots/smoke from the still-pending resource run (MAP1–MAP2).
+- **Verification:** Use the production image and controlled HTTP fixture in a real browser at 390px and 1440px. Capture relevant states and exact 960 total; inspect requests/console, theme/keyboard behavior, timers/charts, selection races and tab visibility. No CDN or direct upstream browser traffic. Distinguish screenshots/smoke from the still-pending resource run (MAP1–MAP2). Executed locally on 2026-10-26: a real browser (Chromium 156) drove the real `serve` process — 65 checks, receipts and nine screenshots in [Delivery 3 status](delivery-3-status.md) and `docs/receipts/delivery-3/`. The production-image half (`docker build`, running the image, 390px/1440px checks inside the image, 256 MiB / 0.5 CPU enforcement) was not executed there for lack of a container runtime and stays open, as does the resource run, human visual/assistive-tech review, cross-browser coverage and the live operator gate.
 
 ### Step 4: Qualify the complete release locally
 - **Code area:** `scripts/`, `tests/fixtures/`, `docs/`, README; implementation areas only where qualification exposes defects.
-- **Change:** Write and execute the Delivery 4 plan. Run the final image through end-to-end normal/restart/gap/recovery cases and the exact D9 workload. Finalize build/run/upgrade/backup/restore/Unraid instructions and evidence. Fix failed hard requirements before claiming local qualification; disclose preferred-target misses and measured tradeoffs without raising limits.
+- **Change:** Execute the [detailed Delivery 4 plan](delivery-4-implementation-plan.md). Run the final image through end-to-end normal/restart/gap/recovery cases and the exact D9 workload. Finalize build/run/upgrade/backup/restore/Unraid instructions and evidence. Fix failed hard requirements before claiming local qualification; disclose preferred-target misses and measured tradeoffs without raising limits.
 - **Depends on:** Step 3.
 - **Verification:** At least 30 minutes with one selected series/four counters, 15-second polls, a synthetic year of hourly history, two refreshing browser tabs, a 366-day query and online backup, under 256 MiB and 0.5 CPU. Record host/image/dependencies, RSS, cgroup/Docker memory, peaks/OOM, CPU, threads/connections/timers, commit continuity, DB/WAL growth and summary/history p95. Compare against specification D9; publish exact results and outstanding operator gate (MAP1–MAP3).
+  Executed locally on 2026-10-26 — see [Delivery 4 status](delivery-4-status.md). Executed: durable-recovery smoke (3 exit-0 runs), the Compose/configuration contract, the seeded 367-year volume verified through the real `serve` (1,518 checks, 0 failures), the documentation-consistency gate (49 checks), and the AC7 growth math (376.67 B/sample with indexes, 411.81 B/hourly row, 115 MB/year). **Not executed on that host:** every gate defined on the image — build/inspect (AC1, AC5), cases 1–9, and the ≥30-minute resource workload (AC6, D7 targets) — because `docker`, Compose v2 and a container runtime are absent and root is required; each script refused and recorded the missing prerequisites. No local release qualification is claimed.
 
 ### Step 5: Execute the authorized operator gate
 - **Code area:** `docs/`, README; configurable deployment inputs, not hardcoded machine substitutions.
@@ -140,7 +141,7 @@ Scenario numbers refer to [acceptance-scenarios.md](acceptance-scenarios.md). La
 - Back up while polling and restore to a fresh stopped volume; compare the backup snapshot, not a later live database. Continue without replaying committed increments.
 - Review the ownership tables against all eight ACs and scenarios 1–34; every row must have the appropriate receipt or a clearly pending gate. Delivery acceptance is not final-product acceptance (MAP1–MAP2).
 - Execute the final production-browser and resource workload before local release qualification. Keep the authorized live receipt separate; never infer compatibility, deployment or target NAS fit from synthetic/local success (MAP3).
-- Deliveries 1 and 2 record executed local receipts ([Delivery 1](delivery-1-status.md), [Delivery 2](delivery-2-status.md)); the browser, resource-workload and live checks below remain planned, and this map records no application execution of its own.
+- Deliveries 1, 2 and 3 record executed local receipts ([Delivery 1](delivery-1-status.md), [Delivery 2](delivery-2-status.md), [Delivery 3](delivery-3-status.md)); [Delivery 4](delivery-4-status.md) records the executed host gates and, explicitly, the image and workload gates it could not execute on that host. The live operator gate remains pending, and this map records no application execution of its own.
 
 ## 6. Risks and open decisions
 

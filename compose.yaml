@@ -7,13 +7,16 @@ name: jarvis-dashboard
 
 services:
   dashboard:
+    # The image serves the dashboard UI itself: assets are built into the image
+    # (Dockerfile `frontend` stage) and read from the baked-in STATIC_DIR. There
+    # is no web server to deploy and nothing for the operator to configure.
     build:
       context: .
-      args:
-        # Must own the appdata directory (chown -R UID:GID) — see docs.
-        APP_UID: "${JARVIS_UID:?set the numeric appdata owner UID}"
-        APP_GID: "${JARVIS_GID:?set the numeric appdata owner GID}"
     image: jarvis-dashboard:0.1.0
+    # The runtime identity is a deploy-time setting, not a build argument: one
+    # image ID is qualified once and then run as whichever UID/GID owns the
+    # appdata directory (spec D8). The numeric pair must own the mount.
+    user: "${JARVIS_UID:?set the numeric appdata owner UID}:${JARVIS_GID:?set the numeric appdata owner GID}"
     restart: unless-stopped
     # One writer owns the volume: never scale this service above one replica.
     read_only: true
@@ -26,7 +29,7 @@ services:
       - "${DASHBOARD_BIND_ADDRESS:?set a trusted LAN address}:${DASHBOARD_HOST_PORT:-8080}:8080"
     environment:
       RADIANCE_BASE_URL: "${RADIANCE_BASE_URL:?set the Jarvis metrics origin}"
-      JARVIS_SOURCE_ID: "${JARVIS_SOURCE_ID:-jarvis}"
+      SOURCE_ID: "${JARVIS_SOURCE_ID:-jarvis}"
       JARVIS_BIND_ADDRESS: "0.0.0.0" # container-internal only
       DATABASE_PATH: "/data/dashboard.sqlite3"
       PORT: "8080"

@@ -1,0 +1,2651 @@
+{
+ "base_url": "http://127.0.0.1:43491",
+ "cases": [
+  {
+   "end": "2026-10-26T00:20:00.000000Z",
+   "key": "outage_compatible",
+   "note": "upstream /metrics outage across the most recent midnight, recovered with compatible uptime",
+   "start": "2026-10-25T22:55:00.000000Z"
+  },
+  {
+   "end": "2026-10-25T00:30:00.000000Z",
+   "key": "outage_restart",
+   "note": "outage across the previous midnight with changed uptime evidence (restart)",
+   "start": "2026-10-24T22:55:00.000000Z"
+  },
+  {
+   "end": "2026-09-16T06:01:00.000000Z",
+   "key": "primary_reset",
+   "note": "primary counter reset",
+   "start": "2026-09-16T06:00:00.000000Z"
+  },
+  {
+   "end": "2026-07-18T15:00:00.000000Z",
+   "key": "stats_only",
+   "note": "stats-only outage (engine continuity unverified)",
+   "start": "2026-07-18T09:00:00.000000Z"
+  },
+  {
+   "end": "2026-06-05T00:00:00.000000Z",
+   "key": "request_absent",
+   "note": "request counters absent for seven days",
+   "start": "2026-05-29T00:00:00.000000Z"
+  },
+  {
+   "end": "2026-10-07T00:00:00.000000Z",
+   "key": "idle_day",
+   "note": "fully idle day (valid zero strings)",
+   "start": "2026-10-06T00:00:00.000000Z"
+  },
+  {
+   "end": "2026-08-28T00:00:00.000000Z",
+   "key": "collector_downtime",
+   "note": "collector downtime: no polls for a whole UTC day (gap-only null day)",
+   "start": "2026-08-27T00:00:00.000000Z"
+  }
+ ],
+ "daily": {
+  "2025-10-24": {
+   "computed_input": "11694",
+   "generated_output": "136",
+   "request_input": "10366",
+   "request_output": "53"
+  },
+  "2025-10-25": {
+   "computed_input": "11594",
+   "generated_output": "117",
+   "request_input": "10367",
+   "request_output": "50"
+  },
+  "2025-10-26": {
+   "computed_input": "11548",
+   "generated_output": "138",
+   "request_input": "10312",
+   "request_output": "52"
+  },
+  "2025-10-27": {
+   "computed_input": "11535",
+   "generated_output": "130",
+   "request_input": "10245",
+   "request_output": "61"
+  },
+  "2025-10-28": {
+   "computed_input": "11697",
+   "generated_output": "127",
+   "request_input": "10344",
+   "request_output": "58"
+  },
+  "2025-10-29": {
+   "computed_input": "11488",
+   "generated_output": "131",
+   "request_input": "10241",
+   "request_output": "59"
+  },
+  "2025-10-30": {
+   "computed_input": "11558",
+   "generated_output": "134",
+   "request_input": "10292",
+   "request_output": "51"
+  },
+  "2025-10-31": {
+   "computed_input": "11633",
+   "generated_output": "147",
+   "request_input": "10452",
+   "request_output": "54"
+  },
+  "2025-11-01": {
+   "computed_input": "11599",
+   "generated_output": "115",
+   "request_input": "10246",
+   "request_output": "70"
+  },
+  "2025-11-02": {
+   "computed_input": "11727",
+   "generated_output": "132",
+   "request_input": "10435",
+   "request_output": "58"
+  },
+  "2025-11-03": {
+   "computed_input": "11542",
+   "generated_output": "139",
+   "request_input": "10295",
+   "request_output": "58"
+  },
+  "2025-11-04": {
+   "computed_input": "11681",
+   "generated_output": "134",
+   "request_input": "10489",
+   "request_output": "54"
+  },
+  "2025-11-05": {
+   "computed_input": "11471",
+   "generated_output": "142",
+   "request_input": "10279",
+   "request_output": "57"
+  },
+  "2025-11-06": {
+   "computed_input": "11554",
+   "generated_output": "136",
+   "request_input": "10259",
+   "request_output": "45"
+  },
+  "2025-11-07": {
+   "computed_input": "11673",
+   "generated_output": "134",
+   "request_input": "10490",
+   "request_output": "52"
+  },
+  "2025-11-08": {
+   "computed_input": "11726",
+   "generated_output": "143",
+   "request_input": "10379",
+   "request_output": "68"
+  },
+  "2025-11-09": {
+   "computed_input": "11609",
+   "generated_output": "127",
+   "request_input": "10324",
+   "request_output": "39"
+  },
+  "2025-11-10": {
+   "computed_input": "11388",
+   "generated_output": "146",
+   "request_input": "10266",
+   "request_output": "46"
+  },
+  "2025-11-11": {
+   "computed_input": "11480",
+   "generated_output": "134",
+   "request_input": "10245",
+   "request_output": "58"
+  },
+  "2025-11-12": {
+   "computed_input": "11528",
+   "generated_output": "116",
+   "request_input": "10242",
+   "request_output": "46"
+  },
+  "2025-11-13": {
+   "computed_input": "11646",
+   "generated_output": "135",
+   "request_input": "10354",
+   "request_output": "43"
+  },
+  "2025-11-14": {
+   "computed_input": "11767",
+   "generated_output": "147",
+   "request_input": "10513",
+   "request_output": "62"
+  },
+  "2025-11-15": {
+   "computed_input": "11647",
+   "generated_output": "144",
+   "request_input": "10358",
+   "request_output": "50"
+  },
+  "2025-11-16": {
+   "computed_input": "11574",
+   "generated_output": "124",
+   "request_input": "10242",
+   "request_output": "55"
+  },
+  "2025-11-17": {
+   "computed_input": "11610",
+   "generated_output": "147",
+   "request_input": "10299",
+   "request_output": "59"
+  },
+  "2025-11-18": {
+   "computed_input": "11697",
+   "generated_output": "136",
+   "request_input": "10399",
+   "request_output": "59"
+  },
+  "2025-11-19": {
+   "computed_input": "11620",
+   "generated_output": "131",
+   "request_input": "10385",
+   "request_output": "51"
+  },
+  "2025-11-20": {
+   "computed_input": "11615",
+   "generated_output": "131",
+   "request_input": "10257",
+   "request_output": "57"
+  },
+  "2025-11-21": {
+   "computed_input": "11808",
+   "generated_output": "125",
+   "request_input": "10431",
+   "request_output": "63"
+  },
+  "2025-11-22": {
+   "computed_input": "11546",
+   "generated_output": "125",
+   "request_input": "10290",
+   "request_output": "61"
+  },
+  "2025-11-23": {
+   "computed_input": "11729",
+   "generated_output": "145",
+   "request_input": "10397",
+   "request_output": "63"
+  },
+  "2025-11-24": {
+   "computed_input": "11622",
+   "generated_output": "129",
+   "request_input": "10317",
+   "request_output": "40"
+  },
+  "2025-11-25": {
+   "computed_input": "11622",
+   "generated_output": "145",
+   "request_input": "10358",
+   "request_output": "46"
+  },
+  "2025-11-26": {
+   "computed_input": "11743",
+   "generated_output": "123",
+   "request_input": "10520",
+   "request_output": "55"
+  },
+  "2025-11-27": {
+   "computed_input": "11517",
+   "generated_output": "139",
+   "request_input": "10210",
+   "request_output": "56"
+  },
+  "2025-11-28": {
+   "computed_input": "11689",
+   "generated_output": "148",
+   "request_input": "10476",
+   "request_output": "37"
+  },
+  "2025-11-29": {
+   "computed_input": "11586",
+   "generated_output": "132",
+   "request_input": "10409",
+   "request_output": "49"
+  },
+  "2025-11-30": {
+   "computed_input": "11604",
+   "generated_output": "126",
+   "request_input": "10376",
+   "request_output": "34"
+  },
+  "2025-12-01": {
+   "computed_input": "11700",
+   "generated_output": "141",
+   "request_input": "10455",
+   "request_output": "58"
+  },
+  "2025-12-02": {
+   "computed_input": "11558",
+   "generated_output": "126",
+   "request_input": "10324",
+   "request_output": "52"
+  },
+  "2025-12-03": {
+   "computed_input": "11766",
+   "generated_output": "141",
+   "request_input": "10478",
+   "request_output": "58"
+  },
+  "2025-12-04": {
+   "computed_input": "11506",
+   "generated_output": "134",
+   "request_input": "10352",
+   "request_output": "49"
+  },
+  "2025-12-05": {
+   "computed_input": "11617",
+   "generated_output": "140",
+   "request_input": "10309",
+   "request_output": "65"
+  },
+  "2025-12-06": {
+   "computed_input": "11630",
+   "generated_output": "138",
+   "request_input": "10379",
+   "request_output": "51"
+  },
+  "2025-12-07": {
+   "computed_input": "11411",
+   "generated_output": "134",
+   "request_input": "10323",
+   "request_output": "49"
+  },
+  "2025-12-08": {
+   "computed_input": "11508",
+   "generated_output": "132",
+   "request_input": "10331",
+   "request_output": "53"
+  },
+  "2025-12-09": {
+   "computed_input": "11589",
+   "generated_output": "133",
+   "request_input": "10369",
+   "request_output": "52"
+  },
+  "2025-12-10": {
+   "computed_input": "11536",
+   "generated_output": "126",
+   "request_input": "10285",
+   "request_output": "47"
+  },
+  "2025-12-11": {
+   "computed_input": "11645",
+   "generated_output": "136",
+   "request_input": "10280",
+   "request_output": "60"
+  },
+  "2025-12-12": {
+   "computed_input": "11673",
+   "generated_output": "136",
+   "request_input": "10314",
+   "request_output": "49"
+  },
+  "2025-12-13": {
+   "computed_input": "11516",
+   "generated_output": "122",
+   "request_input": "10274",
+   "request_output": "56"
+  },
+  "2025-12-14": {
+   "computed_input": "11582",
+   "generated_output": "139",
+   "request_input": "10210",
+   "request_output": "49"
+  },
+  "2025-12-15": {
+   "computed_input": "11689",
+   "generated_output": "142",
+   "request_input": "10479",
+   "request_output": "45"
+  },
+  "2025-12-16": {
+   "computed_input": "11665",
+   "generated_output": "126",
+   "request_input": "10331",
+   "request_output": "41"
+  },
+  "2025-12-17": {
+   "computed_input": "11525",
+   "generated_output": "133",
+   "request_input": "10387",
+   "request_output": "36"
+  },
+  "2025-12-18": {
+   "computed_input": "11731",
+   "generated_output": "155",
+   "request_input": "10434",
+   "request_output": "59"
+  },
+  "2025-12-19": {
+   "computed_input": "11760",
+   "generated_output": "146",
+   "request_input": "10471",
+   "request_output": "63"
+  },
+  "2025-12-20": {
+   "computed_input": "11783",
+   "generated_output": "139",
+   "request_input": "10472",
+   "request_output": "57"
+  },
+  "2025-12-21": {
+   "computed_input": "11698",
+   "generated_output": "121",
+   "request_input": "10535",
+   "request_output": "48"
+  },
+  "2025-12-22": {
+   "computed_input": "11536",
+   "generated_output": "136",
+   "request_input": "10269",
+   "request_output": "63"
+  },
+  "2025-12-23": {
+   "computed_input": "11654",
+   "generated_output": "130",
+   "request_input": "10414",
+   "request_output": "43"
+  },
+  "2025-12-24": {
+   "computed_input": "11558",
+   "generated_output": "126",
+   "request_input": "10310",
+   "request_output": "54"
+  },
+  "2025-12-25": {
+   "computed_input": "11503",
+   "generated_output": "141",
+   "request_input": "10268",
+   "request_output": "52"
+  },
+  "2025-12-26": {
+   "computed_input": "11698",
+   "generated_output": "135",
+   "request_input": "10356",
+   "request_output": "52"
+  },
+  "2025-12-27": {
+   "computed_input": "11647",
+   "generated_output": "125",
+   "request_input": "10371",
+   "request_output": "47"
+  },
+  "2025-12-28": {
+   "computed_input": "11494",
+   "generated_output": "138",
+   "request_input": "10324",
+   "request_output": "65"
+  },
+  "2025-12-29": {
+   "computed_input": "11713",
+   "generated_output": "135",
+   "request_input": "10516",
+   "request_output": "60"
+  },
+  "2025-12-30": {
+   "computed_input": "11642",
+   "generated_output": "135",
+   "request_input": "10471",
+   "request_output": "50"
+  },
+  "2025-12-31": {
+   "computed_input": "11595",
+   "generated_output": "143",
+   "request_input": "10284",
+   "request_output": "47"
+  },
+  "2026-01-01": {
+   "computed_input": "11359",
+   "generated_output": "133",
+   "request_input": "10160",
+   "request_output": "59"
+  },
+  "2026-01-02": {
+   "computed_input": "11523",
+   "generated_output": "132",
+   "request_input": "10128",
+   "request_output": "51"
+  },
+  "2026-01-03": {
+   "computed_input": "11470",
+   "generated_output": "137",
+   "request_input": "10234",
+   "request_output": "46"
+  },
+  "2026-01-04": {
+   "computed_input": "11753",
+   "generated_output": "131",
+   "request_input": "10378",
+   "request_output": "52"
+  },
+  "2026-01-05": {
+   "computed_input": "11800",
+   "generated_output": "135",
+   "request_input": "10396",
+   "request_output": "49"
+  },
+  "2026-01-06": {
+   "computed_input": "11460",
+   "generated_output": "131",
+   "request_input": "10324",
+   "request_output": "52"
+  },
+  "2026-01-07": {
+   "computed_input": "11771",
+   "generated_output": "136",
+   "request_input": "10428",
+   "request_output": "56"
+  },
+  "2026-01-08": {
+   "computed_input": "11680",
+   "generated_output": "132",
+   "request_input": "10373",
+   "request_output": "52"
+  },
+  "2026-01-09": {
+   "computed_input": "11646",
+   "generated_output": "130",
+   "request_input": "10309",
+   "request_output": "48"
+  },
+  "2026-01-10": {
+   "computed_input": "11585",
+   "generated_output": "122",
+   "request_input": "10274",
+   "request_output": "50"
+  },
+  "2026-01-11": {
+   "computed_input": "11513",
+   "generated_output": "136",
+   "request_input": "10371",
+   "request_output": "66"
+  },
+  "2026-01-12": {
+   "computed_input": "11346",
+   "generated_output": "126",
+   "request_input": "10230",
+   "request_output": "51"
+  },
+  "2026-01-13": {
+   "computed_input": "11592",
+   "generated_output": "148",
+   "request_input": "10303",
+   "request_output": "56"
+  },
+  "2026-01-14": {
+   "computed_input": "11595",
+   "generated_output": "127",
+   "request_input": "10407",
+   "request_output": "55"
+  },
+  "2026-01-15": {
+   "computed_input": "11761",
+   "generated_output": "138",
+   "request_input": "10487",
+   "request_output": "47"
+  },
+  "2026-01-16": {
+   "computed_input": "11687",
+   "generated_output": "144",
+   "request_input": "10455",
+   "request_output": "54"
+  },
+  "2026-01-17": {
+   "computed_input": "11530",
+   "generated_output": "116",
+   "request_input": "10264",
+   "request_output": "41"
+  },
+  "2026-01-18": {
+   "computed_input": "11675",
+   "generated_output": "144",
+   "request_input": "10339",
+   "request_output": "53"
+  },
+  "2026-01-19": {
+   "computed_input": "11786",
+   "generated_output": "132",
+   "request_input": "10425",
+   "request_output": "51"
+  },
+  "2026-01-20": {
+   "computed_input": "11552",
+   "generated_output": "145",
+   "request_input": "10335",
+   "request_output": "52"
+  },
+  "2026-01-21": {
+   "computed_input": "11646",
+   "generated_output": "129",
+   "request_input": "10488",
+   "request_output": "48"
+  },
+  "2026-01-22": {
+   "computed_input": "11659",
+   "generated_output": "141",
+   "request_input": "10479",
+   "request_output": "36"
+  },
+  "2026-01-23": {
+   "computed_input": "11629",
+   "generated_output": "137",
+   "request_input": "10365",
+   "request_output": "49"
+  },
+  "2026-01-24": {
+   "computed_input": "11614",
+   "generated_output": "140",
+   "request_input": "10283",
+   "request_output": "59"
+  },
+  "2026-01-25": {
+   "computed_input": "11657",
+   "generated_output": "132",
+   "request_input": "10372",
+   "request_output": "53"
+  },
+  "2026-01-26": {
+   "computed_input": "11475",
+   "generated_output": "126",
+   "request_input": "10332",
+   "request_output": "54"
+  },
+  "2026-01-27": {
+   "computed_input": "11520",
+   "generated_output": "137",
+   "request_input": "10361",
+   "request_output": "51"
+  },
+  "2026-01-28": {
+   "computed_input": "11565",
+   "generated_output": "135",
+   "request_input": "10382",
+   "request_output": "53"
+  },
+  "2026-01-29": {
+   "computed_input": "11557",
+   "generated_output": "137",
+   "request_input": "10227",
+   "request_output": "45"
+  },
+  "2026-01-30": {
+   "computed_input": "11656",
+   "generated_output": "137",
+   "request_input": "10396",
+   "request_output": "46"
+  },
+  "2026-01-31": {
+   "computed_input": "11593",
+   "generated_output": "124",
+   "request_input": "10424",
+   "request_output": "48"
+  },
+  "2026-02-01": {
+   "computed_input": "11587",
+   "generated_output": "134",
+   "request_input": "10373",
+   "request_output": "56"
+  },
+  "2026-02-02": {
+   "computed_input": "11785",
+   "generated_output": "133",
+   "request_input": "10399",
+   "request_output": "51"
+  },
+  "2026-02-03": {
+   "computed_input": "11700",
+   "generated_output": "132",
+   "request_input": "10474",
+   "request_output": "57"
+  },
+  "2026-02-04": {
+   "computed_input": "11531",
+   "generated_output": "126",
+   "request_input": "10436",
+   "request_output": "46"
+  },
+  "2026-02-05": {
+   "computed_input": "11708",
+   "generated_output": "137",
+   "request_input": "10383",
+   "request_output": "64"
+  },
+  "2026-02-06": {
+   "computed_input": "11782",
+   "generated_output": "143",
+   "request_input": "10414",
+   "request_output": "52"
+  },
+  "2026-02-07": {
+   "computed_input": "11611",
+   "generated_output": "118",
+   "request_input": "10425",
+   "request_output": "48"
+  },
+  "2026-02-08": {
+   "computed_input": "11610",
+   "generated_output": "136",
+   "request_input": "10289",
+   "request_output": "54"
+  },
+  "2026-02-09": {
+   "computed_input": "11625",
+   "generated_output": "137",
+   "request_input": "10373",
+   "request_output": "49"
+  },
+  "2026-02-10": {
+   "computed_input": "11637",
+   "generated_output": "151",
+   "request_input": "10294",
+   "request_output": "53"
+  },
+  "2026-02-11": {
+   "computed_input": "11682",
+   "generated_output": "140",
+   "request_input": "10410",
+   "request_output": "52"
+  },
+  "2026-02-12": {
+   "computed_input": "11707",
+   "generated_output": "135",
+   "request_input": "10318",
+   "request_output": "44"
+  },
+  "2026-02-13": {
+   "computed_input": "11723",
+   "generated_output": "133",
+   "request_input": "10394",
+   "request_output": "50"
+  },
+  "2026-02-14": {
+   "computed_input": "11601",
+   "generated_output": "121",
+   "request_input": "10265",
+   "request_output": "50"
+  },
+  "2026-02-15": {
+   "computed_input": "11598",
+   "generated_output": "124",
+   "request_input": "10397",
+   "request_output": "48"
+  },
+  "2026-02-16": {
+   "computed_input": "11612",
+   "generated_output": "148",
+   "request_input": "10396",
+   "request_output": "49"
+  },
+  "2026-02-17": {
+   "computed_input": "11701",
+   "generated_output": "122",
+   "request_input": "10452",
+   "request_output": "52"
+  },
+  "2026-02-18": {
+   "computed_input": "11695",
+   "generated_output": "142",
+   "request_input": "10462",
+   "request_output": "47"
+  },
+  "2026-02-19": {
+   "computed_input": "11488",
+   "generated_output": "141",
+   "request_input": "10221",
+   "request_output": "53"
+  },
+  "2026-02-20": {
+   "computed_input": "11743",
+   "generated_output": "133",
+   "request_input": "10512",
+   "request_output": "43"
+  },
+  "2026-02-21": {
+   "computed_input": "11567",
+   "generated_output": "128",
+   "request_input": "10318",
+   "request_output": "50"
+  },
+  "2026-02-22": {
+   "computed_input": "11812",
+   "generated_output": "141",
+   "request_input": "10558",
+   "request_output": "61"
+  },
+  "2026-02-23": {
+   "computed_input": "11622",
+   "generated_output": "152",
+   "request_input": "10375",
+   "request_output": "48"
+  },
+  "2026-02-24": {
+   "computed_input": "11708",
+   "generated_output": "127",
+   "request_input": "10392",
+   "request_output": "53"
+  },
+  "2026-02-25": {
+   "computed_input": "11679",
+   "generated_output": "139",
+   "request_input": "10289",
+   "request_output": "54"
+  },
+  "2026-02-26": {
+   "computed_input": "11674",
+   "generated_output": "128",
+   "request_input": "10279",
+   "request_output": "46"
+  },
+  "2026-02-27": {
+   "computed_input": "11666",
+   "generated_output": "139",
+   "request_input": "10423",
+   "request_output": "50"
+  },
+  "2026-02-28": {
+   "computed_input": "11644",
+   "generated_output": "142",
+   "request_input": "10399",
+   "request_output": "56"
+  },
+  "2026-03-01": {
+   "computed_input": "11612",
+   "generated_output": "149",
+   "request_input": "10263",
+   "request_output": "57"
+  },
+  "2026-03-02": {
+   "computed_input": "11824",
+   "generated_output": "150",
+   "request_input": "10586",
+   "request_output": "52"
+  },
+  "2026-03-03": {
+   "computed_input": "11613",
+   "generated_output": "133",
+   "request_input": "10430",
+   "request_output": "59"
+  },
+  "2026-03-04": {
+   "computed_input": "11531",
+   "generated_output": "129",
+   "request_input": "10302",
+   "request_output": "51"
+  },
+  "2026-03-05": {
+   "computed_input": "11457",
+   "generated_output": "139",
+   "request_input": "10320",
+   "request_output": "65"
+  },
+  "2026-03-06": {
+   "computed_input": "11564",
+   "generated_output": "126",
+   "request_input": "10277",
+   "request_output": "52"
+  },
+  "2026-03-07": {
+   "computed_input": "11640",
+   "generated_output": "137",
+   "request_input": "10290",
+   "request_output": "38"
+  },
+  "2026-03-08": {
+   "computed_input": "11734",
+   "generated_output": "126",
+   "request_input": "10367",
+   "request_output": "45"
+  },
+  "2026-03-09": {
+   "computed_input": "11547",
+   "generated_output": "127",
+   "request_input": "10307",
+   "request_output": "50"
+  },
+  "2026-03-10": {
+   "computed_input": "11634",
+   "generated_output": "126",
+   "request_input": "10251",
+   "request_output": "42"
+  },
+  "2026-03-11": {
+   "computed_input": "11534",
+   "generated_output": "143",
+   "request_input": "10317",
+   "request_output": "57"
+  },
+  "2026-03-12": {
+   "computed_input": "11565",
+   "generated_output": "124",
+   "request_input": "10392",
+   "request_output": "49"
+  },
+  "2026-03-13": {
+   "computed_input": "11724",
+   "generated_output": "128",
+   "request_input": "10337",
+   "request_output": "55"
+  },
+  "2026-03-14": {
+   "computed_input": "11617",
+   "generated_output": "131",
+   "request_input": "10495",
+   "request_output": "52"
+  },
+  "2026-03-15": {
+   "computed_input": "11419",
+   "generated_output": "133",
+   "request_input": "10343",
+   "request_output": "49"
+  },
+  "2026-03-16": {
+   "computed_input": "11526",
+   "generated_output": "129",
+   "request_input": "10179",
+   "request_output": "44"
+  },
+  "2026-03-17": {
+   "computed_input": "11826",
+   "generated_output": "150",
+   "request_input": "10576",
+   "request_output": "54"
+  },
+  "2026-03-18": {
+   "computed_input": "11765",
+   "generated_output": "162",
+   "request_input": "10426",
+   "request_output": "51"
+  },
+  "2026-03-19": {
+   "computed_input": "11576",
+   "generated_output": "138",
+   "request_input": "10307",
+   "request_output": "49"
+  },
+  "2026-03-20": {
+   "computed_input": "11602",
+   "generated_output": "125",
+   "request_input": "10380",
+   "request_output": "38"
+  },
+  "2026-03-21": {
+   "computed_input": "11700",
+   "generated_output": "125",
+   "request_input": "10331",
+   "request_output": "38"
+  },
+  "2026-03-22": {
+   "computed_input": "11581",
+   "generated_output": "143",
+   "request_input": "10332",
+   "request_output": "60"
+  },
+  "2026-03-23": {
+   "computed_input": "11560",
+   "generated_output": "140",
+   "request_input": "10454",
+   "request_output": "54"
+  },
+  "2026-03-24": {
+   "computed_input": "11521",
+   "generated_output": "134",
+   "request_input": "10341",
+   "request_output": "51"
+  },
+  "2026-03-25": {
+   "computed_input": "11546",
+   "generated_output": "134",
+   "request_input": "10377",
+   "request_output": "54"
+  },
+  "2026-03-26": {
+   "computed_input": "11691",
+   "generated_output": "150",
+   "request_input": "10390",
+   "request_output": "48"
+  },
+  "2026-03-27": {
+   "computed_input": "11628",
+   "generated_output": "151",
+   "request_input": "10443",
+   "request_output": "49"
+  },
+  "2026-03-28": {
+   "computed_input": "11618",
+   "generated_output": "130",
+   "request_input": "10440",
+   "request_output": "45"
+  },
+  "2026-03-29": {
+   "computed_input": "11524",
+   "generated_output": "116",
+   "request_input": "10318",
+   "request_output": "52"
+  },
+  "2026-03-30": {
+   "computed_input": "11667",
+   "generated_output": "152",
+   "request_input": "10305",
+   "request_output": "47"
+  },
+  "2026-03-31": {
+   "computed_input": "11773",
+   "generated_output": "142",
+   "request_input": "10480",
+   "request_output": "57"
+  },
+  "2026-04-01": {
+   "computed_input": "11636",
+   "generated_output": "146",
+   "request_input": "10357",
+   "request_output": "53"
+  },
+  "2026-04-02": {
+   "computed_input": "11643",
+   "generated_output": "129",
+   "request_input": "10385",
+   "request_output": "47"
+  },
+  "2026-04-03": {
+   "computed_input": "11628",
+   "generated_output": "134",
+   "request_input": "10316",
+   "request_output": "44"
+  },
+  "2026-04-04": {
+   "computed_input": "11720",
+   "generated_output": "137",
+   "request_input": "10456",
+   "request_output": "50"
+  },
+  "2026-04-05": {
+   "computed_input": "11578",
+   "generated_output": "133",
+   "request_input": "10364",
+   "request_output": "44"
+  },
+  "2026-04-06": {
+   "computed_input": "11816",
+   "generated_output": "146",
+   "request_input": "10481",
+   "request_output": "61"
+  },
+  "2026-04-07": {
+   "computed_input": "11572",
+   "generated_output": "130",
+   "request_input": "10353",
+   "request_output": "56"
+  },
+  "2026-04-08": {
+   "computed_input": "11568",
+   "generated_output": "135",
+   "request_input": "10344",
+   "request_output": "42"
+  },
+  "2026-04-09": {
+   "computed_input": "11661",
+   "generated_output": "135",
+   "request_input": "10391",
+   "request_output": "56"
+  },
+  "2026-04-10": {
+   "computed_input": "11717",
+   "generated_output": "135",
+   "request_input": "10401",
+   "request_output": "57"
+  },
+  "2026-04-11": {
+   "computed_input": "11714",
+   "generated_output": "128",
+   "request_input": "10515",
+   "request_output": "51"
+  },
+  "2026-04-12": {
+   "computed_input": "11686",
+   "generated_output": "118",
+   "request_input": "10398",
+   "request_output": "46"
+  },
+  "2026-04-13": {
+   "computed_input": "11686",
+   "generated_output": "152",
+   "request_input": "10401",
+   "request_output": "57"
+  },
+  "2026-04-14": {
+   "computed_input": "11711",
+   "generated_output": "134",
+   "request_input": "10358",
+   "request_output": "51"
+  },
+  "2026-04-15": {
+   "computed_input": "11650",
+   "generated_output": "146",
+   "request_input": "10370",
+   "request_output": "53"
+  },
+  "2026-04-16": {
+   "computed_input": "11785",
+   "generated_output": "131",
+   "request_input": "10423",
+   "request_output": "47"
+  },
+  "2026-04-17": {
+   "computed_input": "11621",
+   "generated_output": "136",
+   "request_input": "10447",
+   "request_output": "49"
+  },
+  "2026-04-18": {
+   "computed_input": "11558",
+   "generated_output": "142",
+   "request_input": "10346",
+   "request_output": "51"
+  },
+  "2026-04-19": {
+   "computed_input": "11566",
+   "generated_output": "132",
+   "request_input": "10360",
+   "request_output": "56"
+  },
+  "2026-04-20": {
+   "computed_input": "11558",
+   "generated_output": "145",
+   "request_input": "10331",
+   "request_output": "50"
+  },
+  "2026-04-21": {
+   "computed_input": "11728",
+   "generated_output": "145",
+   "request_input": "10539",
+   "request_output": "52"
+  },
+  "2026-04-22": {
+   "computed_input": "11442",
+   "generated_output": "142",
+   "request_input": "10147",
+   "request_output": "45"
+  },
+  "2026-04-23": {
+   "computed_input": "11563",
+   "generated_output": "132",
+   "request_input": "10267",
+   "request_output": "50"
+  },
+  "2026-04-24": {
+   "computed_input": "11713",
+   "generated_output": "139",
+   "request_input": "10332",
+   "request_output": "48"
+  },
+  "2026-04-25": {
+   "computed_input": "11660",
+   "generated_output": "140",
+   "request_input": "10395",
+   "request_output": "55"
+  },
+  "2026-04-26": {
+   "computed_input": "11799",
+   "generated_output": "142",
+   "request_input": "10370",
+   "request_output": "56"
+  },
+  "2026-04-27": {
+   "computed_input": "11626",
+   "generated_output": "124",
+   "request_input": "10436",
+   "request_output": "45"
+  },
+  "2026-04-28": {
+   "computed_input": "11721",
+   "generated_output": "129",
+   "request_input": "10396",
+   "request_output": "47"
+  },
+  "2026-04-29": {
+   "computed_input": "11637",
+   "generated_output": "136",
+   "request_input": "10356",
+   "request_output": "50"
+  },
+  "2026-04-30": {
+   "computed_input": "11571",
+   "generated_output": "144",
+   "request_input": "10317",
+   "request_output": "52"
+  },
+  "2026-05-01": {
+   "computed_input": "11624",
+   "generated_output": "139",
+   "request_input": "10522",
+   "request_output": "52"
+  },
+  "2026-05-02": {
+   "computed_input": "11626",
+   "generated_output": "143",
+   "request_input": "10361",
+   "request_output": "45"
+  },
+  "2026-05-03": {
+   "computed_input": "11649",
+   "generated_output": "132",
+   "request_input": "10366",
+   "request_output": "53"
+  },
+  "2026-05-04": {
+   "computed_input": "11540",
+   "generated_output": "127",
+   "request_input": "10317",
+   "request_output": "42"
+  },
+  "2026-05-05": {
+   "computed_input": "11462",
+   "generated_output": "141",
+   "request_input": "10322",
+   "request_output": "44"
+  },
+  "2026-05-06": {
+   "computed_input": "11612",
+   "generated_output": "142",
+   "request_input": "10323",
+   "request_output": "55"
+  },
+  "2026-05-07": {
+   "computed_input": "11549",
+   "generated_output": "117",
+   "request_input": "10253",
+   "request_output": "44"
+  },
+  "2026-05-08": {
+   "computed_input": "11536",
+   "generated_output": "141",
+   "request_input": "10454",
+   "request_output": "52"
+  },
+  "2026-05-09": {
+   "computed_input": "11652",
+   "generated_output": "131",
+   "request_input": "10295",
+   "request_output": "54"
+  },
+  "2026-05-10": {
+   "computed_input": "11621",
+   "generated_output": "119",
+   "request_input": "10436",
+   "request_output": "48"
+  },
+  "2026-05-11": {
+   "computed_input": "11544",
+   "generated_output": "114",
+   "request_input": "10299",
+   "request_output": "43"
+  },
+  "2026-05-12": {
+   "computed_input": "11847",
+   "generated_output": "143",
+   "request_input": "10403",
+   "request_output": "58"
+  },
+  "2026-05-13": {
+   "computed_input": "11416",
+   "generated_output": "117",
+   "request_input": "10146",
+   "request_output": "47"
+  },
+  "2026-05-14": {
+   "computed_input": "11625",
+   "generated_output": "137",
+   "request_input": "10406",
+   "request_output": "56"
+  },
+  "2026-05-15": {
+   "computed_input": "11735",
+   "generated_output": "127",
+   "request_input": "10413",
+   "request_output": "54"
+  },
+  "2026-05-16": {
+   "computed_input": "11721",
+   "generated_output": "144",
+   "request_input": "10457",
+   "request_output": "53"
+  },
+  "2026-05-17": {
+   "computed_input": "11521",
+   "generated_output": "143",
+   "request_input": "10292",
+   "request_output": "48"
+  },
+  "2026-05-18": {
+   "computed_input": "11709",
+   "generated_output": "135",
+   "request_input": "10316",
+   "request_output": "54"
+  },
+  "2026-05-19": {
+   "computed_input": "11671",
+   "generated_output": "130",
+   "request_input": "10386",
+   "request_output": "47"
+  },
+  "2026-05-20": {
+   "computed_input": "11598",
+   "generated_output": "136",
+   "request_input": "10351",
+   "request_output": "53"
+  },
+  "2026-05-21": {
+   "computed_input": "11585",
+   "generated_output": "154",
+   "request_input": "10405",
+   "request_output": "47"
+  },
+  "2026-05-22": {
+   "computed_input": "11502",
+   "generated_output": "124",
+   "request_input": "10226",
+   "request_output": "58"
+  },
+  "2026-05-23": {
+   "computed_input": "11587",
+   "generated_output": "146",
+   "request_input": "10297",
+   "request_output": "40"
+  },
+  "2026-05-24": {
+   "computed_input": "11580",
+   "generated_output": "132",
+   "request_input": "10287",
+   "request_output": "51"
+  },
+  "2026-05-25": {
+   "computed_input": "11597",
+   "generated_output": "124",
+   "request_input": "10243",
+   "request_output": "34"
+  },
+  "2026-05-26": {
+   "computed_input": "11579",
+   "generated_output": "136",
+   "request_input": "10340",
+   "request_output": "52"
+  },
+  "2026-05-27": {
+   "computed_input": "11566",
+   "generated_output": "143",
+   "request_input": "10355",
+   "request_output": "37"
+  },
+  "2026-05-28": {
+   "computed_input": "11533",
+   "generated_output": "146",
+   "request_input": "10282",
+   "request_output": "60"
+  },
+  "2026-05-29": {
+   "computed_input": "11623",
+   "generated_output": "153",
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-05-30": {
+   "computed_input": "11594",
+   "generated_output": "135",
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-05-31": {
+   "computed_input": "11726",
+   "generated_output": "128",
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-06-01": {
+   "computed_input": "11712",
+   "generated_output": "129",
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-06-02": {
+   "computed_input": "11618",
+   "generated_output": "138",
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-06-03": {
+   "computed_input": "11608",
+   "generated_output": "128",
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-06-04": {
+   "computed_input": "11697",
+   "generated_output": "137",
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-06-05": {
+   "computed_input": "11795",
+   "generated_output": "135",
+   "request_input": "82883",
+   "request_output": "411"
+  },
+  "2026-06-06": {
+   "computed_input": "11720",
+   "generated_output": "140",
+   "request_input": "10293",
+   "request_output": "51"
+  },
+  "2026-06-07": {
+   "computed_input": "11596",
+   "generated_output": "130",
+   "request_input": "10419",
+   "request_output": "50"
+  },
+  "2026-06-08": {
+   "computed_input": "11656",
+   "generated_output": "142",
+   "request_input": "10336",
+   "request_output": "50"
+  },
+  "2026-06-09": {
+   "computed_input": "11643",
+   "generated_output": "128",
+   "request_input": "10355",
+   "request_output": "62"
+  },
+  "2026-06-10": {
+   "computed_input": "11668",
+   "generated_output": "153",
+   "request_input": "10360",
+   "request_output": "54"
+  },
+  "2026-06-11": {
+   "computed_input": "11574",
+   "generated_output": "134",
+   "request_input": "10348",
+   "request_output": "51"
+  },
+  "2026-06-12": {
+   "computed_input": "11615",
+   "generated_output": "138",
+   "request_input": "10362",
+   "request_output": "66"
+  },
+  "2026-06-13": {
+   "computed_input": "11636",
+   "generated_output": "138",
+   "request_input": "10374",
+   "request_output": "47"
+  },
+  "2026-06-14": {
+   "computed_input": "11702",
+   "generated_output": "133",
+   "request_input": "10326",
+   "request_output": "55"
+  },
+  "2026-06-15": {
+   "computed_input": "11723",
+   "generated_output": "134",
+   "request_input": "10324",
+   "request_output": "47"
+  },
+  "2026-06-16": {
+   "computed_input": "11543",
+   "generated_output": "129",
+   "request_input": "10369",
+   "request_output": "54"
+  },
+  "2026-06-17": {
+   "computed_input": "11514",
+   "generated_output": "147",
+   "request_input": "10321",
+   "request_output": "44"
+  },
+  "2026-06-18": {
+   "computed_input": "11548",
+   "generated_output": "133",
+   "request_input": "10312",
+   "request_output": "55"
+  },
+  "2026-06-19": {
+   "computed_input": "11617",
+   "generated_output": "118",
+   "request_input": "10224",
+   "request_output": "57"
+  },
+  "2026-06-20": {
+   "computed_input": "11672",
+   "generated_output": "145",
+   "request_input": "10415",
+   "request_output": "57"
+  },
+  "2026-06-21": {
+   "computed_input": "11678",
+   "generated_output": "130",
+   "request_input": "10275",
+   "request_output": "48"
+  },
+  "2026-06-22": {
+   "computed_input": "11609",
+   "generated_output": "136",
+   "request_input": "10346",
+   "request_output": "63"
+  },
+  "2026-06-23": {
+   "computed_input": "11462",
+   "generated_output": "125",
+   "request_input": "10160",
+   "request_output": "47"
+  },
+  "2026-06-24": {
+   "computed_input": "11472",
+   "generated_output": "124",
+   "request_input": "10462",
+   "request_output": "49"
+  },
+  "2026-06-25": {
+   "computed_input": "11614",
+   "generated_output": "145",
+   "request_input": "10392",
+   "request_output": "52"
+  },
+  "2026-06-26": {
+   "computed_input": "11613",
+   "generated_output": "148",
+   "request_input": "10234",
+   "request_output": "43"
+  },
+  "2026-06-27": {
+   "computed_input": "11546",
+   "generated_output": "136",
+   "request_input": "10241",
+   "request_output": "47"
+  },
+  "2026-06-28": {
+   "computed_input": "11861",
+   "generated_output": "138",
+   "request_input": "10548",
+   "request_output": "54"
+  },
+  "2026-06-29": {
+   "computed_input": "11554",
+   "generated_output": "143",
+   "request_input": "10187",
+   "request_output": "45"
+  },
+  "2026-06-30": {
+   "computed_input": "11670",
+   "generated_output": "155",
+   "request_input": "10471",
+   "request_output": "57"
+  },
+  "2026-07-01": {
+   "computed_input": "11698",
+   "generated_output": "144",
+   "request_input": "10330",
+   "request_output": "45"
+  },
+  "2026-07-02": {
+   "computed_input": "11596",
+   "generated_output": "139",
+   "request_input": "10435",
+   "request_output": "61"
+  },
+  "2026-07-03": {
+   "computed_input": "11615",
+   "generated_output": "124",
+   "request_input": "10353",
+   "request_output": "48"
+  },
+  "2026-07-04": {
+   "computed_input": "11750",
+   "generated_output": "131",
+   "request_input": "10436",
+   "request_output": "57"
+  },
+  "2026-07-05": {
+   "computed_input": "11664",
+   "generated_output": "134",
+   "request_input": "10317",
+   "request_output": "44"
+  },
+  "2026-07-06": {
+   "computed_input": "11585",
+   "generated_output": "133",
+   "request_input": "10387",
+   "request_output": "60"
+  },
+  "2026-07-07": {
+   "computed_input": "11519",
+   "generated_output": "143",
+   "request_input": "10400",
+   "request_output": "54"
+  },
+  "2026-07-08": {
+   "computed_input": "11556",
+   "generated_output": "133",
+   "request_input": "10308",
+   "request_output": "58"
+  },
+  "2026-07-09": {
+   "computed_input": "11761",
+   "generated_output": "146",
+   "request_input": "10382",
+   "request_output": "60"
+  },
+  "2026-07-10": {
+   "computed_input": "11559",
+   "generated_output": "125",
+   "request_input": "10256",
+   "request_output": "53"
+  },
+  "2026-07-11": {
+   "computed_input": "11678",
+   "generated_output": "144",
+   "request_input": "10440",
+   "request_output": "54"
+  },
+  "2026-07-12": {
+   "computed_input": "11687",
+   "generated_output": "133",
+   "request_input": "10360",
+   "request_output": "50"
+  },
+  "2026-07-13": {
+   "computed_input": "11642",
+   "generated_output": "141",
+   "request_input": "10356",
+   "request_output": "59"
+  },
+  "2026-07-14": {
+   "computed_input": "11605",
+   "generated_output": "142",
+   "request_input": "10325",
+   "request_output": "53"
+  },
+  "2026-07-15": {
+   "computed_input": "11554",
+   "generated_output": "140",
+   "request_input": "10281",
+   "request_output": "46"
+  },
+  "2026-07-16": {
+   "computed_input": "11675",
+   "generated_output": "142",
+   "request_input": "10441",
+   "request_output": "49"
+  },
+  "2026-07-17": {
+   "computed_input": "11606",
+   "generated_output": "139",
+   "request_input": "10266",
+   "request_output": "59"
+  },
+  "2026-07-18": {
+   "computed_input": "11679",
+   "generated_output": "136",
+   "request_input": "10414",
+   "request_output": "53"
+  },
+  "2026-07-19": {
+   "computed_input": "11594",
+   "generated_output": "134",
+   "request_input": "10250",
+   "request_output": "64"
+  },
+  "2026-07-20": {
+   "computed_input": "11663",
+   "generated_output": "134",
+   "request_input": "10416",
+   "request_output": "63"
+  },
+  "2026-07-21": {
+   "computed_input": "11575",
+   "generated_output": "141",
+   "request_input": "10370",
+   "request_output": "47"
+  },
+  "2026-07-22": {
+   "computed_input": "11702",
+   "generated_output": "147",
+   "request_input": "10341",
+   "request_output": "61"
+  },
+  "2026-07-23": {
+   "computed_input": "11593",
+   "generated_output": "125",
+   "request_input": "10258",
+   "request_output": "46"
+  },
+  "2026-07-24": {
+   "computed_input": "11710",
+   "generated_output": "137",
+   "request_input": "10501",
+   "request_output": "56"
+  },
+  "2026-07-25": {
+   "computed_input": "11455",
+   "generated_output": "145",
+   "request_input": "10321",
+   "request_output": "43"
+  },
+  "2026-07-26": {
+   "computed_input": "11520",
+   "generated_output": "144",
+   "request_input": "10191",
+   "request_output": "55"
+  },
+  "2026-07-27": {
+   "computed_input": "11634",
+   "generated_output": "132",
+   "request_input": "10383",
+   "request_output": "47"
+  },
+  "2026-07-28": {
+   "computed_input": "11557",
+   "generated_output": "134",
+   "request_input": "10378",
+   "request_output": "43"
+  },
+  "2026-07-29": {
+   "computed_input": "11582",
+   "generated_output": "144",
+   "request_input": "10457",
+   "request_output": "55"
+  },
+  "2026-07-30": {
+   "computed_input": "11530",
+   "generated_output": "130",
+   "request_input": "10310",
+   "request_output": "48"
+  },
+  "2026-07-31": {
+   "computed_input": "11661",
+   "generated_output": "143",
+   "request_input": "10332",
+   "request_output": "41"
+  },
+  "2026-08-01": {
+   "computed_input": "11563",
+   "generated_output": "141",
+   "request_input": "10397",
+   "request_output": "55"
+  },
+  "2026-08-02": {
+   "computed_input": "11782",
+   "generated_output": "142",
+   "request_input": "10399",
+   "request_output": "58"
+  },
+  "2026-08-03": {
+   "computed_input": "11656",
+   "generated_output": "133",
+   "request_input": "10308",
+   "request_output": "47"
+  },
+  "2026-08-04": {
+   "computed_input": "11707",
+   "generated_output": "136",
+   "request_input": "10456",
+   "request_output": "55"
+  },
+  "2026-08-05": {
+   "computed_input": "11695",
+   "generated_output": "135",
+   "request_input": "10437",
+   "request_output": "45"
+  },
+  "2026-08-06": {
+   "computed_input": "11520",
+   "generated_output": "136",
+   "request_input": "10239",
+   "request_output": "55"
+  },
+  "2026-08-07": {
+   "computed_input": "11658",
+   "generated_output": "145",
+   "request_input": "10323",
+   "request_output": "44"
+  },
+  "2026-08-08": {
+   "computed_input": "11630",
+   "generated_output": "138",
+   "request_input": "10456",
+   "request_output": "53"
+  },
+  "2026-08-09": {
+   "computed_input": "11489",
+   "generated_output": "139",
+   "request_input": "10291",
+   "request_output": "45"
+  },
+  "2026-08-10": {
+   "computed_input": "11499",
+   "generated_output": "130",
+   "request_input": "10212",
+   "request_output": "49"
+  },
+  "2026-08-11": {
+   "computed_input": "11585",
+   "generated_output": "127",
+   "request_input": "10309",
+   "request_output": "54"
+  },
+  "2026-08-12": {
+   "computed_input": "11513",
+   "generated_output": "139",
+   "request_input": "10330",
+   "request_output": "40"
+  },
+  "2026-08-13": {
+   "computed_input": "11681",
+   "generated_output": "127",
+   "request_input": "10480",
+   "request_output": "54"
+  },
+  "2026-08-14": {
+   "computed_input": "11600",
+   "generated_output": "129",
+   "request_input": "10450",
+   "request_output": "57"
+  },
+  "2026-08-15": {
+   "computed_input": "11686",
+   "generated_output": "126",
+   "request_input": "10441",
+   "request_output": "53"
+  },
+  "2026-08-16": {
+   "computed_input": "11605",
+   "generated_output": "131",
+   "request_input": "10374",
+   "request_output": "48"
+  },
+  "2026-08-17": {
+   "computed_input": "11603",
+   "generated_output": "137",
+   "request_input": "10281",
+   "request_output": "51"
+  },
+  "2026-08-18": {
+   "computed_input": "11596",
+   "generated_output": "117",
+   "request_input": "10329",
+   "request_output": "50"
+  },
+  "2026-08-19": {
+   "computed_input": "11618",
+   "generated_output": "153",
+   "request_input": "10404",
+   "request_output": "53"
+  },
+  "2026-08-20": {
+   "computed_input": "11687",
+   "generated_output": "154",
+   "request_input": "10415",
+   "request_output": "60"
+  },
+  "2026-08-21": {
+   "computed_input": "11722",
+   "generated_output": "140",
+   "request_input": "10286",
+   "request_output": "51"
+  },
+  "2026-08-22": {
+   "computed_input": "11627",
+   "generated_output": "142",
+   "request_input": "10463",
+   "request_output": "54"
+  },
+  "2026-08-23": {
+   "computed_input": "11564",
+   "generated_output": "144",
+   "request_input": "10233",
+   "request_output": "58"
+  },
+  "2026-08-24": {
+   "computed_input": "11557",
+   "generated_output": "133",
+   "request_input": "10334",
+   "request_output": "49"
+  },
+  "2026-08-25": {
+   "computed_input": "11575",
+   "generated_output": "131",
+   "request_input": "10322",
+   "request_output": "55"
+  },
+  "2026-08-26": {
+   "computed_input": "11533",
+   "generated_output": "135",
+   "request_input": "10336",
+   "request_output": "44"
+  },
+  "2026-08-27": {
+   "computed_input": null,
+   "generated_output": null,
+   "request_input": null,
+   "request_output": null
+  },
+  "2026-08-28": {
+   "computed_input": "23470",
+   "generated_output": "290",
+   "request_input": "20876",
+   "request_output": "94"
+  },
+  "2026-08-29": {
+   "computed_input": "11560",
+   "generated_output": "143",
+   "request_input": "10353",
+   "request_output": "57"
+  },
+  "2026-08-30": {
+   "computed_input": "11714",
+   "generated_output": "135",
+   "request_input": "10392",
+   "request_output": "48"
+  },
+  "2026-08-31": {
+   "computed_input": "11618",
+   "generated_output": "135",
+   "request_input": "10387",
+   "request_output": "49"
+  },
+  "2026-09-01": {
+   "computed_input": "11773",
+   "generated_output": "151",
+   "request_input": "10567",
+   "request_output": "56"
+  },
+  "2026-09-02": {
+   "computed_input": "11555",
+   "generated_output": "139",
+   "request_input": "10297",
+   "request_output": "54"
+  },
+  "2026-09-03": {
+   "computed_input": "11576",
+   "generated_output": "131",
+   "request_input": "10334",
+   "request_output": "42"
+  },
+  "2026-09-04": {
+   "computed_input": "11655",
+   "generated_output": "149",
+   "request_input": "10210",
+   "request_output": "60"
+  },
+  "2026-09-05": {
+   "computed_input": "11447",
+   "generated_output": "131",
+   "request_input": "10429",
+   "request_output": "47"
+  },
+  "2026-09-06": {
+   "computed_input": "11534",
+   "generated_output": "125",
+   "request_input": "10299",
+   "request_output": "53"
+  },
+  "2026-09-07": {
+   "computed_input": "11606",
+   "generated_output": "146",
+   "request_input": "10324",
+   "request_output": "48"
+  },
+  "2026-09-08": {
+   "computed_input": "11745",
+   "generated_output": "150",
+   "request_input": "10430",
+   "request_output": "56"
+  },
+  "2026-09-09": {
+   "computed_input": "11634",
+   "generated_output": "131",
+   "request_input": "10365",
+   "request_output": "61"
+  },
+  "2026-09-10": {
+   "computed_input": "11713",
+   "generated_output": "149",
+   "request_input": "10329",
+   "request_output": "54"
+  },
+  "2026-09-11": {
+   "computed_input": "11595",
+   "generated_output": "126",
+   "request_input": "10325",
+   "request_output": "50"
+  },
+  "2026-09-12": {
+   "computed_input": "11517",
+   "generated_output": "145",
+   "request_input": "10269",
+   "request_output": "54"
+  },
+  "2026-09-13": {
+   "computed_input": "11579",
+   "generated_output": "141",
+   "request_input": "10317",
+   "request_output": "60"
+  },
+  "2026-09-14": {
+   "computed_input": "11676",
+   "generated_output": "143",
+   "request_input": "10354",
+   "request_output": "44"
+  },
+  "2026-09-15": {
+   "computed_input": "11647",
+   "generated_output": "144",
+   "request_input": "10449",
+   "request_output": "53"
+  },
+  "2026-09-16": {
+   "computed_input": "11572",
+   "generated_output": "135",
+   "request_input": "10360",
+   "request_output": "57"
+  },
+  "2026-09-17": {
+   "computed_input": "11639",
+   "generated_output": "127",
+   "request_input": "10381",
+   "request_output": "48"
+  },
+  "2026-09-18": {
+   "computed_input": "11912",
+   "generated_output": "158",
+   "request_input": "10543",
+   "request_output": "55"
+  },
+  "2026-09-19": {
+   "computed_input": "11692",
+   "generated_output": "135",
+   "request_input": "10475",
+   "request_output": "50"
+  },
+  "2026-09-20": {
+   "computed_input": "11749",
+   "generated_output": "137",
+   "request_input": "10343",
+   "request_output": "53"
+  },
+  "2026-09-21": {
+   "computed_input": "11477",
+   "generated_output": "135",
+   "request_input": "10281",
+   "request_output": "52"
+  },
+  "2026-09-22": {
+   "computed_input": "11579",
+   "generated_output": "147",
+   "request_input": "10338",
+   "request_output": "57"
+  },
+  "2026-09-23": {
+   "computed_input": "11486",
+   "generated_output": "138",
+   "request_input": "10346",
+   "request_output": "50"
+  },
+  "2026-09-24": {
+   "computed_input": "11521",
+   "generated_output": "117",
+   "request_input": "10240",
+   "request_output": "50"
+  },
+  "2026-09-25": {
+   "computed_input": "11705",
+   "generated_output": "145",
+   "request_input": "10339",
+   "request_output": "52"
+  },
+  "2026-09-26": {
+   "computed_input": "2407",
+   "generated_output": "21",
+   "request_input": "2027",
+   "request_output": "2"
+  },
+  "2026-09-27": {
+   "computed_input": "129",
+   "generated_output": "0",
+   "request_input": "8",
+   "request_output": "0"
+  },
+  "2026-09-28": {
+   "computed_input": "119",
+   "generated_output": "0",
+   "request_input": "9",
+   "request_output": "0"
+  },
+  "2026-09-29": {
+   "computed_input": "122",
+   "generated_output": "0",
+   "request_input": "2",
+   "request_output": "0"
+  },
+  "2026-09-30": {
+   "computed_input": "116",
+   "generated_output": "0",
+   "request_input": "5",
+   "request_output": "0"
+  },
+  "2026-10-01": {
+   "computed_input": "118",
+   "generated_output": "0",
+   "request_input": "5",
+   "request_output": "0"
+  },
+  "2026-10-02": {
+   "computed_input": "118",
+   "generated_output": "0",
+   "request_input": "7",
+   "request_output": "0"
+  },
+  "2026-10-03": {
+   "computed_input": "123",
+   "generated_output": "0",
+   "request_input": "10",
+   "request_output": "0"
+  },
+  "2026-10-04": {
+   "computed_input": "117",
+   "generated_output": "0",
+   "request_input": "6",
+   "request_output": "0"
+  },
+  "2026-10-05": {
+   "computed_input": "134",
+   "generated_output": "0",
+   "request_input": "5",
+   "request_output": "0"
+  },
+  "2026-10-06": {
+   "computed_input": "0",
+   "generated_output": "0",
+   "request_input": "0",
+   "request_output": "0"
+  },
+  "2026-10-07": {
+   "computed_input": "110",
+   "generated_output": "0",
+   "request_input": "6",
+   "request_output": "0"
+  },
+  "2026-10-08": {
+   "computed_input": "101",
+   "generated_output": "0",
+   "request_input": "6",
+   "request_output": "0"
+  },
+  "2026-10-09": {
+   "computed_input": "120",
+   "generated_output": "0",
+   "request_input": "13",
+   "request_output": "0"
+  },
+  "2026-10-10": {
+   "computed_input": "121",
+   "generated_output": "0",
+   "request_input": "9",
+   "request_output": "0"
+  },
+  "2026-10-11": {
+   "computed_input": "130",
+   "generated_output": "0",
+   "request_input": "14",
+   "request_output": "0"
+  },
+  "2026-10-12": {
+   "computed_input": "115",
+   "generated_output": "0",
+   "request_input": "2",
+   "request_output": "0"
+  },
+  "2026-10-13": {
+   "computed_input": "99",
+   "generated_output": "0",
+   "request_input": "5",
+   "request_output": "0"
+  },
+  "2026-10-14": {
+   "computed_input": "103",
+   "generated_output": "0",
+   "request_input": "7",
+   "request_output": "0"
+  },
+  "2026-10-15": {
+   "computed_input": "121",
+   "generated_output": "0",
+   "request_input": "6",
+   "request_output": "0"
+  },
+  "2026-10-16": {
+   "computed_input": "112",
+   "generated_output": "0",
+   "request_input": "8",
+   "request_output": "0"
+  },
+  "2026-10-17": {
+   "computed_input": "139",
+   "generated_output": "0",
+   "request_input": "8",
+   "request_output": "0"
+  },
+  "2026-10-18": {
+   "computed_input": "114",
+   "generated_output": "0",
+   "request_input": "8",
+   "request_output": "0"
+  },
+  "2026-10-19": {
+   "computed_input": "144",
+   "generated_output": "0",
+   "request_input": "9",
+   "request_output": "0"
+  },
+  "2026-10-20": {
+   "computed_input": "118",
+   "generated_output": "0",
+   "request_input": "9",
+   "request_output": "0"
+  },
+  "2026-10-21": {
+   "computed_input": "112",
+   "generated_output": "0",
+   "request_input": "6",
+   "request_output": "0"
+  },
+  "2026-10-22": {
+   "computed_input": "131",
+   "generated_output": "0",
+   "request_input": "8",
+   "request_output": "0"
+  },
+  "2026-10-23": {
+   "computed_input": "127",
+   "generated_output": "0",
+   "request_input": "5",
+   "request_output": "0"
+  },
+  "2026-10-24": {
+   "computed_input": "125",
+   "generated_output": "0",
+   "request_input": "6",
+   "request_output": "0"
+  },
+  "2026-10-25": {
+   "computed_input": "112",
+   "generated_output": "0",
+   "request_input": "8",
+   "request_output": "0"
+  },
+  "2026-10-26": {
+   "computed_input": "2",
+   "generated_output": "0",
+   "request_input": "0",
+   "request_output": "0"
+  }
+ },
+ "database": "/tmp/d4/full/dashboard.sqlite3",
+ "duration_seconds": 1890.68,
+ "epoch_cases": {
+  "2026-09-16T06Z": {
+   "counter_reset": "qual-model-0"
+  },
+  "2026-10-25T00Z": {
+   "restart_evidence": "qual-model-0"
+  }
+ },
+ "final_counters": [
+  {
+   "counters": {
+    "computed_input": "17731",
+    "generated_output": "224",
+    "request_input": "535626",
+    "request_output": "5610"
+   },
+   "engine": "0",
+   "model_name": "qual-model-0"
+  },
+  {
+   "counters": {
+    "computed_input": "698184",
+    "generated_output": "37078",
+    "request_input": "609423",
+    "request_output": "24302"
+   },
+   "engine": "0",
+   "model_name": "qual-model-1"
+  },
+  {
+   "counters": {
+    "computed_input": "395708",
+    "generated_output": "31754",
+    "request_input": "353727",
+    "request_output": "39512"
+   },
+   "engine": "0",
+   "model_name": "qual-model-2"
+  },
+  {
+   "counters": {
+    "computed_input": "298994",
+    "generated_output": "28984",
+    "request_input": "268686",
+    "request_output": "19478"
+   },
+   "engine": "0",
+   "model_name": "qual-model-3"
+  },
+  {
+   "counters": {
+    "computed_input": "380265",
+    "generated_output": "2180",
+    "request_input": "337050",
+    "request_output": "6325"
+   },
+   "engine": "0",
+   "model_name": "qual-model-4"
+  },
+  {
+   "counters": {
+    "computed_input": "627805",
+    "generated_output": "30483",
+    "request_input": "567825",
+    "request_output": "41091"
+   },
+   "engine": "0",
+   "model_name": "qual-model-5"
+  },
+  {
+   "counters": {
+    "computed_input": "350914",
+    "generated_output": "27134",
+    "request_input": "336660",
+    "request_output": "13041"
+   },
+   "engine": "0",
+   "model_name": "qual-model-6"
+  },
+  {
+   "counters": {
+    "computed_input": "736519",
+    "generated_output": "43105",
+    "request_input": "641924",
+    "request_output": "30170"
+   },
+   "engine": "0",
+   "model_name": "qual-model-7"
+  }
+ ],
+ "gap_only_hours": {
+  "2026-10-24T22Z": "outage_no_sample",
+  "2026-10-24T23Z": "outage_no_sample",
+  "2026-10-25T00Z": "recovered_after_outage",
+  "2026-10-25T22Z": "outage_no_sample",
+  "2026-10-25T23Z": "outage_no_sample",
+  "2026-10-26T00Z": "recovered_after_outage"
+ },
+ "generated_at": "2026-10-26T09:46:33.000000Z",
+ "hourly_cases": {
+  "2026-05-29T00Z": {
+   "computed_input": {
+    "qual-model-0": "12",
+    "qual-model-1": "14",
+    "qual-model-2": "4",
+    "qual-model-4": "5",
+    "qual-model-5": "10",
+    "qual-model-6": "5",
+    "qual-model-7": "12"
+   }
+  },
+  "2026-06-05T00Z": {
+   "computed_input": {
+    "qual-model-0": "10",
+    "qual-model-1": "13",
+    "qual-model-2": "6",
+    "qual-model-3": "1",
+    "qual-model-4": "5",
+    "qual-model-5": "12",
+    "qual-model-6": "6",
+    "qual-model-7": "13"
+   },
+   "request_input": {
+    "qual-model-0": "10889",
+    "qual-model-1": "12387",
+    "qual-model-2": "6908",
+    "qual-model-3": "5042",
+    "qual-model-4": "6597",
+    "qual-model-5": "11401",
+    "qual-model-6": "6465",
+    "qual-model-7": "12901"
+   },
+   "request_output": {
+    "qual-model-0": "31",
+    "qual-model-1": "117",
+    "qual-model-5": "59",
+    "qual-model-7": "150"
+   }
+  },
+  "2026-07-18T09Z": {
+   "computed_input": {
+    "qual-model-0": "131",
+    "qual-model-1": "124",
+    "qual-model-2": "83",
+    "qual-model-3": "73",
+    "qual-model-4": "80",
+    "qual-model-5": "130",
+    "qual-model-6": "75",
+    "qual-model-7": "135"
+   },
+   "generated_output": {
+    "qual-model-0": "4",
+    "qual-model-1": "2",
+    "qual-model-5": "2",
+    "qual-model-7": "4"
+   },
+   "request_input": {
+    "qual-model-0": "111",
+    "qual-model-1": "109",
+    "qual-model-2": "87",
+    "qual-model-3": "58",
+    "qual-model-4": "70",
+    "qual-model-5": "126",
+    "qual-model-6": "69",
+    "qual-model-7": "126"
+   },
+   "request_output": {
+    "qual-model-1": "1",
+    "qual-model-5": "1",
+    "qual-model-7": "1"
+   }
+  },
+  "2026-07-18T15Z": {
+   "computed_input": {
+    "qual-model-0": "137",
+    "qual-model-1": "184",
+    "qual-model-2": "94",
+    "qual-model-3": "73",
+    "qual-model-4": "89",
+    "qual-model-5": "156",
+    "qual-model-6": "90",
+    "qual-model-7": "178"
+   },
+   "generated_output": {
+    "qual-model-0": "6",
+    "qual-model-1": "10",
+    "qual-model-5": "5",
+    "qual-model-7": "6"
+   },
+   "request_input": {
+    "qual-model-0": "127",
+    "qual-model-1": "141",
+    "qual-model-2": "83",
+    "qual-model-3": "71",
+    "qual-model-4": "87",
+    "qual-model-5": "135",
+    "qual-model-6": "85",
+    "qual-model-7": "156"
+   },
+   "request_output": {
+    "qual-model-0": "1",
+    "qual-model-1": "6",
+    "qual-model-5": "2",
+    "qual-model-7": "6"
+   }
+  },
+  "2026-08-28T00Z": {
+   "computed_input": {
+    "qual-model-0": "1737",
+    "qual-model-1": "2016",
+    "qual-model-2": "1106",
+    "qual-model-3": "818",
+    "qual-model-4": "1024",
+    "qual-model-5": "1858",
+    "qual-model-6": "1022",
+    "qual-model-7": "2128"
+   },
+   "generated_output": {
+    "qual-model-0": "23",
+    "qual-model-1": "43",
+    "qual-model-5": "26",
+    "qual-model-7": "49"
+   },
+   "request_input": {
+    "qual-model-0": "1547",
+    "qual-model-1": "1733",
+    "qual-model-2": "978",
+    "qual-model-3": "710",
+    "qual-model-4": "939",
+    "qual-model-5": "1598",
+    "qual-model-6": "922",
+    "qual-model-7": "1870"
+   },
+   "request_output": {
+    "qual-model-0": "6",
+    "qual-model-1": "22",
+    "qual-model-5": "5",
+    "qual-model-7": "15"
+   }
+  },
+  "2026-09-16T06Z": {
+   "computed_input": {
+    "qual-model-0": "34",
+    "qual-model-1": "37",
+    "qual-model-2": "20",
+    "qual-model-3": "16",
+    "qual-model-4": "16",
+    "qual-model-5": "29",
+    "qual-model-6": "17",
+    "qual-model-7": "39"
+   },
+   "request_input": {
+    "qual-model-0": "27",
+    "qual-model-1": "38",
+    "qual-model-2": "16",
+    "qual-model-3": "12",
+    "qual-model-4": "14",
+    "qual-model-5": "27",
+    "qual-model-6": "18",
+    "qual-model-7": "33"
+   }
+  }
+ },
+ "hourly_cases_note": "trimmed to 6 of 7579 hours: only designed-case and gap-only hours are kept; the full ledger is the seed-manifest.json the seeder wrote next to the volume (sha256 afb8f257d7eaed08d66ebc9e7a396565d265cf08f58481a814f2dcc62c307e3c)",
+ "hourly_cases_total_hours": 7579,
+ "integrity_check": "ok",
+ "kind": "jarvis-qualification-seed",
+ "lifetime": {
+  "computed_input": "3922828",
+  "generated_output": "45791",
+  "request_input": "3493060",
+  "request_output": "17395"
+ },
+ "models": [
+  "qual-model-0",
+  "qual-model-1",
+  "qual-model-2",
+  "qual-model-3",
+  "qual-model-4",
+  "qual-model-5",
+  "qual-model-6",
+  "qual-model-7"
+ ],
+ "per_model": [
+  {
+   "counters": {
+    "computed_input": "588697",
+    "generated_output": "7084",
+    "request_input": "524496",
+    "request_output": "1802"
+   },
+   "engine": "0",
+   "model_name": "qual-model-0"
+  },
+  {
+   "counters": {
+    "computed_input": "665573",
+    "generated_output": "13301",
+    "request_input": "593965",
+    "request_output": "5323"
+   },
+   "engine": "0",
+   "model_name": "qual-model-1"
+  },
+  {
+   "counters": {
+    "computed_input": "371654",
+    "generated_output": "0",
+    "request_input": "330416",
+    "request_output": "0"
+   },
+   "engine": "0",
+   "model_name": "qual-model-2"
+  },
+  {
+   "counters": {
+    "computed_input": "279189",
+    "generated_output": "0",
+    "request_input": "247053",
+    "request_output": "0"
+   },
+   "engine": "0",
+   "model_name": "qual-model-3"
+  },
+  {
+   "counters": {
+    "computed_input": "353524",
+    "generated_output": "0",
+    "request_input": "315064",
+    "request_output": "0"
+   },
+   "engine": "0",
+   "model_name": "qual-model-4"
+  },
+  {
+   "counters": {
+    "computed_input": "610783",
+    "generated_output": "8943",
+    "request_input": "545391",
+    "request_output": "2618"
+   },
+   "engine": "0",
+   "model_name": "qual-model-5"
+  },
+  {
+   "counters": {
+    "computed_input": "347992",
+    "generated_output": "0",
+    "request_input": "309440",
+    "request_output": "0"
+   },
+   "engine": "0",
+   "model_name": "qual-model-6"
+  },
+  {
+   "counters": {
+    "computed_input": "705416",
+    "generated_output": "16463",
+    "request_input": "627235",
+    "request_output": "7652"
+   },
+   "engine": "0",
+   "model_name": "qual-model-7"
+  }
+ ],
+ "polls": {
+  "applied": 2151624,
+  "failed": 720,
+  "simulated": 269673
+ },
+ "purged_rows": 775081,
+ "raw_samples_older_than_retention": 0,
+ "schema": 1,
+ "seed": 20260426,
+ "source_id": "qual-jarvis",
+ "tables": {
+  "epochs": 10,
+  "events": 1,
+  "gap_spans": 109,
+  "hourly_totals": 282172,
+  "samples": 1376536,
+  "series": 8
+ },
+ "uptime_origin": 1761264000.0,
+ "window": {
+  "cadence_early_seconds": 300,
+  "cadence_recent_seconds": 15,
+  "end": "2026-10-26T09:46:33.000000Z",
+  "retention_days": 30,
+  "start": "2025-10-24T00:00:00.000000Z",
+  "window_days": 367
+ }
+}

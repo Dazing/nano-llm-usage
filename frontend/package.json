@@ -1,0 +1,27 @@
+{
+  "name": "jarvis-dashboard-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "gen:types": "openapi-typescript src/api/openapi.json -o src/api/schema.ts",
+    "verify": "npm run gen:types && npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "chart.js": "4.6.1",
+    "vue": "3.5.44"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@vitejs/plugin-vue": "6.0.10",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vue-tsc": "3.3.13"
+  }
+}
