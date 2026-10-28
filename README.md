@@ -38,6 +38,8 @@ The user chose a DIY application after considering VictoriaMetrics/Grafana becau
 - **[Cost estimate status](docs/cost-estimate-status.md)** — executed evidence for that plan: commands with exit codes, numeric cost receipts and screenshots.
 - **[HUD dashboard implementation plan](docs/hud-dashboard-implementation-plan.md)** — the dark single-palette redesign of the served UI: seven stacked panels, one status strip, the API cost well in the live panel, and the mockup→production mapping with its browser gates.
 - **[HUD dashboard status](docs/hud-dashboard-status.md)** — executed evidence for that plan: commands with exit codes, layout and cost-well receipts, the migrated browser smoke transcript and screenshots, and what the mockup alone could not prove.
+- **[Year activity heatmap implementation plan](docs/activity-heatmap-implementation-plan.md)** — the 52-week activity grid: its half-open window and square-root ratio contracts, the single bounded day-window read and its cadence, panel placement, and the browser evidence gates.
+- **[Year activity heatmap status](docs/activity-heatmap-status.md)** — executed evidence for that plan: commands with exit codes, seeded-year window/state/ratio receipts, screenshots, and the gates this host could not execute.
 - **[Deployment](docs/deployment.md)** — build, run, serve, backup, restore and upgrade operations for the self-contained image (collector, API and bundled dashboard; operator-supplied paths, UID/GID and bind address).
 
 The specification and acceptance scenarios remain authoritative. The plans sequence the complete

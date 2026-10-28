@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted } from "vue";
 import { dashboard } from "./lib/dashboard";
 import { live as liveStore } from "./lib/live";
 import { collectionLabel, formatUtc } from "./lib/format";
+import ActivityPanel from "./components/ActivityPanel.vue";
 import AppHeader from "./components/AppHeader.vue";
 import DiagnosticsDisclosure from "./components/DiagnosticsDisclosure.vue";
 import EmptyState from "./components/EmptyState.vue";
@@ -47,6 +48,7 @@ const liveLine = computed(
     <EmptyState v-else-if="isEmpty" />
     <template v-else>
       <TrendPanel />
+      <ActivityPanel />
       <SummaryCards />
       <RatesPanel />
       <DiagnosticsDisclosure />

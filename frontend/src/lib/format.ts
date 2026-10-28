@@ -20,9 +20,9 @@ export function formatTokens(value: string | null | undefined): string {
 /**
  * The headline form of a token total: `6.94 M`, `912.5 K`, `1 M`.
  *
- * Only the large number in a summary card uses it. The exact grouped figure stays
- * on the card (its `title`) and in the input/output rows underneath, so the short
- * form never hides precision.
+ * Used by the large number in a summary card and by its input/output rows. The
+ * exact grouped figure stays on each element's `title`, so the short form never
+ * hides precision.
  */
 export function formatTokensShort(value: string | null | undefined): string {
   if (value === null || value === undefined) return NO_DATA;
@@ -49,6 +49,34 @@ export function formatTokensShort(value: string | null | undefined): string {
     return `${sign}${whole}${fraction ? `.${fraction}` : ""} ${suffix}`;
   }
   return tokens.toLocaleString("en-US");
+}
+
+/**
+ * An input/output row of a summary card: `2.43 M · 91%` — the short token form and
+ * the share of the range's processed total that counter carries.
+ *
+ * The share is rounded half up to a whole percent in BigInt, because the wire
+ * values are exact decimal strings and display maths never runs on a JS number. A
+ * range with no processed total — one primary counter has no observed interval —
+ * reads as the short form alone, so the row never prints a share of a total that
+ * does not exist.
+ */
+export function formatTokensShare(
+  value: string | null | undefined,
+  total: string | null | undefined,
+): string {
+  const short = formatTokensShort(value);
+  if (value === null || value === undefined) return short;
+  let tokens: bigint;
+  let sum: bigint;
+  try {
+    tokens = BigInt(value);
+    sum = BigInt(total ?? "");
+  } catch {
+    return short;
+  }
+  if (tokens < 0n || sum <= 0n) return short;
+  return `${short} \u00b7 ${Number((tokens * 100n + sum / 2n) / sum)}%`;
 }
 
 export function formatRate(rate: Rate | undefined): string {

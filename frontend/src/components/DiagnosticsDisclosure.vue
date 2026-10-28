@@ -56,7 +56,7 @@ const metaLine = computed(
 
 <template>
   <HudPanel
-    index="05"
+    index="06"
     title="Diagnostics"
     testid="diagnostics-panel"
     class="pnl-diag"

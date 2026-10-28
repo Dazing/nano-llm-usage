@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -22,8 +23,9 @@ import tempfile
 import threading
 import time
 from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 for _extra in (ROOT / "tests" / "fixtures", ROOT / "src", ROOT / "scripts"):
@@ -55,15 +57,22 @@ SHOTS = ROOT / "docs" / "receipts" / "delivery-3"
 LIVE_SHOTS = ROOT / "docs" / "receipts" / "live-panel"
 COST_SHOTS = ROOT / "docs" / "receipts" / "cost-estimate"
 HUD_SHOTS = ROOT / "docs" / "receipts" / "hud-dashboard"
+ACTIVITY_SHOTS = ROOT / "docs" / "receipts" / "activity-heatmap"
 SECOND = {"model_name": "second-model", "engine": "0"}
 FOCUS_EXPECTED = ["range-24h", "range-7d", "range-30d", "custom-from", "custom-to",
-                  "custom-apply", "chart-disclosure", "requests-disclosure"]
+                  "custom-apply", "chart-disclosure", "activity-disclosure",
+                  "requests-disclosure"]
 DESKTOP = (1440, 900)
 MOBILE = (390, 844)
 PORTRAIT = (1080, 1920)
 
 # Strings that belong to the design mockup, never to the dashboard it models.
 MOCKUP_ONLY = ("SIMULATED", "Signal history", "design mockup")
+
+# Bucketing warnings the summary cards do not print: an unfinished period and
+# approximate time attribution. Both facts stay in the trend table and diagnostics.
+CARD_HIDDEN_SENTENCES = ("Current period is incomplete",
+                         "Work is attributed to this bucket approximately, not exactly.")
 
 # Installed before every document: counts poll timers, records fetch URLs, and
 # can delay a response for URLs containing ``delayMatch`` (selection race).
@@ -122,6 +131,14 @@ def visible(page, testid: str) -> bool:
 
 def count_of(page, selector: str) -> int:
     return page.evaluate(f"document.querySelectorAll({json.dumps(selector)}).length")
+
+
+def attr_of(page, testid: str, name: str):
+    """One attribute of one testid element (null when the element is absent)."""
+    return page.evaluate(
+        f"(() => {{ const el = document.querySelector({js(testid)});"
+        f" return el ? el.getAttribute({json.dumps(name)}) : null; }})()"
+    )
 
 
 def panel_meta(page, testid: str) -> str:
@@ -323,8 +340,11 @@ def preflight() -> None:
     check("chart_source_two_datasets", chart.count('label: "'), 2)
     # AC4: the mockup's review machinery (the `s` hotkey, the #debug/#test overlays,
     # seeded fixtures, the STATE menu) must not have been ported into the app source.
-    forbidden = ("keydown", "data-audit", "data-state", "__reviewHooks", "#debug",
-                 "#test", "SIMULATED", "mulberry", "seedHist", "design mockup")
+    # The page-state switcher is named by its root selector and its root attribute —
+    # a per-cell `data-state` (the activity heatmap's none/zero/value marker) is data,
+    # not machinery, so it must not trip this guard.
+    forbidden = ("keydown", "data-audit", "html[data-state", 'data-state="live"', "__reviewHooks",
+                 "#debug", "#test", "SIMULATED", "mulberry", "seedHist", "design mockup")
     offenders: list[str] = []
     for path in sorted((ROOT / "frontend" / "src").rglob("*")):
         if path.suffix not in {".ts", ".vue", ".css"}:
@@ -422,11 +442,27 @@ def dom_basics(page, port: int) -> None:
     check("title_carries_no_engine_ac5", "engine" in title["text"].lower(), False)
     check("title_carries_no_model_name_ac5", L["model_name"] in title["text"], False)
     check("dom_lifetime_total", text_of(page, "lifetime-total"), "960")
-    check("dom_lifetime_input", text_of(page, "lifetime-input"), "900")
-    check("dom_lifetime_output", text_of(page, "lifetime-output"), "60")
+    # The counter rows carry the short token form and the share of the card's own
+    # processed total (900/960 = 93.75 -> 94%, 60/960 = 6.25 -> 6%); the exact grouped
+    # figure stays reachable as the row's title.
+    check("dom_lifetime_input", text_of(page, "lifetime-input"), "900 \u00b7 94%")
+    check("dom_lifetime_output", text_of(page, "lifetime-output"), "60 \u00b7 6%")
+    check("dom_lifetime_input_keeps_exact_figure", attr_of(page, "lifetime-input", "title"), "900")
+    check("dom_lifetime_output_keeps_exact_figure", attr_of(page, "lifetime-output", "title"), "60")
+    # The live day is an unfinished period on the API, and the cards print no warning
+    # line for it (and none for approximate attribution): the panel is the scope.
+    receipt("api_today_incomplete",
+            summary_of(port, series_ids(port)[0])["ranges"]["today"]["incomplete"])
+    summary_panel = text_of(page, "summary-panel") or ""
+    for sentence in CARD_HIDDEN_SENTENCES:
+        check(f"summary_cards_hide[{sentence[:18]}]", sentence in summary_panel, False)
     receipt("dom_lifetime_start", text_of(page, "lifetime-start"))
     check("dom_lifetime_start_rendered",
           (text_of(page, "lifetime-start") or "").startswith("Collecting since"), True)
+    receipt("dom_cards_text", page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid^=\"card-\"]')]"
+        ".map((c) => c.getAttribute('data-testid') + ' | ' + (c.textContent || '').replace(/\\s+/g, ' ')))()"
+    ))
     check("dom_utc_labelled", page.evaluate(
         "(() => { const cards = [...document.querySelectorAll('[data-testid^=\"card-\"]')];"
         " return cards.length === 3 && cards.every((c) => c.textContent.includes('UTC'));"
@@ -450,7 +486,7 @@ def dom_basics(page, port: int) -> None:
     check("panel_order", page.evaluate(
         "(() => [...document.querySelectorAll('.hud > .pnl')]"
         ".map((el) => el.getAttribute('data-testid')))()"),
-        ["app-header", "live-panel", "trend-panel", "summary-panel",
+        ["app-header", "live-panel", "trend-panel", "activity-panel", "summary-panel",
          "rates-panel", "diagnostics-panel"])
     # AC2 (change list): a healthy collection draws no status bar at all. The strip is
     # a problem surface (API failure, offline, stale, starting, loading, empty), so a
@@ -499,7 +535,7 @@ def layout(page) -> None:
         " client: e.clientHeight, content: e.scrollHeight})))"))
     check("portrait_no_vertical_scroll", metrics["h"] <= 1920, True)
     check("portrait_no_horizontal_scroll", metrics["w"] <= 1080, True)
-    check("portrait_panels_without_nominal_bar", count_of(page, ".hud > .pnl"), 6)
+    check("portrait_panels_without_nominal_bar", count_of(page, ".hud > .pnl"), 7)
     receipt("portrait_header_box_heights", header_box_heights(page))
     check("portrait_header_boxes_same_height_ac10", header_box_heights(page)["equal"], True)
     hud_shot(page, "hud-1080x1920-normal.png")
@@ -524,18 +560,33 @@ def layout(page) -> None:
     hud_shot(page, "hud-1440-normal.png")
 
 
+def range_history_fetches(page) -> list[str]:
+    """History reads for the selected range, without the activity panel's fixed window.
+
+    The activity grid reads one 52-week day window on the same endpoint, so "the last
+    history request" no longer identifies the trend range read on its own.
+    """
+    marker = f"from={quote(activity_expectation()[0], safe='')}"
+    return [u for u in fetches(page, "/api/v1/history") if marker not in u]
+
+
+def last_range_fetch(page):
+    reads = range_history_fetches(page)
+    return reads[-1] if reads else None
+
+
 def ranges(page) -> None:
     print("--- phase 5: range presets and the inclusive custom end")
     page.click('[data-testid="range-24h"]')
-    expect(page, lambda: last_fetch(page, "/api/v1/history") is not None, "history-after-24h")
-    check("range_24h_bucket", parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)["bucket"][0],
+    expect(page, lambda: last_range_fetch(page) is not None, "history-after-24h")
+    check("range_24h_bucket", parse_qs(urlparse(last_range_fetch(page)).query)["bucket"][0],
           "hour")
     page.click('[data-testid="range-7d"]')
-    expect(page, lambda: "bucket=day" in (last_fetch(page, "/api/v1/history") or ""), "day-bucket-7d")
+    expect(page, lambda: "bucket=day" in (last_range_fetch(page) or ""), "day-bucket-7d")
     page.click('[data-testid="range-30d"]')
-    expect(page, lambda: (parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)["from"][0]
+    expect(page, lambda: (parse_qs(urlparse(last_range_fetch(page)).query)["from"][0]
                           .endswith("T00:00:00.000Z")), "midnight-aligned-30d")
-    check("range_30d_bucket", parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)["bucket"][0],
+    check("range_30d_bucket", parse_qs(urlparse(last_range_fetch(page)).query)["bucket"][0],
           "day")
     # Change list 8: the trend caption counts the buckets; it no longer names the model.
     receipt("trend_meta", panel_meta(page, "trend-panel"))
@@ -599,10 +650,10 @@ def ranges(page) -> None:
         0)
     set_date(page, "custom-from", day(-40))
     set_date(page, "custom-to", day(0))
-    before = len(fetches(page, "/api/v1/history"))
+    before = len(range_history_fetches(page))
     page.click('[data-testid="custom-apply"]')
-    expect(page, lambda: len(fetches(page, "/api/v1/history")) > before, "custom-range-fetch")
-    query = parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)
+    expect(page, lambda: len(range_history_fetches(page)) > before, "custom-range-fetch")
+    query = parse_qs(urlparse(last_range_fetch(page)).query)
     check("custom_bucket", query["bucket"][0], "day")
     check("custom_from_midnight", query["from"][0].endswith("T00:00:00.000Z"), True)
     check("custom_end_exclusive", query["to"][0], f"{day(1)}T00:00:00.000Z")
@@ -610,14 +661,14 @@ def ranges(page) -> None:
 
     set_date(page, "custom-from", day(-400))
     set_date(page, "custom-to", day(0))
-    before = len(fetches(page, "/api/v1/history"))
+    before = len(range_history_fetches(page))
     page.click('[data-testid="custom-apply"]')
     time.sleep(2)
-    check("custom_over_limit_blocked", len(fetches(page, "/api/v1/history")), before)
+    check("custom_over_limit_blocked", len(range_history_fetches(page)), before)
     check("range_error_names_the_limit",
           "366" in (text_of(page, "range-error") or ""), True)
     page.click('[data-testid="range-24h"]')
-    expect(page, lambda: (parse_qs(urlparse(last_fetch(page, "/api/v1/history")).query)["bucket"][0]
+    expect(page, lambda: (parse_qs(urlparse(last_range_fetch(page)).query)["bucket"][0]
                           == "hour"), "back-to-hour-buckets")
 
 
@@ -683,6 +734,11 @@ def empty_and_baseline(tmp: Path, browser: Browser):
         expect(page, lambda: visible(page, "baseline-note"), "baseline-note", 60)
         check("state_baseline", visible(page, "baseline-note"), True)
         check("baseline_total_is_not_zero", text_of(page, "lifetime-total"), "no data")
+        # The counter rows are shortened, and a baseline-only series must not invent a
+        # share: no observed interval means no total, so the rows read "no data".
+        check("baseline_input_row_is_no_data", text_of(page, "lifetime-input"), "no data")
+        check("baseline_output_row_is_no_data", text_of(page, "lifetime-output"), "no data")
+        check("baseline_rows_carry_no_title", attr_of(page, "lifetime-input", "title"), None)
         # This series never published the optional request-accounted counters, so the
         # request panel must say "unavailable" per key instead of borrowing an engine number.
         open_details(page, "requests-disclosure")
@@ -730,11 +786,16 @@ def api_failure(page, serve: ServeProc) -> None:
     print("--- phase 7d: API failure shows the stale notice, restart recovers")
     assert serve.proc is not None
     kept = text_of(page, "lifetime-total")
+    kept_activity = activity_cells(page)
+    check("api_failure_activity_grid_present", len(kept_activity) > 0, True)
     serve.proc.kill()
     serve.proc.wait(timeout=10)
     ok = wait_for(lambda: visible(page, "api-error") and visible(page, "stale-notice"), 45)
     check("state_api_failure_stale", ok, True)
     check("api_failure_history_kept", text_of(page, "lifetime-total"), kept)
+    # A failed day-window read is reported by the shared stale notice, never by an empty
+    # grid: the heatmap keeps the year it drew (plan D6, scenario 49).
+    check("api_failure_activity_kept", activity_cells(page), kept_activity)
     page.set_viewport(*MOBILE)
     shot(page, "mobile-390-stale.png")
     page.set_viewport(*DESKTOP)
@@ -1033,9 +1094,11 @@ def poll_lifecycle(page) -> None:
     print("--- phase 8: one 15 s poll timer and one 1 s live timer, both paused when hidden")
     intervals = probe(page, "p.timers.filter((t) => !p.cleared.includes(t.id)).map((t) => t.ms)")
     check("poll_timers", sorted(intervals), [1000, 15000])
-    base = probe(page, "p.fetches.length")
     runs_before = spark_runs(page)
     page.set_visibility(True)
+    # Sample after the hide: a refresh that started just before the tab went away has
+    # already recorded its URL, and is not a request made while hidden.
+    base = probe(page, "p.fetches.length")
     time.sleep(8)
     check("polls_paused_when_hidden", probe(page, "p.fetches.length"), base)
     check("poll_timers_cleared_when_hidden",
@@ -1082,7 +1145,10 @@ def a11y(page, port: int) -> None:
 
     page.evaluate("document.activeElement && document.activeElement.blur()")
     seen = []
-    for _ in range(len(FOCUS_EXPECTED) + 12):
+    # The activity grid adds a disclosure to the walk and the activity phase leaves a
+    # second series, so the picker joins it; the audit walks far enough to reach every
+    # control in the contract below.
+    for _ in range(len(FOCUS_EXPECTED) + 18):
         page.tab(1)
         seen.append(page.evaluate(
             "(() => { const el = document.activeElement;"
@@ -1097,7 +1163,12 @@ def a11y(page, port: int) -> None:
         if not order or order[-1] != item["id"]:
             order.append(item["id"])
     receipt("keyboard_focus_sequence", order)
-    check("keyboard_focus_order", order[:len(FOCUS_EXPECTED)], FOCUS_EXPECTED)
+    # The contract is the order of these controls, not their position from the top of the
+    # page: the series picker joins the walk whenever a second series exists.
+    present = [name for name in FOCUS_EXPECTED if name in order]
+    check("keyboard_focus_covers_the_contract", present, FOCUS_EXPECTED)
+    places = [order.index(name) for name in FOCUS_EXPECTED]
+    check("keyboard_focus_order", places == sorted(places), True)
     # Every panel control in the audit draws the design's 2px focus ring; Chromium's own
     # internals (the date glyph and the parts past this audit) keep the UA ring, which is
     # visible — an unfocused-looking 0px ring anywhere in the walk is the failure.
@@ -1526,12 +1597,327 @@ def network(page, server: FixtureServer, port: int) -> None:
           sorted(set(after) - {"/metrics", "/stats"}), [])
 
 
+# -- year activity heatmap -------------------------------------------------- #
+def activity_shot(page, name: str) -> None:
+    path = page.screenshot(ACTIVITY_SHOTS / name)
+    receipt(f"screenshot {name}", f"{path} ({path.stat().st_size} bytes)")
+
+
+def activity_expectation(now: dt.datetime | None = None) -> tuple[str, str, str, int, int]:
+    """Mirror of `lib/heatmap.ts` `activityWindow`: a Sunday-aligned 52-column window.
+
+    Returns the half-open ``from``/``to`` the page must request, today's UTC date, the
+    cell count and today's weekday row. Derived from the contract, never from the DOM.
+    """
+    now = now or dt.datetime.now(dt.timezone.utc)
+    dow = now.weekday() + 1  # JS getUTCDay(): Sunday 0 … Saturday 6
+    today = now.date()
+    start = today - dt.timedelta(days=357 + dow)
+    return (f"{start.isoformat()}T00:00:00.000Z",
+            f"{(today + dt.timedelta(days=1)).isoformat()}T00:00:00.000Z",
+            today.isoformat(), 358 + dow, dow)
+
+
+ACTIVITY_CELLS = """(() => [...document.querySelectorAll('[data-testid="activity-grid"] rect.hm-cell')]
+  .map(n => ({day: n.getAttribute('data-day'), x: +n.getAttribute('x'), y: +n.getAttribute('y'),
+              state: n.getAttribute('data-state'), ratio: n.getAttribute('data-ratio'),
+              pct: n.getAttribute('data-pct'), partial: n.getAttribute('data-partial'),
+              cls: n.getAttribute('class') || '', style: n.getAttribute('style') || ''})))()"""
+
+
+def activity_cells(page) -> list[dict]:
+    return page.evaluate(ACTIVITY_CELLS)
+
+
+def activity_reads(page) -> list[str]:
+    """Every day-bucket history request the page sent, oldest first."""
+    return [u for u in fetches(page, "/api/v1/history") if "bucket=day" in u]
+
+
+def activity_day_history(port: int, series_id: str, frm: str, to: str) -> dict[str, dict]:
+    """The API's own day buckets for the window, keyed by UTC date."""
+    query = (f"series_id={quote(series_id, safe='')}"
+             f"&from={quote(frm, safe='')}&to={quote(to, safe='')}&bucket=day")
+    status, body = api(port, "/history", query)[:2]
+    check("activity_history_api_ok", status, 200)
+    return {b["bucket"][:10]: b for b in body["buckets"]}
+
+
+def activity_table_rows(page) -> list[list[str]]:
+    open_details(page, "activity-disclosure")
+    return page.evaluate(
+        "(() => [...document.querySelectorAll('[data-testid=\"activity-table\"] tbody tr')]"
+        ".map(tr => [...tr.querySelectorAll('th,td')].map(c => c.textContent.trim())))()")
+
+
+def quality_text(bucket: dict | None, *, today: bool = False) -> str:
+    """Mirror of `ActivityPanel.quality()`: API flags, then partial, then metadata."""
+    if bucket is None:
+        return "unobserved"
+    parts = list(bucket["quality_flags"])
+    if bucket["partial"] or bucket["incomplete"] or today:
+        parts.append("partial")
+    if bucket["metadata_complete"] is False:
+        parts.append("metadata_incomplete")
+    return " \u00b7 ".join(parts) if parts else "complete"
+
+
+def activity_live(page, server: FixtureServer, port: int) -> None:
+    print("--- phase 6b: the year activity grid reads one day window and keeps its cadence")
+    frm, to, today, days, dow = activity_expectation()
+    marker = f"from={quote(frm, safe='')}"
+    publish(server, 1915, 165, 100, 100)
+    # Reload on the published counters: the payload the page reads and the API answer
+    # compared below must describe the same fixture state, not one collected earlier.
+    page.navigate(f"http://127.0.0.1:{port}/")
+    expect(page, lambda: visible(page, "activity-grid"), "activity grid", 30)
+    reads = [u for u in activity_reads(page) if marker in u]
+    check("activity_one_window_request_ac1", len(reads), 1)
+    check("activity_window_is_half_open_ac1",
+          f"to={quote(to, safe='')}" in (reads[0] if reads else ""), True)
+    # The API's answer for the very window the page asked for is the expectation here.
+    first_id = next(i["series_id"] for i in series_items(port) if i["model_name"] == L["model_name"])
+    day_map = activity_day_history(port, first_id, frm, to)
+    exact = day_map.get(today, {}).get("processed_total")
+    cells = activity_cells(page)
+    check("activity_cell_count_ac1", len(cells), days)
+    check("activity_weekly_columns_ac1", len({c["x"] for c in cells}), 52)
+    check("activity_weekday_rows_ac1", len({c["y"] for c in cells}), 7)
+    by_day = {c["day"]: c for c in cells}
+    # This stack has collected today only: every other day of the window is unobserved.
+    # A day painted as a real 0 — the defect this rejects — shows up here.
+    check("activity_unobserved_days_stay_hollow_ac2",
+          sorted(c["day"] for c in cells if c["day"] != today and c["state"] != "none"), [])
+    check("activity_today_is_the_value_ac2", by_day.get(today, {}).get("state"), "value")
+    check("activity_today_is_the_max_ac2",
+          (by_day[today]["ratio"], by_day[today]["pct"]), ("1.000", "100.0"))
+    check("activity_value_cell_carries_the_fill_share_ac7", "--p:" in by_day[today]["style"], True)
+    check("activity_today_is_partial_ac3", by_day[today]["partial"], "true")
+    check("activity_partial_is_outlined_ac3", "hm-partial" in by_day[today]["cls"], True)
+    check("activity_grid_role_ac4", attr_of(page, "activity-grid", "role"), "img")
+    label = attr_of(page, "activity-grid", "aria-label") or ""
+    no_data = sum(1 for c in cells if c["state"] == "none")
+    check("activity_aria_names_the_window_ac4",
+          f"{frm[:10]} to {today}, 52 weekly columns" in label, True)
+    check("activity_aria_counts_the_hollow_days_ac4",
+          f"{no_data} of {days} days have no data" in label, True)
+    rows = activity_table_rows(page)
+    check("activity_table_row_per_day_ac4", len(rows), days)
+    check("activity_table_last_row_is_today_ac4", rows[-1][0], today)
+    check("activity_table_row_carries_the_api_total_ac4", rows[-1][1], dom_number(exact))
+    check("activity_aria_names_the_max_ac4",
+          f"Busiest day {int(exact):,} on {today}" in label, True)
+    check("activity_legend_names_the_max_ac2",
+          text_of(page, "activity-max"), f"max {short_tokens(exact)} on {today}")
+    tip = page.evaluate(
+        "(() => { const t = document.querySelector"
+        f"('[data-testid=\"activity-grid\"] rect[data-day={json.dumps(today)}] title');"
+        " return t ? t.textContent : null; })()")
+    receipt("activity_tooltip_today", tip)
+    check("activity_tooltip_exact_total_ac3", f"{int(exact):,}" in (tip or ""), True)
+    check("activity_tooltip_quality_ac3", " partial" in (tip or ""), True)
+    # AC5: the read rides the existing poll, so a five-minute cadence buys no extra
+    # request and no new timer. TWO_POLLS is two poll intervals, far inside 300 s.
+    timers = probe(page, "p.timers.map(t => t.ms).join(',')")
+    time.sleep(TWO_POLLS)
+    check("activity_waits_out_its_cadence_ac5",
+          len([u for u in activity_reads(page) if marker in u]), 1)
+    check("activity_adds_no_timer_ac5", probe(page, "p.timers.map(t => t.ms).join(',')"), timers)
+    # AC5: a series switch is a new read, and a payload for the series the operator
+    # left must never overwrite the grid on screen. The delayed response is the only
+    # one for the first series' window, so the late arrival is unambiguous.
+    install_fixture(server.state, SECOND, 500, 50, 1_000, 100)
+    assert wait_for(lambda: len(series_ids(port)) >= 2, 60), "second series never appeared"
+    items = series_items(port)
+    second_id = next(i["series_id"] for i in items if i["model_name"] == SECOND["model_name"])
+    arm_delay(page, 2500, f"series_id={first_id}&{marker}")
+    page.navigate(f"http://127.0.0.1:{port}/")
+    expect(page, lambda: visible(page, "activity-grid"), "activity grid after reload", 30)
+    time.sleep(1.0)  # the first series' activity read is in flight, deliberately delayed
+    select_series(page, port, SECOND)
+    time.sleep(4.0)  # by now the delayed payload for the series we left has landed
+    arm_delay(page, 0)
+    second_day = activity_day_history(port, second_id, frm, to)
+    check("activity_discards_the_stale_series_ac5",
+          activity_table_rows(page)[-1][1], dom_number(second_day.get(today, {}).get("processed_total")))
+    check("activity_switch_rereads_the_window_ac5",
+          len([u for u in activity_reads(page) if marker in u and f"series_id={second_id}" in u]), 1)
+    select_series(page, port, L)
+    expect(page, lambda: (attr_of(page, "activity-grid", "aria-label") or "").find(today) >= 0,
+           "activity grid back on the first series", 60)
+    page.set_viewport(*MOBILE)
+    expect(page, lambda: visible(page, "activity-grid"), "mobile activity grid", 30)
+    check("activity_mobile_page_has_no_side_scroll_ac6", page.evaluate(
+        "document.documentElement.scrollWidth <= window.innerWidth + 1"), True)
+    check("activity_mobile_grid_scrolls_inside_ac6", page.evaluate(
+        "(() => { const el = document.querySelector('.hm-scroll');"
+        " return el.scrollWidth > el.clientWidth; })()"), True)
+    activity_shot(page, "activity-live-390.png")
+    page.set_viewport(*DESKTOP)
+
+
+def activity_seeded(tmp: Path, browser: Browser) -> None:
+    print("--- phase 6c: the year activity grid against a seeded year of volume")
+    db = tmp / "seeded" / "appdata" / "dashboard.sqlite3"
+    db.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path = tmp / "seeded-manifest.json"
+    started = time.monotonic()
+    seed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "seed_history.py"), "--db", str(db),
+         "--window-days", "60", "--cadence-recent", "300",
+         "--case-days", "idle_day=5,collector_downtime=12", "--manifest", str(manifest_path)],
+        capture_output=True, text=True, timeout=1800,
+    )
+    check("seeder_exit", seed.returncode, 0)
+    receipt("seeder_seconds", round(time.monotonic() - started, 1))
+    manifest = json.loads(manifest_path.read_text())
+    fixture = FixtureServer()
+    fixture.start()
+    page = browser.new_page(*DESKTOP)
+    page.add_script_on_new_document(PROBE)
+    serve: ServeProc | None = None
+    try:
+        port = free_port()
+        serve = ServeProc(db, fixture.base_url, port)
+        # The seeded source id keeps the collector on the seeded series; the fixture stays
+        # empty, so nothing new is collected while the grid is read.
+        serve.env["SOURCE_ID"] = manifest["source_id"]
+        serve.env["RAW_RETENTION_DAYS"] = str(manifest["window"]["retention_days"])
+        serve.env["STATIC_DIR"] = str(STATIC)
+        serve.env.pop("JARVIS_STATIC_DIR", None)
+        serve.start()
+        check("seeded_serve_ready", wait_for(lambda: get_path(port, "/health/ready")[0] == 200, 60), True)
+        check("seeded_series_count", len(series_items(port)), 8)
+        page.navigate(f"http://127.0.0.1:{port}/")
+        expect(page, lambda: visible(page, "activity-grid"), "seeded activity grid", 60)
+        # The window is taken from the request the page actually sent, so a UTC midnight
+        # crossed during this long phase cannot desynchronise the expectation.
+        frm, to, today, days, dow = activity_expectation()
+        marker = f"from={quote(frm, safe='')}"
+        expect(page, lambda: len([u for u in activity_reads(page) if marker in u]) >= 1,
+               "activity window request", 60)
+        reads = [u for u in activity_reads(page) if marker in u]
+        check("activity_seeded_one_request_ac1", len(reads), 1)
+        selected = parse_qs(urlparse(reads[0]).query)["series_id"][0]
+        day_map = activity_day_history(port, selected, frm, to)
+        cells = activity_cells(page)
+        check("activity_seeded_cell_count_ac1", len(cells), days)
+        check("activity_seeded_columns_ac1", len({c["x"] for c in cells}), 52)
+        receipt("activity_seeded_series", selected)
+        states, partials = [], []
+        for cell in cells:
+            bucket = day_map.get(cell["day"])
+            total = bucket["processed_total"] if bucket else None
+            want = "none" if total is None else ("zero" if int(total) == 0 else "value")
+            if cell["state"] != want:
+                states.append((cell["day"], cell["state"], want))
+            want_partial = ("true" if bucket is not None and (bucket["partial"] or bucket["incomplete"]
+                            or cell["day"] == today) else "false")
+            if cell["partial"] != want_partial:
+                partials.append((cell["day"], cell["partial"], want_partial))
+        check("activity_seeded_states_match_the_api_ac2", states, [])
+        check("activity_seeded_partial_matches_the_api_ac3", partials, [])
+        positive = {d: int(b["processed_total"]) for d, b in day_map.items()
+                    if b["processed_total"] and int(b["processed_total"]) > 0}
+        check("activity_seeded_carries_volume", len(positive) >= 50, True)
+        max_day = max(positive, key=lambda d: positive[d])
+        max_value = positive[max_day]
+        by_day = {c["day"]: c for c in cells}
+        receipt("activity_max_day", f"{max_day} {max_value}")
+        check("activity_seeded_max_is_one_hundred_ac2",
+              (by_day[max_day]["ratio"], by_day[max_day]["pct"]), ("1.000", "100.0"))
+        # The square-root scale is the contract: a quarter of the maximum is 60 %, not 25 %.
+        quarter = min(positive, key=lambda d: abs(4 * positive[d] - max_value))
+        ratio = Fraction(positive[quarter], max_value)
+        receipt("activity_quarter_day", f"{quarter} ratio {float(ratio):.4f}")
+        check("activity_seeded_quarter_is_sixty_ac2",
+              abs(float(by_day[quarter]["pct"]) - (20 + 80 * math.sqrt(float(ratio)))) <= 0.1, True)
+        worst_ratio = max((abs(float(by_day[d]["ratio"]) - round(float(Fraction(v, max_value)), 3))
+                           for d, v in positive.items()), default=0.0)
+        worst_pct = max((abs(float(by_day[d]["pct"]) - (20 + 80 * math.sqrt(float(Fraction(v, max_value)))))
+                         for d, v in positive.items()), default=0.0)
+        receipt("activity_worst_ratio_deviation", round(worst_ratio, 6))
+        receipt("activity_worst_pct_deviation", round(worst_pct, 6))
+        check("activity_seeded_ratios_within_tolerance_ac2", worst_ratio <= 0.001, True)
+        check("activity_seeded_scale_within_tolerance_ac2", worst_pct <= 0.1, True)
+        check("activity_seeded_legend_ac2",
+              text_of(page, "activity-max"), f"max {short_tokens(max_value)} on {max_day}")
+        cases = {c["key"]: c["start"][:10] for c in manifest["cases"]}
+        receipt("activity_case_days", json.dumps(cases))
+        check("activity_seeded_idle_day_is_zero_ac2", by_day[cases["idle_day"]]["state"], "zero")
+        check("activity_seeded_downtime_day_is_hollow_ac2",
+              by_day[cases["collector_downtime"]]["state"], "none")
+        before_window = (dt.date.fromisoformat(manifest["window"]["start"][:10])
+                         - dt.timedelta(days=3)).isoformat()
+        check("activity_seeded_day_before_the_seed_is_hollow_ac2",
+              by_day[before_window]["state"], "none")
+        check("activity_seeded_today_is_partial_ac3", by_day[today]["partial"], "true")
+        label = attr_of(page, "activity-grid", "aria-label") or ""
+        check("activity_seeded_aria_names_the_max_ac4",
+              f"Busiest day {max_value:,} on {max_day}" in label, True)
+        check("activity_seeded_aria_counts_hollow_ac4",
+              f"{sum(1 for c in cells if c['state'] == 'none')} of {days} days have no data" in label,
+              True)
+        tip = page.evaluate(
+            "(() => { const t = document.querySelector"
+            f"('[data-testid=\"activity-grid\"] rect[data-day={json.dumps(max_day)}] title');"
+            " return t ? t.textContent : null; })()")
+        receipt("activity_tooltip_max", tip)
+        check("activity_tooltip_exact_total_ac3", f"{max_value:,}" in (tip or ""), True)
+        check("activity_tooltip_names_the_share_ac3", "100% of max" in (tip or ""), True)
+        hollow_tip = page.evaluate(
+            "(() => { const t = document.querySelector"
+            f"('[data-testid=\"activity-grid\"] rect[data-day={json.dumps(before_window)}] title');"
+            " return t ? t.textContent : null; })()")
+        receipt("activity_tooltip_hollow", hollow_tip)
+        check("activity_tooltip_of_a_hollow_day_ac3", "no data" in (hollow_tip or ""), True)
+        rows = {r[0]: r for r in activity_table_rows(page)}
+        check("activity_seeded_table_rows_ac4", len(rows), days)
+        for sample in (max_day, cases["idle_day"], cases["collector_downtime"], before_window):
+            bucket = day_map.get(sample)
+            counters = (bucket or {}).get("counters", {})
+            want = [sample,
+                    dom_number(bucket["processed_total"] if bucket else None),
+                    dom_number((counters.get("computed_input") or {}).get("tokens")),
+                    dom_number((counters.get("generated_output") or {}).get("tokens")),
+                    quality_text(bucket, today=sample == today)]
+            check(f"activity_seeded_table_row_ac4_{sample}", rows[sample], want)
+        page.set_viewport(*DESKTOP)
+        activity_shot(page, "activity-1440.png")
+        page.set_viewport(*PORTRAIT)
+        expect(page, lambda: visible(page, "activity-grid"), "portrait activity grid", 30)
+        check("activity_portrait_needs_no_inner_scroll_ac6", page.evaluate(
+            "(() => { const el = document.querySelector('.hm-scroll');"
+            " return el.scrollWidth <= el.clientWidth + 1; })()"), True)
+        check("activity_portrait_page_does_not_scroll_ac6", page.evaluate(
+            "document.documentElement.scrollHeight <= window.innerHeight + 1"), True)
+        activity_shot(page, "activity-1080x1920.png")
+        page.set_viewport(*MOBILE)
+        page.navigate(f"http://127.0.0.1:{port}/")
+        expect(page, lambda: visible(page, "activity-grid"), "mobile activity grid", 60)
+        check("activity_mobile_page_has_no_side_scroll_ac6", page.evaluate(
+            "document.documentElement.scrollWidth <= window.innerWidth + 1"), True)
+        check("activity_mobile_grid_scrolls_inside_ac6", page.evaluate(
+            "(() => { const el = document.querySelector('.hm-scroll');"
+            " return el.scrollWidth > el.clientWidth; })()"), True)
+        check("activity_mobile_grid_opens_on_the_recent_week_ac6", page.evaluate(
+            "(() => { const el = document.querySelector('.hm-scroll');"
+            " return Math.abs(el.scrollLeft - (el.scrollWidth - el.clientWidth)) <= 1; })()"), True)
+        activity_shot(page, "activity-390.png")
+        page.set_viewport(*DESKTOP)
+        serve.stop()
+    finally:
+        fixture.stop()
+        browser.command("Target.closeTarget", {"targetId": page.target_id})
+
+
 # -- runner ---------------------------------------------------------------- #
 def main() -> int:
     SHOTS.mkdir(parents=True, exist_ok=True)
     LIVE_SHOTS.mkdir(parents=True, exist_ok=True)
     COST_SHOTS.mkdir(parents=True, exist_ok=True)
     HUD_SHOTS.mkdir(parents=True, exist_ok=True)
+    ACTIVITY_SHOTS.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="jarvis-frontend-smoke-"))
     receipt("workdir", tmp)
     server = FixtureServer()
@@ -1562,6 +1948,7 @@ def main() -> int:
         layout(page)
         ranges(page)
         chart_integrity(page, server)
+        activity_live(page, server, serve.port)
         empty_and_baseline(tmp, browser)
         offline(page, server)
         api_failure(page, serve)
@@ -1572,6 +1959,7 @@ def main() -> int:
         selection_race(page, server, serve.port)
         network(page, server, serve.port)
         cost_estimate(page, server, serve)
+        activity_seeded(tmp, browser)
 
         page.set_viewport(*MOBILE)
         shot(page, "mobile-390-normal.png")
@@ -1579,6 +1967,7 @@ def main() -> int:
         receipt("screenshots_written", len(list(SHOTS.glob("*.png"))))
         receipt("cost_screenshots_written", len(list(COST_SHOTS.glob("*.png"))))
         receipt("hud_screenshots_written", sorted(p.name for p in HUD_SHOTS.glob("*.png")))
+        receipt("activity_screenshots_written", sorted(p.name for p in ACTIVITY_SHOTS.glob("*.png")))
         receipt("browser_requests", len(page.requests))
         return 0
     finally:

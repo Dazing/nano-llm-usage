@@ -115,12 +115,12 @@ const observedAt = computed(() => formatUtc(snapshot.value?.observed_at));
           <div class="req-bars">
             <div class="rrow bar-active">
               <span>Active</span>
-              <SegmentBar :cells="16" :filled="filledRequests(active, 16)" />
+              <SegmentBar :cells="7" :filled="filledRequests(active, 7)" />
               <b class="num">{{ activeText }}</b>
             </div>
             <div class="rrow bar-waiting">
               <span>Waiting</span>
-              <SegmentBar :cells="16" :filled="filledRequests(queued, 16)" />
+              <SegmentBar :cells="7" :filled="filledRequests(queued, 7)" />
               <b class="num">{{ queuedText }}</b>
             </div>
           </div>

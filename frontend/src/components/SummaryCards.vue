@@ -11,6 +11,7 @@ import {
   formatDay,
   formatRatesFootnote,
   formatTokens,
+  formatTokensShare,
   formatTokensShort,
   NO_DATA,
 } from "../lib/format";
@@ -27,6 +28,16 @@ const CARDS = [
 ] as const;
 
 type CardKey = (typeof CARDS)[number]["key"];
+
+type CounterKey = "computed_input" | "generated_output";
+
+/**
+ * Quality signals the cards do not carry. An unfinished period and approximate
+ * time attribution describe how the range was bucketed, not the health of the
+ * totals, and they crowd every live card. The facts stay where they belong: the
+ * trend chart, its table, and diagnostics.
+ */
+const CARD_HIDDEN_FLAGS: ReadonlySet<string> = new Set(["time_attribution_approximate"]);
 
 /**
  * A series with a baseline epoch and no accepted interval yet. The summary's series-level
@@ -70,10 +81,23 @@ function totalTitle(key: CardKey): string | undefined {
   return exact === NO_DATA ? undefined : exact;
 }
 
-function counter(key: CardKey, counterKey: "computed_input" | "generated_output"): string {
+/**
+ * The counter row: short tokens with the share of the card's own processed total
+ * (`2.43 M · 91%`); `counterTitle` keeps the exact grouped figure reachable.
+ */
+function counterShare(key: CardKey, counterKey: CounterKey): string {
+  if (baseline.value) return NO_DATA;
   const rangeValue = range(key);
-  const tokens = rangeValue?.counters[counterKey].tokens ?? null;
-  return baseline.value ? NO_DATA : formatTokens(tokens);
+  return formatTokensShare(
+    rangeValue?.counters[counterKey].tokens ?? null,
+    rangeValue?.processed_total ?? null,
+  );
+}
+
+function counterTitle(key: CardKey, counterKey: CounterKey): string | undefined {
+  if (baseline.value) return undefined;
+  const tokens = range(key)?.counters[counterKey].tokens ?? null;
+  return tokens === null || tokens === undefined ? undefined : formatTokens(tokens);
 }
 
 /** Configured prices: the dollar line and the footnote are hidden without them. */
@@ -111,9 +135,10 @@ function flags(key: CardKey): string[] {
   if (!rangeValue || baseline.value) return [];
   const lines: string[] = [];
   if (rangeValue.partial) lines.push("Partial — some intervals are unobserved");
-  if (rangeValue.incomplete) lines.push("Current period is incomplete");
   if (!rangeValue.metadata_complete) lines.push(flagLabel("metadata_incomplete"));
-  for (const flag of rangeValue.quality_flags) lines.push(flagLabel(flag));
+  for (const flag of rangeValue.quality_flags) {
+    if (!CARD_HIDDEN_FLAGS.has(flag)) lines.push(flagLabel(flag));
+  }
   return lines;
 }
 
@@ -143,7 +168,7 @@ const metaLine = computed(() => {
 
 <template>
   <HudPanel
-    index="03"
+    index="04"
     title="Period summary"
     testid="summary-panel"
     class="pnl-sum"
@@ -176,9 +201,15 @@ const metaLine = computed(() => {
           </span>
           <div class="keys">
             <span>Computed input</span>
-            <b :data-testid="`${card.key}-input`">{{ counter(card.key, "computed_input") }}</b>
+            <b
+              :data-testid="`${card.key}-input`"
+              :title="counterTitle(card.key, 'computed_input')"
+            >{{ counterShare(card.key, "computed_input") }}</b>
             <span>Generated output</span>
-            <b :data-testid="`${card.key}-output`">{{ counter(card.key, "generated_output") }}</b>
+            <b
+              :data-testid="`${card.key}-output`"
+              :title="counterTitle(card.key, 'generated_output')"
+            >{{ counterShare(card.key, "generated_output") }}</b>
           </div>
         </div>
 

@@ -620,6 +620,7 @@ button.is-active {
   font: 700 40px/1.15 var(--font-mono);
   letter-spacing: -0.02em;
   text-align: center;
+  padding: 18px 0px;
 }
 
 .req-num .small {
@@ -651,12 +652,16 @@ button.is-active {
   box-shadow: 0 0 7px currentColor;
 }
 
-.bar-active {
+.req-bars .rrow.bar-active {
   color: var(--series-input);
+  display: grid;
+  grid-template-columns: 1fr 140px 16px;
 }
 
-.bar-waiting {
+.req-bars .rrow.bar-waiting {
   color: var(--warning);
+  display: grid;
+  grid-template-columns: 1fr 140px 16px;
 }
 
 .gauge {
@@ -1156,6 +1161,124 @@ tbody tr:hover {
   background: color-mix(in srgb, var(--series-input) 9%, transparent);
 }
 
+/* ============================ activity heatmap ======================= */
+/* The 52x7 grid is hand-rolled SVG at the model's own geometry (plan D5): 14 px cells
+ * at 3 px, a 28 px weekday gutter and a 14 px month row. */
+.pnl-act > .in {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hm-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 6px;
+  /* The strip is 909 px of cells; where the column is narrower it scrolls inside the
+   * panel instead of squashing the cells, and the page never scrolls sideways (D8). */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.hm-svg {
+  display: block;
+  width: 100%;
+  /* 28 gutter + 52 x 14 cells + 51 x 3 gaps: the grid's true width. */
+  min-width: 909px;
+  height: auto;
+}
+
+.hm-wd,
+.hm-month {
+  font: 600 9.5px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--fg-muted);
+}
+
+.hm-cell {
+  shape-rendering: crispEdges;
+}
+
+/* Unobserved stays hollow and dashed: "the collector saw nothing" must not read as
+ * "the day ran at zero" (D4). */
+.hm-none {
+  fill: none;
+  stroke: color-mix(in srgb, var(--line) 70%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.hm-zero {
+  fill: var(--sunk);
+}
+
+/* The ramp is the accent mixed into the grid ground at the cell's own strength: `--p`
+ * is the square-root-scaled percent the model computed (D3). */
+.hm-value {
+  fill: color-mix(in srgb, var(--accent) calc(var(--p) * 1%), var(--sunk));
+}
+
+/* An outline, last of the cell rules, so the quality mark reads on any strength. */
+.hm-partial {
+  stroke: var(--warning);
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+
+.hm-empty {
+  flex: none;
+  margin: 6px 0 0;
+  font: 12.5px/1.3 var(--font-mono);
+  color: var(--fg-muted);
+}
+
+.hm-loading {
+  flex: 1 1 auto;
+  display: grid;
+  align-content: center;
+  margin-top: 6px;
+}
+
+.hm-loading .sk-activity {
+  height: 130px;
+}
+
+/* The legend keys are HTML, so the cell colours repeat as `background`; the ink is the
+ * same token expression the SVG `fill` uses, never a second palette (AC7). */
+.hm-legend .hm-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hm-legend i.hm-sw {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border: var(--border-width) solid color-mix(in srgb, var(--line) 40%, transparent);
+  border-radius: var(--radius);
+  background: none;
+}
+
+.hm-legend i.hm-sw + i.hm-sw {
+  margin-left: 2px;
+}
+
+.hm-legend .hm-sw.hm-none {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.hm-legend .hm-sw.hm-zero {
+  background: var(--sunk);
+}
+
+.hm-legend .hm-sw.hm-value {
+  background: color-mix(in srgb, var(--accent) calc(var(--p) * 1%), var(--sunk));
+}
+
 /* ============================ summary cards =========================== */
 .pnl-sum > .in {
   display: grid;
@@ -1562,9 +1685,10 @@ tbody tr:hover {
       [strip] auto
       [live] 454px
       [trend] 1fr
-      [summary] 452px
+      [activity] 200px
+      [summary] 340px
       [rates] 212px
-      [diag] 158px;
+      [diag] 112px;
   }
 
   /* Named rows, not a seven-row count: the status strip renders only for a problem
@@ -1589,6 +1713,10 @@ tbody tr:hover {
 
   .pnl-sum {
     grid-row: summary;
+  }
+
+  .pnl-act {
+    grid-row: activity;
   }
 
   .pnl-rate {
@@ -1695,6 +1823,23 @@ tbody tr:hover {
 
   .trend-table {
     max-height: none;
+  }
+
+  /* The heatmap row is fixed, so the grid is sized by height: at 118 px tall the full
+   * 909 px strip (≈825 px wide) sits inside the 1048 px column with room to spare. */
+  .pnl-act > .in {
+    overflow: auto;
+  }
+
+  .hm-svg {
+    width: auto;
+    height: 118px;
+    min-width: 0;
+  }
+
+  .hm-legend {
+    font-size: 11px;
+    gap: 10px;
   }
 }
 

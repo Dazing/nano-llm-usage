@@ -12,6 +12,7 @@ import {
   type StatusResponse,
   type SummaryResponse,
 } from "../api/client";
+import { activityWindow } from "./heatmap";
 
 export type RangePreset = "24h" | "7d" | "30d" | "custom";
 export type BucketKind = "hour" | "day";
@@ -24,6 +25,8 @@ export interface RangeParams {
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 const POLL_MS = 15_000;
+/** The heatmap is a daily picture: a five-minute refresh, not a per-tick one (plan D6). */
+export const ACTIVITY_REFRESH_MS = 300_000;
 /** The API rejects a daily range wider than 366 days and an hourly one over 31 days. */
 const MAX_DAY_SPAN_DAYS = 366;
 const MAX_HOUR_SPAN_DAYS = 31;
@@ -34,6 +37,8 @@ export interface DashboardState {
   status: StatusResponse | null;
   summary: SummaryResponse | null;
   history: HistoryResponse | null;
+  /** Daily buckets for the trailing 52-week window; null until the first read lands. */
+  activity: HistoryResponse | null;
   events: EventsResponse | null;
   rangePreset: RangePreset;
   customFrom: string;
@@ -48,6 +53,28 @@ export interface DashboardState {
 }
 
 const iso = (value: number): string => new Date(value).toISOString();
+
+/** Which read of the heatmap window is on screen, so a stale one can be recognised. */
+export interface ActivityReadMark {
+  seriesId: string | null;
+  windowFrom: string | null;
+  /** ms since epoch of the applied payload; null when nothing has been applied. */
+  at: number | null;
+}
+
+/**
+ * Whether the heatmap window needs its own read: never read, a different series, the
+ * window slid over midnight, or the payload is older than the daily cadence (D6).
+ */
+export function activityDue(
+  wanted: { seriesId: string; windowFrom: string; nowMs: number },
+  applied: ActivityReadMark,
+): boolean {
+  if (applied.seriesId === null) return true;
+  if (applied.seriesId !== wanted.seriesId) return true;
+  if (applied.windowFrom !== wanted.windowFrom) return true;
+  return wanted.nowMs - (applied.at ?? 0) >= ACTIVITY_REFRESH_MS;
+}
 
 /** The range the API must be asked for: UTC-aligned, half-open, with the API's own span limits. */
 export function paramsForRange(
@@ -94,6 +121,7 @@ function createDashboard() {
     status: null,
     summary: null,
     history: null,
+    activity: null,
     events: null,
     rangePreset: "24h",
     customFrom: "",
@@ -107,12 +135,16 @@ function createDashboard() {
   });
 
   let requestSeq = 0;
-  const applied: Record<"status" | "summary" | "history" | "events", number> = {
+  const applied: Record<"status" | "summary" | "history" | "events" | "activity", number> = {
     status: 0,
     summary: 0,
     history: 0,
     events: 0,
+    activity: 0,
   };
+  // Not reactive: the heatmap's cadence is a scheduling fact, and making it reactive would
+  // re-render every panel on each poll.
+  const activityApplied: ActivityReadMark = { seriesId: null, windowFrom: null, at: null };
   let controller: AbortController | null = null;
   let running = false;
   let queued = false;
@@ -188,6 +220,29 @@ function createDashboard() {
           applied.events = seq;
         }
       }
+      // The heatmap window is fixed (it does not follow the range preset), so it is read
+      // even when the preset's own range was rejected locally, and only on its own cadence.
+      if (seriesId) {
+        const activityRange = activityWindow(new Date());
+        if (
+          activityDue({ seriesId, windowFrom: activityRange.from, nowMs: Date.now() }, activityApplied)
+        ) {
+          const activity = await fetchHistory(
+            seriesId,
+            activityRange.from,
+            activityRange.to,
+            "day",
+            signal,
+          );
+          if (seq >= applied.activity && seriesId === state.selectedSeriesId) {
+            state.activity = activity;
+            applied.activity = seq;
+            activityApplied.seriesId = seriesId;
+            activityApplied.windowFrom = activityRange.from;
+            activityApplied.at = Date.now();
+          }
+        }
+      }
       if (signal.aborted || seq < requestSeq) return;
       if (range && "code" in range) {
         // The range was rejected locally: currentRange() already put the code on state,
@@ -222,6 +277,10 @@ function createDashboard() {
     state.summary = null;
     state.history = null;
     state.events = null;
+    state.activity = null;
+    activityApplied.seriesId = null;
+    activityApplied.windowFrom = null;
+    activityApplied.at = null;
     state.apiError = null;
     state.staleSince = null;
     void refresh();

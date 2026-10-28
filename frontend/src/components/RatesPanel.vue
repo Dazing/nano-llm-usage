@@ -75,7 +75,7 @@ function requestGap(key: RequestKey): string {
 
 <template>
   <HudPanel
-    index="04"
+    index="05"
     title="Latest rate"
     testid="rates-panel"
     class="pnl-rate"

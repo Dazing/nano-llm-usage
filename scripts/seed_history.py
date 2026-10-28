@@ -56,6 +56,7 @@ from jarvis_dashboard import storage  # noqa: E402
 from jarvis_dashboard.collector import Collector  # noqa: E402
 from jarvis_dashboard.config import DEFAULT_RAW_RETENTION_DAYS, Config  # noqa: E402
 from jarvis_dashboard.domain import (  # noqa: E402
+    CACHED_INPUT,
     COUNTER_KEYS,
     COMPUTED_INPUT,
     GENERATED_OUTPUT,
@@ -79,7 +80,10 @@ DIURNAL = (
     0.15, 0.10, 0.08, 0.06, 0.06, 0.10, 0.35, 0.70, 1.00, 1.25, 1.40, 1.30,
     1.00, 1.15, 1.35, 1.40, 1.30, 1.10, 0.85, 0.70, 0.60, 0.50, 0.35, 0.25,
 )
-COUNTER_RATIO = {COMPUTED_INPUT: 1.0, GENERATED_OUTPUT: 0.07, REQUEST_INPUT: 0.9, REQUEST_OUTPUT: 0.06}
+# cached_input stays well below request_input so the cost layer never sees a cache
+# hit larger than the request it belongs to.
+COUNTER_RATIO = {COMPUTED_INPUT: 1.0, GENERATED_OUTPUT: 0.07, REQUEST_INPUT: 0.9, REQUEST_OUTPUT: 0.06,
+                 CACHED_INPUT: 0.35}
 IDLE_HOUR_PROBABILITY = 0.04
 MODEL_COUNT = 8
 # The model whose engine-0 uptime evidence Radiance `/stats` reports (D5 restart case).
@@ -193,13 +197,14 @@ class TrafficModel:
     def publish(self, state, index: int, request_absent: bool) -> None:
         """Expose the model's counters; the request pair is absent, never zero."""
         counters = self.counters[index]
-        install_fixture(state, self.models[index], counters[COMPUTED_INPUT], counters[GENERATED_OUTPUT])
         if request_absent:
+            install_fixture(state, self.models[index], counters[COMPUTED_INPUT], counters[GENERATED_OUTPUT],
+                            None, None, counters[CACHED_INPUT])
             for key in (REQUEST_INPUT, REQUEST_OUTPUT):
                 state.clear_metric(METRIC_FOR_KEY[key], self.models[index])
         else:
             install_fixture(state, self.models[index], counters[COMPUTED_INPUT], counters[GENERATED_OUTPUT],
-                            counters[REQUEST_INPUT], counters[REQUEST_OUTPUT])
+                            counters[REQUEST_INPUT], counters[REQUEST_OUTPUT], counters[CACHED_INPUT])
 
 
 @dataclass
