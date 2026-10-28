@@ -280,8 +280,15 @@ def test_the_signal_path_stops_the_live_poller(tmp_path, monkeypatch):
 
 
 def test_the_api_state_sees_the_live_monitor(tmp_path):
+    # A build of its own: the packaged static dir exists only after a frontend
+    # build, and without index.html there is no page layer to look through.
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<!doctype html>", encoding="utf-8")
     live = StubLive()
-    server = service_mod.build_server(make_config(tmp_path), make_service(tmp_path), live=live)
+    server = service_mod.build_server(
+        make_config(tmp_path, static_dir=str(static)), make_service(tmp_path), live=live
+    )
     # create_asgi_app layering: NoStoreMiddleware -> _PageLayer -> API app
     api_app = server.config.app.app.api
     assert api_app.state.dashboard.live is live
@@ -335,7 +342,12 @@ def test_live_failures_never_gate_readiness(tmp_path):
     live.start()
     try:
         deadline = time.monotonic() + 8
-        while fixture.state.requests.get("/stats", 0) < 2 and time.monotonic() < deadline:
+        # Each cycle requests /stats then /metrics: wait for both, or the second
+        # /stats can be counted before its /metrics.
+        while (
+            min(fixture.state.requests.get(path, 0) for path in ("/stats", "/metrics")) < 2
+            and time.monotonic() < deadline
+        ):
             time.sleep(0.05)
         assert fixture.state.requests["/stats"] >= 2
         assert fixture.state.requests["/metrics"] >= 2

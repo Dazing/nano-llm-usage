@@ -1178,9 +1178,15 @@ def read_history(
             poll_interval_seconds,
             last_success,
         )
-        # Cost needs hourly resolution even when the chart is bucketed by day.
+        # Cost needs hourly resolution even when the chart is bucketed by day. The
+        # label range is half-open like the buckets: a past range stops at
+        # `ended_at`; a range reaching past `now` stops after the current hour.
         cost_rows = _hourly_rows(
-            conn, source_id, series.identity, hour_label(started_at), hour_label(cost_end + _HOUR)
+            conn,
+            source_id,
+            series.identity,
+            hour_label(started_at),
+            hour_label(min(ended_at, now + _HOUR)),
         )
     blocks: dict[str, dict[str, Any]] = {}
     for item in buckets:

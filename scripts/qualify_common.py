@@ -861,7 +861,7 @@ RESTORE_COMMANDS = [
     '  -e DATABASE_PATH=/data/dashboard.sqlite3 \\\n'
     '  -e RADIANCE_BASE_URL="$RADIANCE_BASE_URL" \\\n'
     '  -e SOURCE_ID="$JARVIS_SOURCE_ID" \\\n'
-    '  --entrypoint jarvis-dashboard jarvis-dashboard:0.1.0 \\\n'
+    '  --entrypoint jarvis-dashboard "${JARVIS_IMAGE:-jarvis-dashboard:0.1.0}" \\\n'
     '  restore --input /data/backups/dashboard-20261025T120000Z.sqlite3',
     "docker compose up -d",
 ]
@@ -945,8 +945,8 @@ def doc_consistency_check(path: Path = DEPLOYMENT_DOC) -> tuple[list[tuple[str, 
         "no smb/nfs": "not smb, not nfs",
         "private bind address, no login": "no login",
         "compose v2 prerequisite": "compose v2 is an operator prerequisite",
-        "image moved by id": "docker save",
-        "image loaded on the nas": "docker load",
+        "image pinned by digest": "jarvis_image=ghcr.io/dazing/nano-llm-usage@sha256:",
+        "image pulled on the nas": "docker compose pull",
         "log rotation inspection": "logconfig",
         "ac8 live check section": "live check against a real jarvis",
         "four metric names": "radiance:prefill_tokens_total",

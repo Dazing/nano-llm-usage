@@ -13,3 +13,5 @@ frontend/node_modules/
 frontend/dist/
 src/jarvis_dashboard/static/
 .appdata/
+# Operator settings name internal addresses; .env.example is the template.
+.env

@@ -103,7 +103,7 @@ Every Compose command in this document is run from the directory that holds
 `compose.yaml`, with the settings in a plain `.env` file beside it. Docker
 Compose v2 reads `.env` from that directory automatically, so `stop`, `exec`,
 `ps` and `down` find the same values as `up`; exporting them in a shell only
-helps that shell.
+helps that shell. `.env` is not committed: copy `.env.example` and fill it in.
 
 ```bash
 # .env — same directory as compose.yaml. chmod 0600: it holds no secrets,
@@ -111,6 +111,7 @@ helps that shell.
 DASHBOARD_BIND_ADDRESS=192.168.1.50
 DASHBOARD_HOST_PORT=8080
 JARVIS_APPDATA_DIR=/mnt/cache/appdata/jarvis-token-dashboard
+JARVIS_IMAGE=ghcr.io/dazing/nano-llm-usage@sha256:<digest>
 JARVIS_UID=1000
 JARVIS_GID=1000
 RADIANCE_BASE_URL=http://192.168.1.228:8000
@@ -121,6 +122,7 @@ RADIANCE_BASE_URL=http://192.168.1.228:8000
 | `DASHBOARD_BIND_ADDRESS` | Required. The trusted LAN address the host publishes on (`0.0.0.0` is never implied). |
 | `DASHBOARD_HOST_PORT` | Published host port, default `8080`. |
 | `JARVIS_APPDATA_DIR` | Required. Local-storage directory mounted at `/data`. |
+| `JARVIS_IMAGE` | Image to run, default `jarvis-dashboard:0.1.0` (the tag `docker compose build` creates). A deployed host sets the digest-pinned GHCR reference; see [Unraid](#unraid). |
 | `JARVIS_UID` / `JARVIS_GID` | Required. Numeric user the container runs as; must own the appdata directory. |
 | `RADIANCE_BASE_URL` | Required. Origin-only Jarvis base URL, e.g. `http://192.168.1.228:8000`. |
 | `JARVIS_SOURCE_ID` | Optional label for the collected series, default `jarvis`. Written into the database, not into the image; changing it starts a new series identity. |
@@ -136,7 +138,7 @@ private network: the dashboard has **no login and no TLS** of its own. Anyone
 who can reach the published port can read every collected series.
 
 ```bash
-docker compose build
+docker compose build         # local only; a deployed host runs `docker compose pull`
 docker compose up -d
 docker compose ps            # health: starting -> healthy once the writer is ready
 ```
@@ -260,7 +262,9 @@ if that file already exists.
 
 Restore is offline: stop the service, restore, start again. The one-off
 container runs as the same UID/GID as the service, and `SOURCE_ID` is passed
-under the name the application reads.
+under the name the application reads. `docker run` does not read `.env`, so
+load it into the shell first (`set -a; . ./.env; set +a`); otherwise the image
+falls back to the local `jarvis-dashboard:0.1.0` tag.
 
 ```bash
 docker compose stop
@@ -270,7 +274,7 @@ docker run --rm \
   -e DATABASE_PATH=/data/dashboard.sqlite3 \
   -e RADIANCE_BASE_URL="$RADIANCE_BASE_URL" \
   -e SOURCE_ID="$JARVIS_SOURCE_ID" \
-  --entrypoint jarvis-dashboard jarvis-dashboard:0.1.0 \
+  --entrypoint jarvis-dashboard "${JARVIS_IMAGE:-jarvis-dashboard:0.1.0}" \
   restore --input /data/backups/dashboard-20261025T120000Z.sqlite3
 docker compose up -d
 ```
@@ -301,9 +305,9 @@ difference.
 docker compose stop
 ```
 
-3. Put the new image in place under the tag `compose.yaml` builds/uses
-   (`jarvis-dashboard:0.1.0`): `docker compose build` on this host, or
-   `docker load` from a `docker save` archive carried from the build host.
+3. Put the new image in place: on a deployed host, set `JARVIS_IMAGE` in `.env`
+   to the new digest and run `docker compose pull` (see [Unraid](#unraid));
+   on a build host, `docker compose build`.
 4. Start it:
 
 ```bash
@@ -345,30 +349,58 @@ install -d -o "$JARVIS_UID" -g "$JARVIS_GID" -m 0750 "/mnt/cache/appdata/jarvis-
 ```
 
 - **Compose v2 is an operator prerequisite.** Unraid ships the Docker Engine
-  CLI; `docker compose` (the v2 plugin, `docker compose version`) must be
-  installed and enabled for the CLI path used here — the classic Web UI
-  template is not equivalent, because the `user`, `read_only`, resource cap,
-  log-cap and `stop_grace_period` settings this document relies on live in
-  `compose.yaml`.
+  CLI; install the **Compose Manager** plugin from Community Applications for
+  `docker compose` (the v2 plugin, `docker compose version`) and a stack UI. The
+  classic Web UI template is not equivalent, because the `user`, `read_only`,
+  resource cap, log-cap and `stop_grace_period` settings this document relies on
+  live in `compose.yaml`.
 - **Bind address and authentication.** Publish on a private address
   (`DASHBOARD_BIND_ADDRESS`, e.g. a `br0`/VLAN address that is not reachable
   from WAN) and keep the container off the reverse proxy: the dashboard has no
   login. If it must sit behind a proxy, add authentication there.
-- **Move the qualified image by ID; do not rebuild on the NAS.** The
-  qualification evidence is tied to one image ID. Build it on the build host,
-  then:
+- **The NAS pulls a CI-built image; it never builds.**
+  `.github/workflows/image.yml` runs the test suite and builds the Dockerfile
+  on every push to `main` and every `v*` tag, then pushes
+  `ghcr.io/dazing/nano-llm-usage` tagged `sha-<commit>`, `main`, and the
+  version for tags. The run summary prints the digest-pinned reference. Pull
+  requests build without pushing.
+- **Stack.** In Compose Manager, add a stack, paste `compose.yaml` as its
+  compose file and `.env.example` as its `.env`, then fill the values in and pin
+  the image by digest:
 
 ```bash
-docker save jarvis-dashboard:0.1.0 | gzip > jarvis-dashboard-0.1.0.tar.gz
-# copy the archive to the NAS, then on the NAS:
-docker load < jarvis-dashboard-0.1.0.tar.gz
-docker image inspect --format '{{.Id}}' jarvis-dashboard:0.1.0
+JARVIS_IMAGE=ghcr.io/dazing/nano-llm-usage@sha256:<digest from the run summary>
 ```
 
-  Compare the printed ID with the ID recorded in
-  [Delivery 4 status](delivery-4-status.md). Rebuilding on the NAS produces a
-  different image (different build cache, node_modules timestamps, layers) and
-  invalidates that comparison.
+  Pin the digest, not `:main`: the running image is then exactly one CI build,
+  and rolling back means putting the previous digest back. The stack has no
+  build context, so always pull before `up`; with the image present, `up` does
+  not build. Compose Manager keeps the stack files under
+  `/boot/config/plugins/compose.manager/projects/<stack>/`; run the shell
+  commands in this document from there.
+- **Registry login.** A package published from a private repository is
+  private. Log in once on the NAS with a classic personal access token scoped to
+  `read:packages` only; a public package needs no login:
+
+```bash
+docker login ghcr.io -u <github-user>
+```
+
+- **Start and upgrade.** First start, and every [Upgrade](#upgrade) after
+  changing `JARVIS_IMAGE` (back up first: migrations run at startup):
+
+```bash
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+  Do not let an auto-updater (Watchtower, Unraid's update checker) replace the
+  container: the upgrade procedure takes a backup before a new image starts.
+- **Qualification.** [Delivery 4 status](delivery-4-status.md) records the ID
+  of a locally built image; a CI build is a different image. To keep that gate,
+  pull the digest on the qualification host, tag it `jarvis-dashboard:0.1.0`,
+  run `scripts/qualify_image.py` without `--build`, and deploy that same digest.
 - **Log rotation.** Check the actual caps on the running container:
 
 ```bash

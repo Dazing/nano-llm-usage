@@ -10,9 +10,12 @@ services:
     # The image serves the dashboard UI itself: assets are built into the image
     # (Dockerfile `frontend` stage) and read from the baked-in STATIC_DIR. There
     # is no web server to deploy and nothing for the operator to configure.
+    # Local builds tag jarvis-dashboard:0.1.0. A deployed host has no build
+    # context: it sets JARVIS_IMAGE to the GHCR digest published by
+    # .github/workflows/image.yml and only pulls (docs/deployment.md, Unraid).
     build:
       context: .
-    image: jarvis-dashboard:0.1.0
+    image: "${JARVIS_IMAGE:-jarvis-dashboard:0.1.0}"
     # The runtime identity is a deploy-time setting, not a build argument: one
     # image ID is qualified once and then run as whichever UID/GID owns the
     # appdata directory (spec D8). The numeric pair must own the mount.

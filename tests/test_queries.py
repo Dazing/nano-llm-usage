@@ -1072,6 +1072,29 @@ def test_history_range_carries_cost_but_buckets_do_not(tmp_path):  # D5
     assert all("api_equivalent" not in bucket for bucket in payload["buckets"])
 
 
+def test_past_history_range_prices_only_hours_inside_the_range(tmp_path):
+    # Hours 10, 11 and 12 all carry priced traffic; [10:00, 11:00) must price only hour 10.
+    _cost_series(tmp_path, "cost", hours=(10, 11, 12))
+    now = T0 + timedelta(hours=5)
+    payload = queries.read_history(
+        tmp_path / "d.sqlite3",
+        source_id=SOURCE,
+        series_id=encode_series_id(SOURCE, _ident("cost")),
+        started_at=T0,
+        ended_at=T0 + timedelta(hours=1),
+        bucket="hour",
+        health=snapshot(now),
+        now=now,
+        poll_interval_seconds=15,
+        cost_rates=RATES,
+    )
+    cost = payload["range"]["api_equivalent"]
+    assert cost["amount"] == "2.880000"
+    assert cost["tokens"]["cached_input"] == payload["range"]["counters"]["cached_input"]["tokens"]
+    assert cost["priced_hours"] == 1
+    assert cost["expected_hours"] == 1
+
+
 def test_status_reports_configured_cost_rates(tmp_path):  # D5
     storage.open_storage(tmp_path / "d.sqlite3").close()
 

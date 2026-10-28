@@ -1205,7 +1205,7 @@ tbody tr:hover {
  * "the day ran at zero" (D4). */
 .hm-none {
   fill: none;
-  stroke: color-mix(in srgb, var(--line) 70%, transparent);
+  stroke: color-mix(in srgb, var(--line) 50%, transparent);
   stroke-width: 1;
   stroke-dasharray: 2 2;
 }
